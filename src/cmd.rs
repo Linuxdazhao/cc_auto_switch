@@ -391,29 +391,49 @@ pub fn generate_completion(shell: &str) -> Result<()> {
     use std::io::stdout;
 
     let mut app = Cli::command();
-    
+
     match shell {
         "fish" => {
             generate_fish_completion(&mut app);
         }
         "zsh" => {
-            clap_complete::generate(clap_complete::shells::Zsh, &mut app, "cc-switch", &mut stdout());
+            clap_complete::generate(
+                clap_complete::shells::Zsh,
+                &mut app,
+                "cc-switch",
+                &mut stdout(),
+            );
             println!("\n# Zsh completion generated successfully");
             println!("# Add this to your ~/.zsh/completions/_cc-switch");
             println!("# Or add this line to your ~/.zshrc:");
             println!("# fpath=(~/.zsh/completions $fpath)");
         }
         "bash" => {
-            clap_complete::generate(clap_complete::shells::Bash, &mut app, "cc-switch", &mut stdout());
+            clap_complete::generate(
+                clap_complete::shells::Bash,
+                &mut app,
+                "cc-switch",
+                &mut stdout(),
+            );
             println!("\n# Bash completion generated successfully");
             println!("# Add this to your ~/.bash_completion or /etc/bash_completion.d/");
         }
         "elvish" => {
-            clap_complete::generate(clap_complete::shells::Elvish, &mut app, "cc-switch", &mut stdout());
+            clap_complete::generate(
+                clap_complete::shells::Elvish,
+                &mut app,
+                "cc-switch",
+                &mut stdout(),
+            );
             println!("\n# Elvish completion generated successfully");
         }
         "powershell" => {
-            clap_complete::generate(clap_complete::shells::PowerShell, &mut app, "cc-switch", &mut stdout());
+            clap_complete::generate(
+                clap_complete::shells::PowerShell,
+                &mut app,
+                "cc-switch",
+                &mut stdout(),
+            );
             println!("\n# PowerShell completion generated successfully");
         }
         _ => {
@@ -436,15 +456,15 @@ pub fn generate_completion(shell: &str) -> Result<()> {
 /// Returns error if loading configurations fails
 fn list_aliases_for_completion() -> Result<()> {
     let storage = ConfigStorage::load()?;
-    
+
     // Always include 'cc' for reset functionality
     println!("cc");
-    
+
     // Output all stored aliases
     for alias_name in storage.configurations.keys() {
         println!("{alias_name}");
     }
-    
+
     Ok(())
 }
 
@@ -453,16 +473,24 @@ fn list_aliases_for_completion() -> Result<()> {
 /// # Arguments
 /// * `app` - The CLI application struct
 fn generate_fish_completion(app: &mut clap::Command) {
-
     // Generate basic completion
-    clap_complete::generate(clap_complete::shells::Fish, app, "cc-switch", &mut std::io::stdout());
-    
+    clap_complete::generate(
+        clap_complete::shells::Fish,
+        app,
+        "cc-switch",
+        &mut std::io::stdout(),
+    );
+
     // Add custom completion for switch subcommand
     println!("\n# Custom completion for switch subcommand with dynamic aliases");
-    println!("complete -c cc-switch -n '__fish_cc_switch_using_subcommand switch' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'");
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand switch' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
+    );
     // Custom completion for remove subcommand with dynamic aliases
     println!("# Custom completion for remove subcommand with dynamic aliases");
-    println!("complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'");
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
+    );
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
 }
