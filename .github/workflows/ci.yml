@@ -71,7 +71,6 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: nightly-2024-12-01
-      with:
         targets: ${{ matrix.target }}
 
     - name: Cache cargo registry
