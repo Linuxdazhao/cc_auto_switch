@@ -84,6 +84,11 @@ pub enum Commands {
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
     },
+    /// Show current API configuration
+    ///
+    /// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+    #[command(alias = "cur")]
+    Current,
 }
 
 /// Represents a Claude API configuration
@@ -415,6 +420,38 @@ fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
     }
 }
 
+/// Handle showing current configuration
+///
+/// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+///
+/// # Errors
+/// Returns error if file operations fail
+pub fn handle_current_command() -> Result<()> {
+    let storage = ConfigStorage::load()?;
+    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+    let claude_settings = ClaudeSettings::load(custom_dir)?;
+
+    let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
+    let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+
+    if let Some(token) = token {
+        if let Some(url) = url {
+            println!("Token: {}", token);
+            println!("URL: {}", url);
+        } else {
+            println!("Token: {}", token);
+            println!("URL: No ANTHROPIC_BASE_URL configured");
+        }
+    } else if let Some(url) = url {
+        println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+        println!("URL: {}", url);
+    } else {
+        println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+    }
+
+    Ok(())
+}
+
 /// Handle configuration switching command
 ///
 /// Processes the switch subcommand to switch Claude API configuration:
@@ -642,6 +679,9 @@ pub fn run() -> Result<()> {
             }
             Commands::Switch { alias_name } => {
                 handle_switch_command(&alias_name)?;
+            }
+            Commands::Current => {
+                handle_current_command()?;
             }
         }
     } else {
