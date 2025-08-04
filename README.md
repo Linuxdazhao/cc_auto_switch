@@ -1,9 +1,10 @@
 # cc-switch
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
+[![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/jingzhao/cc_auto_switch/packages)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://github.com/yourusername/cc-switch/workflows/CI/badge.svg)](https://github.com/yourusername/cc-switch/actions)
-[![Release](https://github.com/yourusername/cc-switch/workflows/Release/badge.svg)](https://github.com/yourusername/cc-switch/releases)
+[![Build Status](https://github.com/jingzhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/jingzhao/cc_auto_switch/actions)
+[![Release](https://github.com/jingzhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/jingzhao/cc_auto_switch/releases)
 
 A powerful command-line tool for managing multiple Claude API configurations and switching between them effortlessly.
 
@@ -29,7 +30,7 @@ cargo install cc-switch
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/cc-switch.git
+git clone https://github.com/jingzhao/cc_auto_switch.git
 cd cc-switch
 cargo build --release
 ```
@@ -185,7 +186,7 @@ By default, it looks for `settings.json` in `~/.claude/`, but you can specify a 
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cc-switch.git
+git clone https://github.com/jingzhao/cc_auto_switch.git
 cd cc-switch
 
 # Build in development mode
@@ -249,6 +250,23 @@ git push origin v1.0.0
 
 GitHub Actions will automatically build and publish the release.
 
+### Publishing to GitHub Packages
+
+You can also publish the crate to GitHub Packages:
+
+```bash
+# Using the publish script
+./publish.sh
+
+# Or using cargo directly
+cargo publish
+
+# For a dry-run to check everything is correct
+cargo publish --dry-run
+```
+
+The package will be available at: https://github.com/jingzhao/cc_auto_switch/packages
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
@@ -284,9 +302,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/cc-switch/issues)
-- 💡 **Feature Requests**: [GitHub Issues](https://github.com/yourusername/cc-switch/issues)
-- 📧 **Questions**: [GitHub Discussions](https://github.com/yourusername/cc-switch/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
+- 📧 **Questions**: [GitHub Discussions](https://github.com/jingzhao/cc_auto_switch/discussions)
 
 ## 🔄 Changelog
 
@@ -294,4 +312,4 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 
 ---
 
-**Made with ❤️ by [Your Name](https://github.com/yourusername)**
+**Made with ❤️ by [Your Name](https://github.com/jingzhao)**

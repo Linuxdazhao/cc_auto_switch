@@ -203,6 +203,19 @@ lint:
 update:
 	$(CARGO) update
 
+# Publish targets
+.PHONY: publish
+publish:
+	@echo "Publishing to GitHub Packages..."
+	$(CARGO) publish
+	@echo "Published to GitHub Packages successfully!"
+
+.PHONY: publish-dry-run
+publish-dry-run:
+	@echo "Running dry-run publish to GitHub Packages..."
+	$(CARGO) publish --dry-run
+	@echo "Dry-run publish completed successfully!"
+
 # Show help
 .PHONY: help
 help:
@@ -224,6 +237,10 @@ help:
 	@echo ""
 	@echo "  Install targets:"
 	@echo "    install         - Build and install binary for current platform"
+	@echo ""
+	@echo "  Publish targets:"
+	@echo "    publish         - Publish to GitHub Packages"
+	@echo "    publish-dry-run - Dry-run publish to GitHub Packages"
 	@echo ""
 	@echo "  Clean targets:"
 	@echo "    clean           - Clean build artifacts"
@@ -252,3 +269,4 @@ help:
 	@echo "    make build-linux                  # Build for Linux only"
 	@echo "    make package-x86_64-unknown-linux-gnu  # Package specific Linux target"
 	@echo "    make release                      # Create complete release"
+	@echo "    make publish                      # Publish to GitHub Packages"
