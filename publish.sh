@@ -59,8 +59,8 @@ else
 fi
 
 # Run cargo publish dry-run first
-print_info "Running cargo publish --dry-run..."
-cargo publish --dry-run
+print_info "Running cargo publish --dry-run --registry github..."
+cargo publish --dry-run --registry github
 
 # Ask for confirmation
 echo
@@ -78,7 +78,7 @@ fi
 
 # Publish to GitHub Packages
 print_info "Publishing to GitHub Packages..."
-cargo publish
+cargo publish --registry github
 
 print_info "Successfully published version $VERSION to GitHub Packages!"
 print_info "Package is now available at: https://github.com/jingzhao/cc_auto_switch/packages"

@@ -34,6 +34,6 @@ jobs:
 
     - name: Publish to GitHub Packages
       run: |
-        cargo publish
+        cargo publish --registry github
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
