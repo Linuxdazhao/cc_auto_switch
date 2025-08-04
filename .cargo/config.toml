@@ -4,4 +4,5 @@ linker = "aarch64-linux-gnu-gcc"
 
 # GitHub Packages registry configuration
 [registries.github]
-index = "sparse+https://maven.pkg.github.com/jingzhao/cc_auto_switch/index/"
+index = "https://github.com/Linuxdazhao/cc_auto_switch.git"
+credential-provider = ["cargo:token"]
