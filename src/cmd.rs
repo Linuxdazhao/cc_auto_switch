@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -118,13 +118,58 @@ pub struct ConfigStorage {
 ///
 /// Manages the Claude settings.json file to control Claude's API configuration
 /// Handles environment variables and preserves other settings
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Default, Clone)]
 pub struct ClaudeSettings {
     /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL)
     pub env: HashMap<String, String>,
     /// Other settings to preserve when modifying API configuration
-    #[serde(flatten)]
     pub other: HashMap<String, serde_json::Value>,
+}
+
+impl Serialize for ClaudeSettings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        let mut map = serializer.serialize_map(Some(
+            self.other.len() + if self.env.is_empty() { 0 } else { 1 },
+        ))?;
+
+        // Serialize env field only if it has content
+        if !self.env.is_empty() {
+            map.serialize_entry("env", &self.env)?;
+        }
+
+        // Serialize other fields
+        for (key, value) in &self.other {
+            map.serialize_entry(key, value)?;
+        }
+
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for ClaudeSettings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct ClaudeSettingsHelper {
+            #[serde(default)]
+            env: HashMap<String, String>,
+            #[serde(flatten)]
+            other: HashMap<String, serde_json::Value>,
+        }
+
+        let helper = ClaudeSettingsHelper::deserialize(deserializer)?;
+        Ok(ClaudeSettings {
+            env: helper.env,
+            other: helper.other,
+        })
+    }
 }
 
 impl ConfigStorage {
@@ -234,6 +279,7 @@ impl ClaudeSettings {
     ///
     /// Reads the JSON file from the configured Claude settings directory
     /// Returns default empty settings if file doesn't exist
+    /// Creates the file with default structure if it doesn't exist
     ///
     /// # Arguments
     /// * `custom_dir` - Optional custom directory for Claude settings
@@ -244,14 +290,27 @@ impl ClaudeSettings {
         let path = get_claude_settings_path(custom_dir)?;
 
         if !path.exists() {
-            return Ok(ClaudeSettings::default());
+            // Create default settings file if it doesn't exist
+            let default_settings = ClaudeSettings::default();
+            default_settings.save(custom_dir)?;
+            return Ok(default_settings);
         }
 
         let content = fs::read_to_string(&path)
             .with_context(|| format!("Failed to read Claude settings from {}", path.display()))?;
 
-        let settings: ClaudeSettings = serde_json::from_str(&content)
-            .with_context(|| "Failed to parse Claude settings JSON")?;
+        // Parse with better error handling for missing env field
+        let mut settings: ClaudeSettings = if content.trim().is_empty() {
+            ClaudeSettings::default()
+        } else {
+            serde_json::from_str(&content)
+                .with_context(|| "Failed to parse Claude settings JSON")?
+        };
+
+        // Ensure env field exists (handle case where it might be missing from JSON)
+        if settings.env.is_empty() && !content.contains("\"env\"") {
+            settings.env = HashMap::new();
+        }
 
         Ok(settings)
     }
@@ -260,6 +319,7 @@ impl ClaudeSettings {
     ///
     /// Writes the current state to the configured Claude settings directory
     /// Creates the directory structure if it doesn't exist
+    /// Ensures the env field is properly serialized
     ///
     /// # Arguments
     /// * `custom_dir` - Optional custom directory for Claude settings
@@ -275,7 +335,10 @@ impl ClaudeSettings {
                 .with_context(|| format!("Failed to create directory {}", parent.display()))?;
         }
 
-        let json = serde_json::to_string_pretty(self)
+        // The custom Serialize implementation handles env field inclusion automatically
+        let settings_to_save = self;
+
+        let json = serde_json::to_string_pretty(&settings_to_save)
             .with_context(|| "Failed to serialize Claude settings")?;
 
         fs::write(&path, json).with_context(|| format!("Failed to write to {}", path.display()))?;
@@ -286,10 +349,16 @@ impl ClaudeSettings {
     /// Switch to a specific API configuration
     ///
     /// Updates the environment variables with the provided configuration
+    /// Ensures env field exists before updating
     ///
     /// # Arguments
     /// * `config` - Configuration containing token and URL to apply
     pub fn switch_to_config(&mut self, config: &Configuration) {
+        // Ensure env field exists
+        if self.env.is_empty() {
+            self.env = HashMap::new();
+        }
+
         self.env
             .insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
         self.env
@@ -301,6 +370,11 @@ impl ClaudeSettings {
     /// Clears ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from settings
     /// Used to reset to default Claude behavior
     pub fn remove_anthropic_env(&mut self) {
+        // Ensure env field exists
+        if self.env.is_empty() {
+            self.env = HashMap::new();
+        }
+
         self.env.remove("ANTHROPIC_AUTH_TOKEN");
         self.env.remove("ANTHROPIC_BASE_URL");
     }
