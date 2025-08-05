@@ -12,11 +12,15 @@ A powerful command-line tool for managing multiple Claude API configurations and
 
 - **Multi-Configuration Management**: Store and manage multiple Claude API configurations
 - **Quick Switching**: Instantly switch between different API configurations using aliases
-- **Shell Completion**: Built-in completion for fish, zsh, bash, and other shells
+- **Interactive Mode**: Secure token entry without exposing in shell history
+- **Bulk Operations**: Add and remove multiple configurations at once
+- **Shell Completion**: Built-in completion for fish, zsh, bash, elvish, powershell, and nushell
 - **Dynamic Alias Completion**: Auto-complete configuration names for switch and remove commands
+- **Current Configuration Display**: Show active API configuration with `cc-switch current`
 - **Safe Configuration Storage**: Securely stores configurations in `~/.cc-switch/`
 - **Cross-Platform**: Works on Linux, macOS, and Windows
 - **Custom Settings Directory**: Support for custom Claude settings directories
+- **Force Overwrite**: Replace existing configurations with `--force` flag
 - **Zero Configuration**: Works out of the box with sensible defaults
 
 ## 🚀 Installation
@@ -48,8 +52,17 @@ cp target/release/cc-switch ~/.local/bin/
 #### Add a Configuration
 
 ```bash
-# Add a new Claude API configuration
+# Add a new Claude API configuration (positional arguments)
 cc-switch add my-config sk-ant-xxx https://api.anthropic.com
+
+# Add using flags (more explicit)
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
+
+# Add in interactive mode (secure)
+cc-switch add my-config -i
+
+# Add with force overwrite
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --force
 ```
 
 #### List All Configurations
@@ -80,8 +93,11 @@ cc-switch switch cc
 #### Remove a Configuration
 
 ```bash
-# Remove a configuration by alias
+# Remove a single configuration
 cc-switch remove my-config
+
+# Remove multiple configurations at once
+cc-switch remove config1 config2 config3
 ```
 
 #### Set Custom Settings Directory
@@ -105,8 +121,14 @@ cc-switch completion zsh > ~/.zsh/completions/_cc-switch
 # fpath=(~/.zsh/completions $fpath)
 
 # Bash shell
-cc-switch completion bash > ~/.bash_completion.d/cc-switch.bash
-# Or add to your ~/.bash_completion
+cc-switch completion bash > ~/.bash_completion.d/cc-switch
+# Or add to your ~/.bashrc:
+# source ~/.bash_completion.d/cc-switch
+
+# Additional supported shells
+cc-switch completion elvish     # Elvish shell
+cc-switch completion powershell # PowerShell
+cc-switch completion nushell    # Nushell
 ```
 
 ### Dynamic Completion
@@ -120,6 +142,20 @@ cc-switch remove <TAB>  # Will show available aliases: my-config, work-config
 ```
 
 ### Advanced Usage
+
+#### Show Current Configuration
+
+```bash
+# Display current API configuration
+cc-switch current
+
+# Output examples:
+# Token: sk-ant-xxx
+# URL: https://api.anthropic.com
+# 
+# Or when not configured:
+# No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured
+```
 
 #### Custom Settings Directory
 
@@ -145,6 +181,33 @@ cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
 cc-switch switch dev      # Switch to development
 cc-switch switch prod     # Switch to production
 cc-switch switch cc       # Reset to default
+
+# Check current configuration
+cc-switch current
+```
+
+#### Interactive Mode
+
+For secure token entry without exposing tokens in shell history:
+
+```bash
+# Add configuration interactively
+cc-switch add my-config -i
+
+# You'll be prompted for token and URL
+Enter API token (sk-ant-xxx): [hidden input]
+Enter API URL (default: https://api.anthropic.com): https://custom.api.com
+```
+
+#### Bulk Operations
+
+```bash
+# Add multiple configurations with flags
+cc-switch add dev -t sk-ant-dev-xxx -u https://api.anthropic.com
+cc-switch add prod -t sk-ant-prod-xxx -u https://api.anthropic.com
+
+# Remove multiple configurations at once
+cc-switch remove old-config deprecated-config test-config
 ```
 
 ## 🔧 Configuration
@@ -181,6 +244,7 @@ By default, it looks for `settings.json` in `~/.claude/`, but you can specify a 
 
 - Rust 1.88.0 or later
 - Cargo (included with Rust)
+- audit (for security auditing) - `cargo install cargo-audit`
 
 ### Building
 
@@ -203,6 +267,9 @@ cargo fmt --check
 
 # Run linter
 cargo clippy
+
+# Run security audit
+cargo audit
 ```
 
 ### Project Structure
@@ -211,9 +278,18 @@ cargo clippy
 cc-switch/
 ├── src/
 │   ├── main.rs          # Application entry point
-│   └── cmd.rs           # Command logic and data models
+│   └── cmd/
+│       ├── main.rs      # Command logic and data models
+│       ├── mod.rs       # Module definitions
+│       ├── tests.rs     # Unit tests
+│       ├── integration_tests.rs  # Integration tests
+│       └── error_handling_tests.rs  # Error handling tests
 ├── Cargo.toml           # Project configuration
 ├── Cargo.lock           # Dependency lock file
+├── .github/
+│   └── workflows/
+│       ├── ci.yml       # CI pipeline
+│       └── release.yml  # Release automation
 └── README.md           # This file
 ```
 
@@ -229,7 +305,14 @@ cargo test
 cargo test -- --nocapture
 
 # Run integration tests
-cargo test --test integration
+cargo test integration_tests
+
+# Run error handling tests
+cargo test error_handling_tests
+
+# Run specific test modules
+cargo test test_config_storage
+cargo test test_claude_settings
 ```
 
 ## 📦 Release
@@ -312,4 +395,4 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 
 ---
 
-**Made with ❤️ by [Your Name](https://github.com/jingzhao)**
+**Made with ❤️ by [jingzhao](https://github.com/jingzhao)**

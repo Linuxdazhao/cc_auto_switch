@@ -3,7 +3,10 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
+
+
 
 /// Command-line interface for managing Claude API configurations
 #[derive(Parser)]
@@ -14,9 +17,13 @@ use std::path::PathBuf;
 
 EXAMPLES:
     cc-switch add my-config sk-ant-xxx https://api.anthropic.com
+    cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
+    cc-switch add my-config -i  # Interactive mode
+    cc-switch add my-config --force  # Overwrite existing config
     cc-switch switch my-config
     cc-switch switch cc
     cc-switch list
+    cc-switch remove config1 config2 config3
     cc-switch set-default-dir /path/to/claude/config"
 )]
 pub struct Cli {
@@ -37,19 +44,57 @@ pub enum Commands {
     #[command(alias = "a")]
     Add {
         /// Configuration alias name (used to identify this config)
+        #[arg(help = "Configuration alias name (cannot be 'cc')")]
         alias_name: String,
+
         /// ANTHROPIC_AUTH_TOKEN value (your Claude API token)
-        token: String,
+        #[arg(
+            long = "token",
+            short = 't',
+            help = "API token (optional if not using interactive mode)"
+        )]
+        token: Option<String>,
+
         /// ANTHROPIC_BASE_URL value (API endpoint URL)
-        url: String,
+        #[arg(
+            long = "url",
+            short = 'u',
+            help = "API endpoint URL (optional if not using interactive mode)"
+        )]
+        url: Option<String>,
+
+        /// Force overwrite existing configuration
+        #[arg(
+            long = "force",
+            short = 'f',
+            help = "Overwrite existing configuration with same alias"
+        )]
+        force: bool,
+
+        /// Interactive mode for entering token and URL
+        #[arg(
+            long = "interactive",
+            short = 'i',
+            help = "Enter token and URL interactively"
+        )]
+        interactive: bool,
+
+        /// Positional token argument (for backward compatibility)
+        #[arg(help = "API token (if not using -t flag)")]
+        token_arg: Option<String>,
+
+        /// Positional URL argument (for backward compatibility)
+        #[arg(help = "API endpoint URL (if not using -u flag)")]
+        url_arg: Option<String>,
     },
-    /// Remove a configuration by alias name
+    /// Remove one or more configurations by alias name
     ///
-    /// Deletes a stored configuration by its alias name
+    /// Deletes stored configurations by their alias names
     #[command(alias = "r")]
     Remove {
-        /// Configuration alias name to remove
-        alias_name: String,
+        /// Configuration alias name(s) to remove (one or more)
+        #[arg(required = true)]
+        alias_names: Vec<String>,
     },
     /// List all stored configurations
     ///
@@ -391,7 +436,7 @@ impl ClaudeSettings {
 ///
 /// # Errors
 /// Returns error if home directory cannot be found
-fn get_config_storage_path() -> Result<PathBuf> {
+pub fn get_config_storage_path() -> Result<PathBuf> {
     let home_dir = dirs::home_dir().context("Could not find home directory")?;
     Ok(home_dir.join(".cc-switch").join("configurations.json"))
 }
@@ -403,7 +448,7 @@ fn get_config_storage_path() -> Result<PathBuf> {
 ///
 /// # Errors
 /// Returns error if home directory cannot be found or path is invalid
-fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
+pub fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
     if let Some(dir) = custom_dir {
         let custom_path = PathBuf::from(dir);
         if custom_path.is_absolute() {
@@ -436,17 +481,173 @@ pub fn handle_current_command() -> Result<()> {
 
     if let Some(token) = token {
         if let Some(url) = url {
-            println!("Token: {}", token);
-            println!("URL: {}", url);
+            println!("Token: {token}");
+            println!("URL: {url}");
         } else {
-            println!("Token: {}", token);
+            println!("Token: {token}");
             println!("URL: No ANTHROPIC_BASE_URL configured");
         }
     } else if let Some(url) = url {
         println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-        println!("URL: {}", url);
+        println!("URL: {url}");
     } else {
         println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+    }
+
+    Ok(())
+}
+
+/// Read input from stdin with a prompt
+///
+/// # Arguments
+/// * `prompt` - The prompt to display to the user
+///
+/// # Returns
+/// The user's input as a String
+fn read_input(prompt: &str) -> Result<String> {
+    print!("{prompt}");
+    io::stdout().flush().context("Failed to flush stdout")?;
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("Failed to read input")?;
+    Ok(input.trim().to_string())
+}
+
+/// Read sensitive input (token) with a prompt (without echoing)
+///
+/// # Arguments
+/// * `prompt` - The prompt to display to the user
+///
+/// # Returns
+/// The user's input as a String
+fn read_sensitive_input(prompt: &str) -> Result<String> {
+    print!("{prompt}");
+    io::stdout().flush().context("Failed to flush stdout")?;
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("Failed to read input")?;
+    Ok(input.trim().to_string())
+}
+
+/// Validate alias name
+///
+/// # Arguments
+/// * `alias_name` - The alias name to validate
+///
+/// # Returns
+/// Ok(()) if valid, Err with message if invalid
+pub fn validate_alias_name(alias_name: &str) -> Result<()> {
+    if alias_name.is_empty() {
+        anyhow::bail!("Alias name cannot be empty");
+    }
+    if alias_name == "cc" {
+        anyhow::bail!("Alias name 'cc' is reserved and cannot be used");
+    }
+    if alias_name.contains(' ') {
+        anyhow::bail!("Alias name cannot contain whitespace");
+    }
+    Ok(())
+}
+
+/// Handle adding a configuration with all the new features
+///
+/// # Arguments
+/// * `alias_name` - The configuration alias name
+/// * `token` - Optional token from -t flag
+/// * `url` - Optional URL from -u flag
+/// * `force` - Whether to force overwrite existing config
+/// * `interactive` - Whether to use interactive mode
+/// * `token_arg` - Optional token from positional argument
+/// * `url_arg` - Optional URL from positional argument
+/// * `storage` - Mutable reference to config storage
+///
+/// # Errors
+/// Returns error if validation fails or user cancels interactive input
+fn handle_add_command(
+    alias_name: String,
+    token: Option<String>,
+    url: Option<String>,
+    force: bool,
+    interactive: bool,
+    token_arg: Option<String>,
+    url_arg: Option<String>,
+    storage: &mut ConfigStorage,
+) -> Result<()> {
+    // Validate alias name
+    validate_alias_name(&alias_name)?;
+
+    // Check if alias already exists
+    if storage.get_configuration(&alias_name).is_some() && !force {
+        eprintln!("Configuration '{alias_name}' already exists.");
+        eprintln!("Use --force to overwrite or choose a different alias name.");
+        return Ok(());
+    }
+
+    // Determine token value
+    let final_token = if interactive {
+        if token.is_some() || token_arg.is_some() {
+            eprintln!(
+                "Warning: Token provided via flags/arguments will be ignored in interactive mode"
+            );
+        }
+        read_sensitive_input("Enter API token (sk-ant-xxx): ")?
+    } else {
+        match (token, token_arg) {
+            (Some(t), _) => t,
+            (None, Some(t)) => t,
+            (None, None) => {
+                anyhow::bail!(
+                    "Token is required. Use -t flag, provide as argument, or use interactive mode with -i"
+                );
+            }
+        }
+    };
+
+    // Determine URL value
+    let final_url = if interactive {
+        if url.is_some() || url_arg.is_some() {
+            eprintln!(
+                "Warning: URL provided via flags/arguments will be ignored in interactive mode"
+            );
+        }
+        read_input("Enter API URL (default: https://api.anthropic.com): ")?
+    } else {
+        match (url, url_arg) {
+            (Some(u), _) => u,
+            (None, Some(u)) => u,
+            (None, None) => "https://api.anthropic.com".to_string(),
+        }
+    };
+
+    // Use default URL if empty
+    let final_url = if final_url.is_empty() {
+        "https://api.anthropic.com".to_string()
+    } else {
+        final_url
+    };
+
+    // Validate token format (basic check)
+    if !final_token.starts_with("sk-ant-") {
+        eprintln!(
+            "Warning: Token doesn't start with 'sk-ant-' - please verify it's a valid Claude API token"
+        );
+    }
+
+    // Create and add configuration
+    let config = Configuration {
+        alias_name: alias_name.clone(),
+        token: final_token,
+        url: final_url,
+    };
+
+    storage.add_configuration(config);
+    storage.save()?;
+
+    println!("Configuration '{alias_name}' added successfully");
+    if force {
+        println!("(Overwrote existing configuration)");
     }
 
     Ok(())
@@ -633,22 +834,46 @@ pub fn run() -> Result<()> {
                 alias_name,
                 token,
                 url,
+                force,
+                interactive,
+                token_arg,
+                url_arg,
             } => {
-                let config = Configuration {
-                    alias_name: alias_name.clone(),
+                handle_add_command(
+                    alias_name,
                     token,
                     url,
-                };
-                storage.add_configuration(config);
-                storage.save()?;
-                println!("Configuration '{alias_name}' added successfully");
+                    force,
+                    interactive,
+                    token_arg,
+                    url_arg,
+                    &mut storage,
+                )?;
             }
-            Commands::Remove { alias_name } => {
-                if storage.remove_configuration(&alias_name) {
+            Commands::Remove { alias_names } => {
+                let mut removed_count = 0;
+                let mut not_found_aliases = Vec::new();
+                
+                for alias_name in &alias_names {
+                    if storage.remove_configuration(alias_name) {
+                        removed_count += 1;
+                        println!("Configuration '{alias_name}' removed successfully");
+                    } else {
+                        not_found_aliases.push(alias_name.clone());
+                        println!("Configuration '{alias_name}' not found");
+                    }
+                }
+                
+                if removed_count > 0 {
                     storage.save()?;
-                    println!("Configuration '{alias_name}' removed successfully");
-                } else {
-                    println!("Configuration '{alias_name}' not found");
+                }
+                
+                if !not_found_aliases.is_empty() {
+                    eprintln!("Warning: The following configurations were not found: {}", not_found_aliases.join(", "));
+                }
+                
+                if removed_count > 0 {
+                    println!("Successfully removed {removed_count} configuration(s)");
                 }
             }
             Commands::List => {
