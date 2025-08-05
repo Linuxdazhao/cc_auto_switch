@@ -40,11 +40,17 @@ mod error_handling_tests {
 
         // Test alias with tabs (note: current implementation only checks for spaces)
         let result = validate_alias_name("test\tconfig");
-        assert!(result.is_ok(), "Current implementation only checks for spaces, not tabs");
+        assert!(
+            result.is_ok(),
+            "Current implementation only checks for spaces, not tabs"
+        );
 
         // Test alias with newlines (note: current implementation only checks for spaces)
         let result = validate_alias_name("test\nconfig");
-        assert!(result.is_ok(), "Current implementation only checks for spaces, not newlines");
+        assert!(
+            result.is_ok(),
+            "Current implementation only checks for spaces, not newlines"
+        );
 
         // Test alias with multiple spaces
         let result = validate_alias_name("test  config  with  spaces");
@@ -146,8 +152,14 @@ mod error_handling_tests {
         let config = create_test_config("test", "sk-ant-test", "https://api.test.com");
         settings.switch_to_config(&config);
         assert_eq!(settings.env.len(), 2);
-        assert_eq!(settings.env.get("ANTHROPIC_AUTH_TOKEN"), Some(&"sk-ant-test".to_string()));
-        assert_eq!(settings.env.get("ANTHROPIC_BASE_URL"), Some(&"https://api.test.com".to_string()));
+        assert_eq!(
+            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            Some(&"sk-ant-test".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_BASE_URL"),
+            Some(&"https://api.test.com".to_string())
+        );
 
         // Test removing env variables after switching
         settings.remove_anthropic_env();
@@ -156,9 +168,16 @@ mod error_handling_tests {
 
         // Test multiple switches and removes
         for i in 0..10 {
-            let config = create_test_config(&format!("config{}", i), &format!("sk-ant-test{}", i), &format!("https://api{}.test.com", i));
+            let config = create_test_config(
+                &format!("config{}", i),
+                &format!("sk-ant-test{}", i),
+                &format!("https://api{}.test.com", i),
+            );
             settings.switch_to_config(&config);
-            assert_eq!(settings.env.get("ANTHROPIC_AUTH_TOKEN"), Some(&format!("sk-ant-test{}", i)));
+            assert_eq!(
+                settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+                Some(&format!("sk-ant-test{}", i))
+            );
             settings.remove_anthropic_env();
         }
     }
@@ -174,13 +193,24 @@ mod error_handling_tests {
 
         // Test serializing settings with only other fields
         let mut settings = ClaudeSettings::default();
-        settings.other.insert("key1".to_string(), serde_json::Value::String("value1".to_string()));
-        settings.other.insert("key2".to_string(), serde_json::Value::Number(serde_json::Number::from(42)));
-        settings.other.insert("key3".to_string(), serde_json::Value::Bool(true));
-        settings.other.insert("key4".to_string(), serde_json::Value::Array(vec![
-            serde_json::Value::String("item1".to_string()),
-            serde_json::Value::String("item2".to_string()),
-        ]));
+        settings.other.insert(
+            "key1".to_string(),
+            serde_json::Value::String("value1".to_string()),
+        );
+        settings.other.insert(
+            "key2".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(42)),
+        );
+        settings
+            .other
+            .insert("key3".to_string(), serde_json::Value::Bool(true));
+        settings.other.insert(
+            "key4".to_string(),
+            serde_json::Value::Array(vec![
+                serde_json::Value::String("item1".to_string()),
+                serde_json::Value::String("item2".to_string()),
+            ]),
+        );
 
         let json = serde_json::to_string_pretty(&settings).unwrap();
         let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
@@ -243,7 +273,8 @@ mod error_handling_tests {
         // Test loading from malformed JSON file
         let malformed_json = r#"{"configurations": "not_a_map", "claude_settings_dir": "/path"}"#;
         fs::write(&config_path, malformed_json).unwrap();
-        let result: Result<ConfigStorage, _> = serde_json::from_str(&fs::read_to_string(&config_path).unwrap());
+        let result: Result<ConfigStorage, _> =
+            serde_json::from_str(&fs::read_to_string(&config_path).unwrap());
         assert!(result.is_err());
     }
 
@@ -322,7 +353,8 @@ mod error_handling_tests {
         ];
 
         for (i, token) in special_tokens.iter().enumerate() {
-            let config = create_test_config(&format!("config_{}", i), token, "https://api.test.com");
+            let config =
+                create_test_config(&format!("config_{}", i), token, "https://api.test.com");
             storage.add_configuration(config);
         }
 
@@ -333,7 +365,10 @@ mod error_handling_tests {
             let alias = &format!("config_{}", i);
             let config = storage.get_configuration(alias).unwrap();
             settings.switch_to_config(config);
-            assert_eq!(settings.env.get("ANTHROPIC_AUTH_TOKEN"), Some(&token.to_string()));
+            assert_eq!(
+                settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+                Some(&token.to_string())
+            );
         }
     }
 
@@ -350,7 +385,11 @@ mod error_handling_tests {
             ("config-Москва", "sk-ant-Москва", "https://api.Москва.com"),
             ("config-北京", "sk-ant-北京", "https://api.北京.com"),
             ("config-東京", "sk-ant-東京", "https://api.東京.com"),
-            ("config-العربية", "sk-ant-العربية", "https://api.العربية.com"),
+            (
+                "config-العربية",
+                "sk-ant-العربية",
+                "https://api.العربية.com",
+            ),
             ("config-हिन्दी", "sk-ant-हिन्दी", "https://api.हिन्दी.com"),
             ("config-한국어", "sk-ant-한국어", "https://api.한국어.com"),
         ];
@@ -381,7 +420,11 @@ mod error_handling_tests {
         // Test rapid add/remove operations
         for i in 0..100 {
             let alias = &format!("config_{}", i);
-            let config = create_test_config(alias, &format!("sk-ant-test{}", i), &format!("https://api{}.test.com", i));
+            let config = create_test_config(
+                alias,
+                &format!("sk-ant-test{}", i),
+                &format!("https://api{}.test.com", i),
+            );
             storage.add_configuration(config);
             assert!(storage.remove_configuration(alias));
         }
@@ -391,7 +434,11 @@ mod error_handling_tests {
         // Test rapid switch operations
         for i in 0..100 {
             let alias = &format!("config_{}", i);
-            let config = create_test_config(alias, &format!("sk-ant-test{}", i), &format!("https://api{}.test.com", i));
+            let config = create_test_config(
+                alias,
+                &format!("sk-ant-test{}", i),
+                &format!("https://api{}.test.com", i),
+            );
             storage.add_configuration(config);
             let stored_config = storage.get_configuration(alias).unwrap();
             settings.switch_to_config(stored_config);

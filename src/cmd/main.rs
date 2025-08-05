@@ -6,8 +6,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-
-
 /// Command-line interface for managing Claude API configurations
 #[derive(Parser)]
 #[command(name = "cc-switch")]
@@ -853,7 +851,7 @@ pub fn run() -> Result<()> {
             Commands::Remove { alias_names } => {
                 let mut removed_count = 0;
                 let mut not_found_aliases = Vec::new();
-                
+
                 for alias_name in &alias_names {
                     if storage.remove_configuration(alias_name) {
                         removed_count += 1;
@@ -863,15 +861,18 @@ pub fn run() -> Result<()> {
                         println!("Configuration '{alias_name}' not found");
                     }
                 }
-                
+
                 if removed_count > 0 {
                     storage.save()?;
                 }
-                
+
                 if !not_found_aliases.is_empty() {
-                    eprintln!("Warning: The following configurations were not found: {}", not_found_aliases.join(", "));
+                    eprintln!(
+                        "Warning: The following configurations were not found: {}",
+                        not_found_aliases.join(", ")
+                    );
                 }
-                
+
                 if removed_count > 0 {
                     println!("Successfully removed {removed_count} configuration(s)");
                 }
