@@ -8,20 +8,102 @@
 
 A powerful command-line tool for managing multiple Claude API configurations and switching between them effortlessly.
 
-## 🎯 Features
+If you've ever used Claude API in different environments (development, testing, production, or even different client accounts), you deeply understand the pain of manually editing configuration files or setting environment variables. cc-switch eliminates this pain by providing a centralized solution:
 
-- **Multi-Configuration Management**: Store and manage multiple Claude API configurations
-- **Quick Switching**: Instantly switch between different API configurations using aliases
-- **Interactive Mode**: Secure token entry without exposing in shell history
-- **Bulk Operations**: Add and remove multiple configurations at once
-- **Shell Completion**: Built-in completion for fish, zsh, bash, elvish, powershell, and nushell
-- **Dynamic Alias Completion**: Auto-complete configuration names for switch and remove commands
-- **Current Configuration Display**: Show active API configuration with `cc-switch current`
-- **Safe Configuration Storage**: Securely stores configurations in `~/.cc-switch/`
-- **Cross-Platform**: Works on Linux, macOS, and Windows
-- **Custom Settings Directory**: Support for custom Claude settings directories
-- **Force Overwrite**: Replace existing configurations with `--force` flag
-- **Zero Configuration**: Works out of the box with sensible defaults
+* **Store multiple API configurations** with easy-to-remember aliases
+* **Instantly switch configurations** with a single command
+* **Maintain separate settings for different projects or environments**
+* **Preserve existing Claude settings** while only modifying API-related configurations
+
+## 🏗️ Core Architecture
+
+The tool is built with a clean, modular architecture that effectively separates concerns:
+
+The application follows a simple yet powerful design pattern, with the main entry point delegating tasks to a command module that handles all CLI operations. `ConfigStorage` manages the persistence of configurations, while `ClaudeSettings` handles integration with Claude's native configuration system.
+
+## 🎯 Key Features
+
+cc-switch comes packed with features that make API configuration management effortless:
+
+| Feature | Description | Benefits |
+|---------|-------------|----------|
+| **Multi-Configuration Management** | Store unlimited API configurations using custom aliases | Keep all environments organized |
+| **Instant Switching** | Switch configurations with `cc-switch switch <alias>` | Save time from manual configuration changes |
+| **Shell Auto-Completion** | Built-in completion support for fish, zsh, bash, and more | Speed up command entry with auto-completion |
+| **Dynamic Alias Completion** | Auto-complete configuration names for switch/remove commands | Reduce errors and typing effort |
+| **Secure Storage** | Configurations securely stored in `~/.cc-switch/` directory | Your API keys are kept separate and organized |
+| **Cross-Platform Support** | Supports Linux, macOS, and Windows | Use the same tool across all development environments |
+| **Custom Directory Support** | Supports custom Claude settings directories | Flexibility for non-standard installations |
+
+## ⚡ 3-Minute Quick Start
+
+The beauty of cc-switch lies in its simplicity. Here are the steps to get up and running quickly:
+
+1. **Install the tool** (~30 seconds):
+   ```bash
+   cargo install cc-switch
+   ```
+
+2. **Add your first configuration** (~15 seconds):
+   ```bash
+   cc-switch add my-project sk-ant-xxx https://api.anthropic.com
+   ```
+
+3. **Switch to your configuration** (~5 seconds):
+   ```bash
+   cc-switch switch my-project
+   ```
+
+4. **Verify it works** (~10 seconds):
+   ```bash
+   cc-switch current
+   ```
+
+That's it! You're now managing Claude API configurations like a pro.
+
+## 🌟 Real-World Use Cases
+
+cc-switch excels in several common development scenarios:
+
+### Multi-Environment Development
+
+```bash
+# Set up different environments
+cc-switch add dev sk-ant-dev-xxx https://api.anthropic.com
+cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
+cc-switch add prod sk-ant-prod-xxx https://api.anthropic.com
+
+# Switch between environments as needed
+cc-switch switch dev      # Development work
+cc-switch switch staging  # Testing
+cc-switch switch prod     # Production deployment
+cc-switch switch cc       # Reset to default
+```
+
+### Client Project Management
+
+For developers who work with multiple clients requiring different API credentials:
+
+```bash
+cc-switch add client-a sk-ant-client-a https://api.anthropic.com
+cc-switch add client-b sk-ant-client-b https://api.anthropic.com
+cc-switch add personal sk-ant-personal https://api.anthropic.com
+```
+
+### Team Collaboration
+
+Team members can share configuration aliases and quickly switch between team-specific settings without manually editing files.
+
+## 🔧 Technical Foundation
+
+cc-switch is built with modern Rust practices and leverages several key libraries:
+
+* **clap** for robust command-line argument parsing with auto-generated help
+* **serde** for reliable JSON serialization/deserialization
+* **dirs** for cross-platform directory management
+* **anyhow** for comprehensive error handling
+
+The tool is designed with a **zero-configuration** philosophy - it works out of the box with sensible defaults but provides customization options when needed.
 
 ## 🚀 Installation
 
@@ -100,255 +182,11 @@ cc-switch remove my-config
 cc-switch remove config1 config2 config3
 ```
 
-#### Set Custom Settings Directory
+## 🛠️ Development and Build Process
 
-```bash
-# Set custom directory for Claude settings.json
-cc-switch set-default-dir /path/to/claude/config
-```
+The project includes a comprehensive build process that supports cross-platform compilation, making it simple to build for multiple targets:
 
-### Shell Completion
-
-Generate shell completion scripts:
-
-```bash
-# Fish shell
-cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
-
-# Zsh shell
-cc-switch completion zsh > ~/.zsh/completions/_cc-switch
-# Or add to your ~/.zshrc:
-# fpath=(~/.zsh/completions $fpath)
-
-# Bash shell
-cc-switch completion bash > ~/.bash_completion.d/cc-switch
-# Or add to your ~/.bashrc:
-# source ~/.bash_completion.d/cc-switch
-
-# Additional supported shells
-cc-switch completion elvish     # Elvish shell
-cc-switch completion powershell # PowerShell
-cc-switch completion nushell    # Nushell
-```
-
-### Dynamic Completion
-
-Both `switch` and `remove` commands support dynamic alias completion:
-
-```bash
-# After setting up completion, type:
-cc-switch switch <TAB>  # Will show available aliases: cc, my-config, work-config
-cc-switch remove <TAB>  # Will show available aliases: my-config, work-config
-```
-
-### Advanced Usage
-
-#### Show Current Configuration
-
-```bash
-# Display current API configuration
-cc-switch current
-
-# Output examples:
-# Token: sk-ant-xxx
-# URL: https://api.anthropic.com
-# 
-# Or when not configured:
-# No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured
-```
-
-#### Custom Settings Directory
-
-If you have Claude settings in a non-standard location:
-
-```bash
-# Set custom directory
-cc-switch set-default-dir ~/development/claude-config
-
-# Now all operations will use this directory
-cc-switch switch my-config
-```
-
-#### Configuration Management
-
-```bash
-# Add multiple configurations for different environments
-cc-switch add dev sk-ant-dev-xxx https://api.anthropic.com
-cc-switch add prod sk-ant-prod-xxx https://api.anthropic.com
-cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
-
-# Switch between environments
-cc-switch switch dev      # Switch to development
-cc-switch switch prod     # Switch to production
-cc-switch switch cc       # Reset to default
-
-# Check current configuration
-cc-switch current
-```
-
-#### Interactive Mode
-
-For secure token entry without exposing tokens in shell history:
-
-```bash
-# Add configuration interactively
-cc-switch add my-config -i
-
-# You'll be prompted for token and URL
-Enter API token (sk-ant-xxx): [hidden input]
-Enter API URL (default: https://api.anthropic.com): https://custom.api.com
-```
-
-#### Bulk Operations
-
-```bash
-# Add multiple configurations with flags
-cc-switch add dev -t sk-ant-dev-xxx -u https://api.anthropic.com
-cc-switch add prod -t sk-ant-prod-xxx -u https://api.anthropic.com
-
-# Remove multiple configurations at once
-cc-switch remove old-config deprecated-config test-config
-```
-
-## 🔧 Configuration
-
-### Storage Location
-
-Configurations are stored in `~/.cc-switch/configurations.json` in the following format:
-
-```json
-{
-  "configurations": {
-    "my-config": {
-      "alias_name": "my-config",
-      "token": "sk-ant-xxx",
-      "url": "https://api.anthropic.com"
-    }
-  },
-  "claude_settings_dir": null
-}
-```
-
-### Claude Settings Integration
-
-The tool modifies Claude's `settings.json` file to set environment variables:
-
-- `ANTHROPIC_AUTH_TOKEN`: Your API token
-- `ANTHROPIC_BASE_URL`: The API base URL
-
-By default, it looks for `settings.json` in `~/.claude/`, but you can specify a custom directory.
-
-## 🛠️ Development
-
-### Prerequisites
-
-- Rust 1.88.0 or later
-- Cargo (included with Rust)
-- audit (for security auditing) - `cargo install cargo-audit`
-
-### Building
-
-```bash
-# Clone the repository
-git clone https://github.com/jingzhao/cc_auto_switch.git
-cd cc-switch
-
-# Build in development mode
-cargo build
-
-# Build in release mode
-cargo build --release
-
-# Run tests
-cargo test
-
-# Check formatting
-cargo fmt --check
-
-# Run linter
-cargo clippy
-
-# Run security audit
-cargo audit
-```
-
-### Project Structure
-
-```
-cc-switch/
-├── src/
-│   ├── main.rs          # Application entry point
-│   └── cmd/
-│       ├── main.rs      # Command logic and data models
-│       ├── mod.rs       # Module definitions
-│       ├── tests.rs     # Unit tests
-│       ├── integration_tests.rs  # Integration tests
-│       └── error_handling_tests.rs  # Error handling tests
-├── Cargo.toml           # Project configuration
-├── Cargo.lock           # Dependency lock file
-├── .github/
-│   └── workflows/
-│       ├── ci.yml       # CI pipeline
-│       └── release.yml  # Release automation
-└── README.md           # This file
-```
-
-## 🧪 Testing
-
-The project includes comprehensive tests:
-
-```bash
-# Run all tests
-cargo test
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run integration tests
-cargo test integration_tests
-
-# Run error handling tests
-cargo test error_handling_tests
-
-# Run specific test modules
-cargo test test_config_storage
-cargo test test_claude_settings
-```
-
-## 📦 Release
-
-Releases are automatically built and published using GitHub Actions:
-
-- **Supported Platforms**: Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows (x86_64)
-- **Release Artifacts**: Pre-compiled binaries for each platform
-- **Automation**: CI/CD pipeline ensures quality and consistency
-
-### Manual Release
-
-```bash
-# Create a new release tag
-git tag -a v1.0.0 -m "Release version 1.0.0"
-git push origin v1.0.0
-```
-
-GitHub Actions will automatically build and publish the release.
-
-### Publishing to GitHub Packages
-
-You can also publish the crate to GitHub Packages:
-
-```bash
-# Using the publish script
-./publish.sh
-
-# Or using cargo directly
-cargo publish
-
-# For a dry-run to check everything is correct
-cargo publish --dry-run
-```
-
-The package will be available at: https://github.com/jingzhao/cc_auto_switch/packages
+This ensures cc-switch can be distributed on all major platforms and maintains consistent behavior.
 
 ## 🤝 Contributing
 
@@ -363,14 +201,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
-
-### Code Style
-
-- Follow Rust conventions and best practices
-- Use `cargo fmt` for formatting
-- Address all `cargo clippy` warnings
-- Write tests for new functionality
-- Update documentation as needed
 
 ## 📄 License
 
@@ -389,10 +219,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 💡 **Feature Requests**: [GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
 - 📧 **Questions**: [GitHub Discussions](https://github.com/jingzhao/cc_auto_switch/discussions)
 
-## 🔄 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
-
 ---
-
 **Made with ❤️ by [jingzhao](https://github.com/jingzhao)**

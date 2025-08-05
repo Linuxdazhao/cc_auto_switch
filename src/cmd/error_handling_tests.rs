@@ -256,12 +256,12 @@ mod error_handling_tests {
         let config_path = temp_dir.path().join("configurations.json");
 
         // Test loading from non-existent file (mock the behavior)
-        let mut storage = ConfigStorage::default();
+        let storage = ConfigStorage::default();
         assert!(storage.configurations.is_empty());
         assert!(storage.claude_settings_dir.is_none());
 
         // Test saving and loading with empty storage
-        let mut storage = ConfigStorage::default();
+        let storage = ConfigStorage::default();
         let json = serde_json::to_string_pretty(&storage).unwrap();
         fs::write(&config_path, json).unwrap();
 

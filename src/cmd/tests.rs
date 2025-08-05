@@ -439,12 +439,16 @@ mod tests {
 
     #[test]
     fn test_get_claude_settings_path_absolute() {
-        let custom_dir = "/absolute/path/to/claude";
+        let custom_dir = if cfg!(windows) {
+            // On Windows, use an absolute path that doesn't start with /
+            "C:/absolute/path/to/claude"
+        } else {
+            "/absolute/path/to/claude"
+        };
         let result = get_claude_settings_path(Some(custom_dir));
 
         assert!(result.is_ok());
-        let expected_path =
-            std::path::PathBuf::from("/absolute/path/to/claude").join("settings.json");
+        let expected_path = std::path::PathBuf::from(custom_dir).join("settings.json");
         assert_eq!(result.unwrap(), expected_path);
     }
 
