@@ -136,4 +136,4 @@ jobs:
         with:
           file: ./cobertura.xml
           fail_ci_if_error: true
-          token: ${{secrect.CODECOV_TOKEN}}
+          token: ${{secrects.CODECOV_TOKEN}}
