@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,34 +19,34 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly-2024-12-01
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-12-01
+          components: rustfmt, clippy
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Check formatting
-      run: cargo fmt --all -- --check
+      - name: Check formatting
+        run: cargo fmt --all -- --check
 
-    - name: Run clippy
-      run: cargo clippy -- -D warnings
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
 
-    - name: Run tests
-      run: cargo test
+      - name: Run tests
+        run: cargo test
 
-    - name: Build in release mode
-      run: cargo build --release
+      - name: Build in release mode
+        run: cargo build --release
 
   cross-build:
     name: Cross-build for ${{ matrix.target }}
@@ -66,73 +66,74 @@ jobs:
             os: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly-2024-12-01
-        targets: ${{ matrix.target }}
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-12-01
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
 
-    - name: Cache cargo registry
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Add Linux dependencies
-      if: matrix.target == 'aarch64-unknown-linux-gnu'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Add Linux dependencies
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-    - name: Cross-build
-      run: cargo build --release --target ${{ matrix.target }}
+      - name: Cross-build
+        run: cargo build --release --target ${{ matrix.target }}
 
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly-2024-12-01
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-12-01
+          components: rustfmt, clippy
 
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
 
-    - name: Run cargo audit
-      run: cargo audit
+      - name: Run cargo audit
+        run: cargo audit
 
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly-2024-12-01
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-12-01
+          components: rustfmt, clippy
 
-    - name: Install cargo-tarpaulin
-      run: cargo install cargo-tarpaulin
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
 
-    - name: Run coverage
-      run: cargo tarpaulin --out Xml
+      - name: Run coverage
+        run: cargo tarpaulin --out Xml
 
-    - name: Upload to codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./cobertura.xml
-        fail_ci_if_error: true
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./cobertura.xml
+          fail_ci_if_error: true
+          token: ${{secrect.CODECOV_TOKEN}}
