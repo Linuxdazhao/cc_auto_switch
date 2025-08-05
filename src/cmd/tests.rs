@@ -443,10 +443,9 @@ mod tests {
         let result = get_claude_settings_path(Some(custom_dir));
 
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            std::path::PathBuf::from("/absolute/path/to/claude/settings.json")
-        );
+        let expected_path =
+            std::path::PathBuf::from("/absolute/path/to/claude").join("settings.json");
+        assert_eq!(result.unwrap(), expected_path);
     }
 
     #[test]

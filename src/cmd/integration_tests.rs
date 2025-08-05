@@ -180,10 +180,9 @@ mod integration_tests {
     fn test_integration_path_resolution() {
         // Test absolute path
         let absolute_path = get_claude_settings_path(Some("/absolute/path/to/claude")).unwrap();
-        assert_eq!(
-            absolute_path,
-            std::path::PathBuf::from("/absolute/path/to/claude/settings.json")
-        );
+        let expected_absolute_path =
+            std::path::PathBuf::from("/absolute/path/to/claude").join("settings.json");
+        assert_eq!(absolute_path, expected_absolute_path);
 
         // Test relative path
         let relative_path = get_claude_settings_path(Some("relative/path")).unwrap();
@@ -368,10 +367,9 @@ mod integration_tests {
 
         // Test path resolution with custom directory
         let custom_path = get_claude_settings_path(Some("/custom/claude/path")).unwrap();
-        assert_eq!(
-            custom_path,
-            std::path::PathBuf::from("/custom/claude/path/settings.json")
-        );
+        let expected_custom_path =
+            std::path::PathBuf::from("/custom/claude/path").join("settings.json");
+        assert_eq!(custom_path, expected_custom_path);
 
         // Test changing custom directory
         storage.set_claude_settings_dir("/another/custom/path".to_string());
@@ -382,10 +380,9 @@ mod integration_tests {
         );
 
         let another_path = get_claude_settings_path(Some("/another/custom/path")).unwrap();
-        assert_eq!(
-            another_path,
-            std::path::PathBuf::from("/another/custom/path/settings.json")
-        );
+        let expected_another_path =
+            std::path::PathBuf::from("/another/custom/path").join("settings.json");
+        assert_eq!(another_path, expected_another_path);
     }
 
     #[test]
