@@ -549,21 +549,8 @@ pub fn validate_alias_name(alias_name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Handle adding a configuration with all the new features
-///
-/// # Arguments
-/// * `alias_name` - The configuration alias name
-/// * `token` - Optional token from -t flag
-/// * `url` - Optional URL from -u flag
-/// * `force` - Whether to force overwrite existing config
-/// * `interactive` - Whether to use interactive mode
-/// * `token_arg` - Optional token from positional argument
-/// * `url_arg` - Optional URL from positional argument
-/// * `storage` - Mutable reference to config storage
-///
-/// # Errors
-/// Returns error if validation fails or user cancels interactive input
-fn handle_add_command(
+/// Parameters for adding a new configuration
+struct AddCommandParams {
     alias_name: String,
     token: Option<String>,
     url: Option<String>,
@@ -571,30 +558,39 @@ fn handle_add_command(
     interactive: bool,
     token_arg: Option<String>,
     url_arg: Option<String>,
-    storage: &mut ConfigStorage,
-) -> Result<()> {
+}
+
+/// Handle adding a configuration with all the new features
+///
+/// # Arguments
+/// * `params` - Parameters for the add command
+/// * `storage` - Mutable reference to config storage
+///
+/// # Errors
+/// Returns error if validation fails or user cancels interactive input
+fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> Result<()> {
     // Validate alias name
-    validate_alias_name(&alias_name)?;
+    validate_alias_name(&params.alias_name)?;
 
     // Check if alias already exists
-    if storage.get_configuration(&alias_name).is_some() && !force {
-        eprintln!("Configuration '{alias_name}' already exists.");
+    if storage.get_configuration(&params.alias_name).is_some() && !params.force {
+        eprintln!("Configuration '{}' already exists.", params.alias_name);
         eprintln!("Use --force to overwrite or choose a different alias name.");
         return Ok(());
     }
 
     // Determine token value
-    let final_token = if interactive {
-        if token.is_some() || token_arg.is_some() {
+    let final_token = if params.interactive {
+        if params.token.is_some() || params.token_arg.is_some() {
             eprintln!(
                 "Warning: Token provided via flags/arguments will be ignored in interactive mode"
             );
         }
         read_sensitive_input("Enter API token (sk-ant-xxx): ")?
     } else {
-        match (token, token_arg) {
-            (Some(t), _) => t,
-            (None, Some(t)) => t,
+        match (&params.token, &params.token_arg) {
+            (Some(t), _) => t.clone(),
+            (None, Some(t)) => t.clone(),
             (None, None) => {
                 anyhow::bail!(
                     "Token is required. Use -t flag, provide as argument, or use interactive mode with -i"
@@ -604,17 +600,17 @@ fn handle_add_command(
     };
 
     // Determine URL value
-    let final_url = if interactive {
-        if url.is_some() || url_arg.is_some() {
+    let final_url = if params.interactive {
+        if params.url.is_some() || params.url_arg.is_some() {
             eprintln!(
                 "Warning: URL provided via flags/arguments will be ignored in interactive mode"
             );
         }
         read_input("Enter API URL (default: https://api.anthropic.com): ")?
     } else {
-        match (url, url_arg) {
-            (Some(u), _) => u,
-            (None, Some(u)) => u,
+        match (&params.url, &params.url_arg) {
+            (Some(u), _) => u.clone(),
+            (None, Some(u)) => u.clone(),
             (None, None) => "https://api.anthropic.com".to_string(),
         }
     };
@@ -635,7 +631,7 @@ fn handle_add_command(
 
     // Create and add configuration
     let config = Configuration {
-        alias_name: alias_name.clone(),
+        alias_name: params.alias_name.clone(),
         token: final_token,
         url: final_url,
     };
@@ -643,8 +639,8 @@ fn handle_add_command(
     storage.add_configuration(config);
     storage.save()?;
 
-    println!("Configuration '{alias_name}' added successfully");
-    if force {
+    println!("Configuration '{}' added successfully", params.alias_name);
+    if params.force {
         println!("(Overwrote existing configuration)");
     }
 
@@ -837,7 +833,7 @@ pub fn run() -> Result<()> {
                 token_arg,
                 url_arg,
             } => {
-                handle_add_command(
+                let params = AddCommandParams {
                     alias_name,
                     token,
                     url,
@@ -845,8 +841,8 @@ pub fn run() -> Result<()> {
                     interactive,
                     token_arg,
                     url_arg,
-                    &mut storage,
-                )?;
+                };
+                handle_add_command(params, &mut storage)?;
             }
             Commands::Remove { alias_names } => {
                 let mut removed_count = 0;

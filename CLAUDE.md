@@ -53,6 +53,24 @@ cargo clippy -- -W warnings
 cargo audit
 ```
 
+### Pre-commit Hooks
+```bash
+# Setup pre-commit hooks (one-time setup)
+./scripts/setup-pre-commit.sh
+
+# Run pre-commit hooks manually
+pre-commit run --all-files
+
+# Run pre-commit on specific files
+pre-commit run --files src/main.rs
+
+# Update pre-commit hooks
+pre-commit autoupdate
+
+# Uninstall pre-commit hooks
+pre-commit uninstall
+```
+
 ### Dependencies
 ```bash
 # Update dependencies
@@ -178,12 +196,37 @@ The shell completion provides:
 - **Option completion**: `cc_auto_switch -<TAB>` shows available options
 - **Help completion**: Context-aware help for all commands and options
 
-## Development Environment
+## Pre-commit Hooks
+
+The project includes pre-commit hooks that run automatically before each commit to ensure code quality:
+
+### Required Checks (Run on every commit)
+- **cargo check**: Verifies code compilation
+- **cargo fmt --check**: Ensures code formatting compliance
+- **cargo clippy -- -D warnings**: Runs linting with warnings as errors
+- **cargo test**: Executes all tests
+- **cargo audit**: Security vulnerability scanning
+- **cargo doc --no-deps**: Validates documentation builds
+
+### Setup Instructions
+```bash
+# One-time setup
+./scripts/setup-pre-commit.sh
+
+# Manual testing
+pre-commit run --all-files
+
+# Skip hooks (if needed)
+git commit --no-verify
+```
+
+### Development Environment
 
 - **Rust Version**: 1.88.0 or later
 - **Rust Edition**: 2024 (using nightly-2024-12-01 toolchain in CI)
 - **Cargo Version**: 1.88.0 or later
 - **Dependencies**: anyhow (error handling), clap (CLI parsing with completion), clap_complete (shell completion), serde (JSON), dirs (directory paths)
+- **Pre-commit**: Python-based pre-commit framework (auto-installed)
 
 ## CI/CD Pipeline
 

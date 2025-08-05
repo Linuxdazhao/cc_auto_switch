@@ -198,6 +198,36 @@ fmt:
 lint:
 	$(CARGO) clippy
 
+# Lint with warnings as errors
+.PHONY: clippy-strict
+clippy-strict:
+	$(CARGO) clippy -- -D warnings
+
+# Run security audit
+.PHONY: audit
+audit:
+	$(CARGO) audit
+
+# Install pre-commit hooks
+.PHONY: install-hooks
+install-hooks:
+	./scripts/setup-pre-commit.sh
+
+# Run pre-commit hooks manually
+.PHONY: run-hooks
+run-hooks:
+	pre-commit run --all-files
+
+# Run all quality checks
+.PHONY: quality
+quality: fmt-check clippy-strict check test audit
+	@echo "All quality checks passed!"
+
+# Quick check (fmt + clippy + check)
+.PHONY: quick-check
+quick-check: fmt-check clippy-strict check
+	@echo "Quick checks passed!"
+
 # Update dependencies
 .PHONY: update
 update:
@@ -258,6 +288,12 @@ help:
 	@echo "    check           - Check code compilation"
 	@echo "    fmt             - Format code"
 	@echo "    lint            - Lint code"
+	@echo "    clippy-strict   - Lint with warnings as errors"
+	@echo "    audit           - Run security audit"
+	@echo "    install-hooks   - Install pre-commit hooks"
+	@echo "    run-hooks       - Run pre-commit hooks manually"
+	@echo "    quality         - Run all quality checks"
+	@echo "    quick-check     - Run quick checks (fmt + clippy + check)"
 	@echo "    update          - Update dependencies"
 	@echo "    help            - Show this help message"
 	@echo ""
