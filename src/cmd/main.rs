@@ -1,10 +1,14 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use colored::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::Duration;
 
 /// Command-line interface for managing Claude API configurations
 #[derive(Parser)]
@@ -22,7 +26,27 @@ EXAMPLES:
     cc-switch switch cc
     cc-switch list
     cc-switch remove config1 config2 config3
-    cc-switch set-default-dir /path/to/claude/config"
+    cc-switch set-default-dir /path/to/claude/config
+
+SHELL COMPLETION AND ALIASES:
+    cc-switch completion fish  # Generates shell completions
+    cc-switch alias fish       # Generates aliases for eval
+    
+    These aliases are available:
+    - cs='cc-switch'                              # Quick access to cc-switch
+    - ccd='claude --dangerously-skip-permissions' # Quick Claude launch
+    
+    To use aliases immediately:
+    eval \"$(cc-switch alias fish)\"    # Add aliases to current session
+    
+    Or add them permanently:
+    cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
+    echo \"alias cs='cc-switch'\" >> ~/.config/fish/config.fish
+    echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish
+    
+    Then use:
+    cs switch my-config    # Instead of cc-switch switch my-config
+    ccd                    # Quick Claude launch"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -110,10 +134,22 @@ pub enum Commands {
     },
     /// Generate shell completion scripts
     ///
-    /// Generates completion scripts for fish and zsh shells
+    /// Generates completion scripts for supported shells and adds useful aliases:
+    /// - cs='cc-switch' for quick access
+    /// - ccd='claude --dangerously-skip-permissions' for quick Claude launch
     #[command(alias = "C")]
     Completion {
         /// Shell type (fish, zsh, bash, elvish, powershell)
+        #[arg(default_value = "fish")]
+        shell: String,
+    },
+    /// Generate shell aliases for eval
+    ///
+    /// Outputs alias definitions that can be evaluated with eval
+    /// This is the quickest way to get aliases working in your current shell
+    #[command(alias = "A")]
+    Alias {
+        /// Shell type (fish, zsh, bash)
         #[arg(default_value = "fish")]
         shell: String,
     },
@@ -653,6 +689,8 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
 /// - "cc": Remove API configuration (reset to default)
 /// - Other alias: Switch to the specified configuration
 ///
+/// After switching, displays the current URL and automatically launches Claude CLI
+///
 /// # Arguments
 /// * `alias_name` - Name of configuration to switch to, or "cc" to reset
 ///
@@ -668,6 +706,7 @@ pub fn handle_switch_command(alias_name: &str) -> Result<()> {
         claude_settings.remove_anthropic_env();
         claude_settings.save(custom_dir)?;
         println!("Removed ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings");
+        println!("Current URL: Default (no custom URL configured)");
     } else if let Some(config) = storage.get_configuration(alias_name) {
         claude_settings.switch_to_config(config);
         claude_settings.save(custom_dir)?;
@@ -675,11 +714,73 @@ pub fn handle_switch_command(alias_name: &str) -> Result<()> {
             "Switched to configuration '{}' (token: {}, url: {})",
             alias_name, config.token, config.url
         );
+        println!("Current URL: {}", config.url);
     } else {
         anyhow::bail!(
             "Configuration '{}' not found. Use 'list' command to see available configurations.",
             alias_name
         );
+    }
+
+    // Wait 0.5 second
+    println!("Waiting 0.5 second before launching Claude...");
+    println!(
+        "Executing: claude {}",
+        "--dangerously-skip-permissions".red()
+    );
+    thread::sleep(Duration::from_millis(500));
+
+    // Launch Claude CLI with --dangerously-skip-permissions flag
+    println!("Launching Claude CLI...");
+    let mut child = Command::new("claude")
+        .arg("--dangerously-skip-permissions")
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .with_context(
+            || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+        )?;
+
+    // Wait for the Claude process to finish and pass control to it
+    let status = child
+        .wait()
+        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+    if !status.success() {
+        anyhow::bail!("Claude CLI exited with error status: {}", status);
+    }
+
+    Ok(())
+}
+
+/// Generate shell aliases for eval
+///
+/// # Arguments
+/// * `shell` - Shell type (fish, zsh, bash)
+///
+/// # Errors
+/// Returns error if shell is not supported
+pub fn generate_aliases(shell: &str) -> Result<()> {
+    match shell {
+        "fish" => {
+            println!("alias cs='cc-switch'");
+            println!("alias ccd='claude --dangerously-skip-permissions'");
+        }
+        "zsh" => {
+            println!("alias cs='cc-switch'");
+            println!("alias ccd='claude --dangerously-skip-permissions'");
+        }
+        "bash" => {
+            println!("alias cs='cc-switch'");
+            println!("alias ccd='claude --dangerously-skip-permissions'");
+        }
+        _ => {
+            anyhow::bail!(
+                "Unsupported shell: {}. Supported shells: fish, zsh, bash",
+                shell
+            );
+        }
     }
 
     Ok(())
@@ -709,10 +810,24 @@ pub fn generate_completion(shell: &str) -> Result<()> {
                 "cc-switch",
                 &mut stdout(),
             );
+
+            // Add aliases for zsh
+            println!("\n# Useful aliases for cc-switch");
+            println!("# Add these aliases to your ~/.zshrc:");
+            println!("alias cs='cc-switch'");
+            println!("alias ccd='claude --dangerously-skip-permissions'");
+            println!("# Or run this command to add aliases temporarily:");
+            println!("alias cs='cc-switch'; alias ccd='claude --dangerously-skip-permissions'");
+
             println!("\n# Zsh completion generated successfully");
             println!("# Add this to your ~/.zsh/completions/_cc-switch");
             println!("# Or add this line to your ~/.zshrc:");
             println!("# fpath=(~/.zsh/completions $fpath)");
+            println!("# Then restart your shell or run 'source ~/.zshrc'");
+            println!(
+                "{}",
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+            );
         }
         "bash" => {
             clap_complete::generate(
@@ -721,8 +836,22 @@ pub fn generate_completion(shell: &str) -> Result<()> {
                 "cc-switch",
                 &mut stdout(),
             );
+
+            // Add aliases for bash
+            println!("\n# Useful aliases for cc-switch");
+            println!("# Add these aliases to your ~/.bashrc or ~/.bash_profile:");
+            println!("alias cs='cc-switch'");
+            println!("alias ccd='claude --dangerously-skip-permissions'");
+            println!("# Or run this command to add aliases temporarily:");
+            println!("alias cs='cc-switch'; alias ccd='claude --dangerously-skip-permissions'");
+
             println!("\n# Bash completion generated successfully");
             println!("# Add this to your ~/.bash_completion or /etc/bash_completion.d/");
+            println!("# Then restart your shell or run 'source ~/.bashrc'");
+            println!(
+                "{}",
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+            );
         }
         "elvish" => {
             clap_complete::generate(
@@ -731,7 +860,17 @@ pub fn generate_completion(shell: &str) -> Result<()> {
                 "cc-switch",
                 &mut stdout(),
             );
+
+            // Add aliases for elvish
+            println!("\n# Useful aliases for cc-switch");
+            println!("fn cs {{|@args| cc-switch $@args }}");
+            println!("fn ccd {{|@args| claude --dangerously-skip-permissions $@args }}");
+
             println!("\n# Elvish completion generated successfully");
+            println!(
+                "{}",
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+            );
         }
         "powershell" => {
             clap_complete::generate(
@@ -740,7 +879,17 @@ pub fn generate_completion(shell: &str) -> Result<()> {
                 "cc-switch",
                 &mut stdout(),
             );
+
+            // Add aliases for PowerShell
+            println!("\n# Useful aliases for cc-switch");
+            println!("Set-Alias -Name cs -Value cc-switch");
+            println!("function ccd {{ claude --dangerously-skip-permissions @args }}");
+
             println!("\n# PowerShell completion generated successfully");
+            println!(
+                "{}",
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+            );
         }
         _ => {
             anyhow::bail!(
@@ -797,8 +946,27 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!(
         "complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
     );
+
+    // Add useful aliases that can be eval'd
+    println!("\n# To use these aliases immediately, run:");
+    println!("# eval \"(cc-switch alias fish)\"");
+    println!("\n# Or add them permanently to your ~/.config/fish/config.fish:");
+    println!("# echo \"alias cs='cc-switch'\" >> ~/.config/fish/config.fish");
+    println!(
+        "# echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish"
+    );
+
+    // Add completion for the 'cs' alias
+    println!("\n# Completion for the 'cs' alias");
+    println!("complete -c cs -w cc-switch");
+
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
+    println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
+    println!(
+        "{}",
+        "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+    );
 }
 
 /// Main entry point for the CLI application
@@ -898,6 +1066,9 @@ pub fn run() -> Result<()> {
             }
             Commands::Completion { shell } => {
                 generate_completion(&shell)?;
+            }
+            Commands::Alias { shell } => {
+                generate_aliases(&shell)?;
             }
             Commands::Switch { alias_name } => {
                 handle_switch_command(&alias_name)?;

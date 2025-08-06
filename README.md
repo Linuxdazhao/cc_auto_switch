@@ -31,6 +31,7 @@ cc-switch comes packed with features that make API configuration management effo
 | **Instant Switching** | Switch configurations with `cc-switch switch <alias>` | Save time from manual configuration changes |
 | **Shell Auto-Completion** | Built-in completion support for fish, zsh, bash, and more | Speed up command entry with auto-completion |
 | **Dynamic Alias Completion** | Auto-complete configuration names for switch/remove commands | Reduce errors and typing effort |
+| **Shell Alias Generation** | Generate eval-compatible aliases for quick access | Streamline workflow with convenient shortcuts |
 | **Secure Storage** | Configurations securely stored in `~/.cc-switch/` directory | Your API keys are kept separate and organized |
 | **Cross-Platform Support** | Supports Linux, macOS, and Windows | Use the same tool across all development environments |
 | **Custom Directory Support** | Supports custom Claude settings directories | Flexibility for non-standard installations |
@@ -60,6 +61,72 @@ The beauty of cc-switch lies in its simplicity. Here are the steps to get up and
    ```
 
 That's it! You're now managing Claude API configurations like a pro.
+
+## 🐚 Shell Integration
+
+cc-switch provides powerful shell integration features to streamline your workflow:
+
+### Shell Aliases
+
+Generate convenient aliases for faster access:
+
+```bash
+# Generate aliases for your shell (fish, zsh, bash)
+cc-switch alias fish
+
+# Load aliases immediately in your current session
+eval "$(cc-switch alias fish)"
+```
+
+Available aliases:
+- `cs='cc-switch'` - Quick access to cc-switch commands
+- `ccd='claude --dangerously-skip-permissions'` - Fast Claude launch
+
+**Example usage with aliases:**
+```bash
+# Instead of: cc-switch switch my-config
+cs switch my-config
+
+# Instead of: claude --dangerously-skip-permissions
+ccd
+```
+
+### Shell Completion
+
+Set up auto-completion for your shell:
+
+```bash
+# Fish shell
+cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
+
+# Zsh shell  
+cc-switch completion zsh > ~/.zsh/completions/_cc-switch
+
+# Bash shell
+cc-switch completion bash > ~/.bash_completion.d/cc-switch
+```
+
+### Permanent Setup
+
+For permanent alias setup, add to your shell config:
+
+**Fish (~/.config/fish/config.fish):**
+```bash
+alias cs='cc-switch'
+alias ccd='claude --dangerously-skip-permissions'
+```
+
+**Zsh (~/.zshrc):**
+```bash
+alias cs='cc-switch'
+alias ccd='claude --dangerously-skip-permissions'
+```
+
+**Bash (~/.bashrc or ~/.bash_profile):**
+```bash
+alias cs='cc-switch'
+alias ccd='claude --dangerously-skip-permissions'
+```
 
 ## 🌟 Real-World Use Cases
 
@@ -99,9 +166,11 @@ Team members can share configuration aliases and quickly switch between team-spe
 cc-switch is built with modern Rust practices and leverages several key libraries:
 
 * **clap** for robust command-line argument parsing with auto-generated help
+* **clap_complete** for shell completion script generation
 * **serde** for reliable JSON serialization/deserialization
 * **dirs** for cross-platform directory management
 * **anyhow** for comprehensive error handling
+* **colored** for terminal output formatting
 
 The tool is designed with a **zero-configuration** philosophy - it works out of the box with sensible defaults but provides customization options when needed.
 
@@ -180,6 +249,29 @@ cc-switch remove my-config
 
 # Remove multiple configurations at once
 cc-switch remove config1 config2 config3
+```
+
+#### Generate Shell Aliases
+
+```bash
+# Generate aliases for immediate use with eval
+cc-switch alias fish
+
+# Generate aliases for different shells
+cc-switch alias zsh
+cc-switch alias bash
+
+# Load aliases immediately (recommended)
+eval "$(cc-switch alias fish)"
+```
+
+#### Generate Shell Completion
+
+```bash
+# Generate completion scripts for your shell
+cc-switch completion fish  > ~/.config/fish/completions/cc-switch.fish
+cc-switch completion zsh   > ~/.zsh/completions/_cc-switch
+cc-switch completion bash  > ~/.bash_completion.d/cc-switch
 ```
 
 ## 🛠️ Development and Build Process
