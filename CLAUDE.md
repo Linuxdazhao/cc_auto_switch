@@ -71,6 +71,44 @@ pre-commit autoupdate
 pre-commit uninstall
 ```
 
+### Version Management & Publishing
+
+The project includes automated version management and publishing to crates.io:
+
+**Complete Release Workflow**:
+```bash
+# Run complete release workflow (version increment + commit + publish)
+./scripts/release.sh
+```
+
+**Manual Version Management**:
+```bash
+# Increment version manually
+./scripts/increment-version.sh
+
+# Publish to crates.io manually
+./scripts/publish.sh
+```
+
+**Version Format**: Uses semantic versioning (x.y.z) where:
+- Major version (x): Breaking changes
+- Minor version (y): New features
+- Patch version (z): Bug fixes and patches
+
+**Automated Workflow**:
+1. Make code changes
+2. `./scripts/release.sh` - Handles version increment, commit, and publish
+3. Version is automatically incremented in Cargo.toml
+4. Tests are run automatically
+5. Package is automatically published to crates.io
+
+**Manual Workflow**:
+1. Make code changes
+2. `./scripts/increment-version.sh` - Increment version
+3. `git add . && git commit -m "Your message"`
+4. `cargo test` - Run tests
+5. `./scripts/publish.sh` - Publish to crates.io
+
 ### Dependencies
 ```bash
 # Update dependencies
