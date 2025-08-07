@@ -27,6 +27,7 @@ EXAMPLES:
     cc-switch list
     cc-switch remove config1 config2 config3
     cc-switch set-default-dir /path/to/claude/config
+    cc-switch current  # Interactive menu for configuration management
 
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
@@ -163,9 +164,12 @@ pub enum Commands {
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
     },
-    /// Show current API configuration
+    /// Interactive current configuration menu
     ///
-    /// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+    /// Shows current configuration and provides interactive menu for:
+    /// 1. Execute claude --dangerously-skip-permissions
+    /// 2. Switch configuration (lists available aliases)
+    /// 3. Execute claude command with custom arguments
     #[command(alias = "cur")]
     Current,
 }
@@ -499,20 +503,25 @@ pub fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
     }
 }
 
-/// Handle showing current configuration
+/// Handle interactive current command
 ///
-/// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+/// Provides interactive menu for:
+/// 1. Execute claude --dangerously-skip-permissions
+/// 2. Switch configuration (lists available aliases)
+/// 3. Execute claude command
 ///
 /// # Errors
-/// Returns error if file operations fail
+/// Returns error if file operations fail or user input fails
 pub fn handle_current_command() -> Result<()> {
     let storage = ConfigStorage::load()?;
     let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
     let claude_settings = ClaudeSettings::load(custom_dir)?;
 
+    // Show current configuration
     let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
     let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
 
+    println!("\n{}", "Current Configuration:".green().bold());
     if let Some(token) = token {
         if let Some(url) = url {
             println!("Token: {token}");
@@ -526,6 +535,228 @@ pub fn handle_current_command() -> Result<()> {
         println!("URL: {url}");
     } else {
         println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+    }
+
+    // Interactive menu loop
+    loop {
+        println!("\n{}", "Available Actions:".blue().bold());
+        println!("1. Execute claude --dangerously-skip-permissions");
+        println!("2. Switch configuration");
+        println!("3. Execute claude command");
+        println!("4. Exit");
+
+        print!("\nPlease select an option (1-4): ");
+        io::stdout().flush().context("Failed to flush stdout")?;
+
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .context("Failed to read input")?;
+
+        let choice = input.trim();
+
+        match choice {
+            "1" => {
+                println!("\nExecuting: claude --dangerously-skip-permissions");
+                execute_clude_command(true)?;
+                break;
+            }
+            "2" => {
+                if let Some(selected_config) = show_config_selection_menu(&storage)? {
+                    // Switch to selected configuration
+                    let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+                    claude_settings.switch_to_config(&selected_config);
+                    claude_settings.save(custom_dir)?;
+                    println!(
+                        "\nSwitched to configuration '{}' (token: {}, url: {})",
+                        selected_config.alias_name, selected_config.token, selected_config.url
+                    );
+
+                    // Wait and launch Claude
+                    println!("Waiting 0.5 second before launching Claude...");
+                    thread::sleep(Duration::from_millis(500));
+
+                    println!("Launching Claude CLI...");
+                    let mut child = Command::new("claude")
+                        .arg("--dangerously-skip-permissions")
+                        .stdin(Stdio::inherit())
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()
+                        .with_context(
+                            || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+                        )?;
+
+                    let status = child
+                        .wait()
+                        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+                    if !status.success() {
+                        anyhow::bail!("Claude CLI exited with error status: {}", status);
+                    }
+                    break;
+                }
+            }
+            "3" => {
+                print!("\nEnter claude command arguments (or press Enter for default): ");
+                io::stdout().flush().context("Failed to flush stdout")?;
+
+                let mut args_input = String::new();
+                io::stdin()
+                    .read_line(&mut args_input)
+                    .context("Failed to read input")?;
+
+                let args = args_input.trim();
+                if args.is_empty() {
+                    println!("\nExecuting: claude");
+                    execute_clude_command(false)?;
+                } else {
+                    println!("\nExecuting: claude {args}");
+                    execute_clude_with_args(args)?;
+                }
+                break;
+            }
+            "4" => {
+                println!("Exiting...");
+                break;
+            }
+            _ => {
+                println!("Invalid option. Please select 1-4.");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Show configuration selection menu
+///
+/// # Arguments
+/// * `storage` - Reference to configuration storage
+///
+/// # Returns
+/// Option<Configuration> - Selected configuration or None if cancelled
+fn show_config_selection_menu(storage: &ConfigStorage) -> Result<Option<Configuration>> {
+    if storage.configurations.is_empty() {
+        println!("No configurations available. Use 'add' command to create configurations first.");
+        return Ok(None);
+    }
+
+    println!("\n{}", "Available Configurations:".blue().bold());
+
+    let mut configs: Vec<&Configuration> = storage.configurations.values().collect();
+    configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
+
+    for (index, config) in configs.iter().enumerate() {
+        println!(
+            "{}. {} (token: {}, url: {})",
+            index + 1,
+            config.alias_name,
+            config.token,
+            config.url
+        );
+    }
+
+    println!(
+        "{}. Reset to default (remove API config)",
+        configs.len() + 1
+    );
+    println!("{}. Cancel", configs.len() + 2);
+
+    print!(
+        "\nPlease select a configuration (1-{}): ",
+        configs.len() + 2
+    );
+    io::stdout().flush().context("Failed to flush stdout")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("Failed to read input")?;
+
+    let choice = input.trim();
+
+    match choice.parse::<usize>() {
+        Ok(num) => {
+            if num >= 1 && num <= configs.len() {
+                Ok(Some(configs[num - 1].clone()))
+            } else if num == configs.len() + 1 {
+                // Reset to default
+                let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+                let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+                claude_settings.remove_anthropic_env();
+                claude_settings.save(custom_dir)?;
+                println!("Reset to default configuration (removed API config)");
+                Ok(None)
+            } else if num == configs.len() + 2 {
+                Ok(None)
+            } else {
+                println!("Invalid selection.");
+                Ok(None)
+            }
+        }
+        Err(_) => {
+            println!("Invalid input. Please enter a number.");
+            Ok(None)
+        }
+    }
+}
+
+/// Execute claude command with or without --dangerously-skip-permissions
+///
+/// # Arguments
+/// * `skip_permissions` - Whether to add --dangerously-skip-permissions flag
+fn execute_clude_command(skip_permissions: bool) -> Result<()> {
+    let mut command = Command::new("claude");
+    if skip_permissions {
+        command.arg("--dangerously-skip-permissions");
+    }
+
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let mut child = command.spawn().with_context(
+        || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+    )?;
+
+    let status = child
+        .wait()
+        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+    if !status.success() {
+        anyhow::bail!("Claude CLI exited with error status: {}", status);
+    }
+
+    Ok(())
+}
+
+/// Execute claude command with custom arguments
+///
+/// # Arguments
+/// * `args` - Command line arguments to pass to claude
+fn execute_clude_with_args(args: &str) -> Result<()> {
+    let args_vec: Vec<&str> = args.split_whitespace().collect();
+
+    let mut command = Command::new("claude");
+    command.args(args_vec);
+
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let mut child = command.spawn().with_context(
+        || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+    )?;
+
+    let status = child
+        .wait()
+        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+    if !status.success() {
+        anyhow::bail!("Claude CLI exited with error status: {}", status);
     }
 
     Ok(())
