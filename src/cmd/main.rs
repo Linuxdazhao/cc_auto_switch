@@ -22,8 +22,8 @@ EXAMPLES:
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
     cc-switch add my-config -i  # Interactive mode
     cc-switch add my-config --force  # Overwrite existing config
-    cc-switch switch my-config
-    cc-switch switch cc
+    cc-switch use my-config
+    cc-switch use cc
     cc-switch list
     cc-switch remove config1 config2 config3
     cc-switch set-default-dir /path/to/claude/config
@@ -45,7 +45,7 @@ SHELL COMPLETION AND ALIASES:
     echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish
     
     Then use:
-    cs switch my-config    # Instead of cc-switch switch my-config
+    cs use my-config    # Instead of cc-switch use my-config
     ccd                    # Quick Claude launch"
 )]
 pub struct Cli {
@@ -153,12 +153,12 @@ pub enum Commands {
         #[arg(default_value = "fish")]
         shell: String,
     },
-    /// Switch to a configuration by alias name
+    /// Use a configuration by alias name
     ///
     /// Switches Claude to use the specified API configuration
     /// Use 'cc' as alias name to reset to default Claude behavior
-    #[command(alias = "sw")]
-    Switch {
+    #[command(alias = "sw", alias = "switch")]
+    Use {
         /// Configuration alias name (use 'cc' to reset to default)
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
@@ -906,6 +906,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
 ///
 /// Outputs all stored configuration aliases, one per line
 /// Also includes 'cc' as a special alias for resetting to default
+/// For contexts where user types 'cc-switch use c' or similar, 'current' is prioritized first
 ///
 /// # Errors
 /// Returns error if loading configurations fails
@@ -915,9 +916,20 @@ fn list_aliases_for_completion() -> Result<()> {
     // Always include 'cc' for reset functionality
     println!("cc");
 
-    // Output all stored aliases
-    for alias_name in storage.configurations.keys() {
-        println!("{alias_name}");
+    // Prioritize 'current' first if it exists - this ensures when user types 'cc-switch use c'
+    // or 'cs use c', the 'current' configuration appears first in completion
+    if storage.configurations.contains_key("current") {
+        println!("current");
+    }
+
+    // Output all other stored aliases in alphabetical order
+    let mut aliases: Vec<String> = storage.configurations.keys().cloned().collect();
+    aliases.sort();
+
+    for alias_name in aliases {
+        if alias_name != "current" {
+            println!("{alias_name}");
+        }
     }
 
     Ok(())
@@ -936,8 +948,13 @@ fn generate_fish_completion(app: &mut clap::Command) {
         &mut std::io::stdout(),
     );
 
-    // Add custom completion for switch subcommand
-    println!("\n# Custom completion for switch subcommand with dynamic aliases");
+    // Add custom completion for use subcommand with dynamic aliases
+    println!("\n# Custom completion for use subcommand with dynamic aliases");
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand use' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
+    );
+    // Also support 'switch' as alias for 'use'
+    println!("# Custom completion for switch subcommand (alias for use)");
     println!(
         "complete -c cc-switch -n '__fish_cc_switch_using_subcommand switch' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
     );
@@ -955,10 +972,21 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!(
         "# echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish"
     );
+    println!("\n# IMPORTANT: For cs alias completion to work, you must also:");
+    println!(
+        "# 1. Add the completion script: cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish"
+    );
+    println!("# 2. OR run: eval \"(cc-switch completion fish)\" | source");
 
     // Add completion for the 'cs' alias
     println!("\n# Completion for the 'cs' alias");
     println!("complete -c cs -w cc-switch");
+
+    // Add completion for cs alias subcommands (but NOT configuration aliases at top level)
+    println!("\n# Completion for 'cs' alias subcommands");
+    println!(
+        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current' -d 'Subcommand'"
+    );
 
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
@@ -1070,7 +1098,7 @@ pub fn run() -> Result<()> {
             Commands::Alias { shell } => {
                 generate_aliases(&shell)?;
             }
-            Commands::Switch { alias_name } => {
+            Commands::Use { alias_name } => {
                 handle_switch_command(&alias_name)?;
             }
             Commands::Current => {
