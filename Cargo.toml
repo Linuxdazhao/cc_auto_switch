@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.0.8"
+version = "0.0.9"
 edition = "2024"
 description = "A CLI tool for managing multiple Claude API configurations and automatically switching between them"
 license = "MIT"
@@ -16,12 +16,12 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.98"
-clap = { version = "4.5.42", features = ["derive", "cargo"] }
-clap_complete = "4.5.42"
-serde = { version = "1.0", features = ["derive"] }
+clap = { version = "4.5.43", features = ["derive", "cargo"] }
+clap_complete = "4.5.55"
+serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0"
 dirs = "6.0.0"
-tempfile = "3.16"
+tempfile = "3.20.0"
 colored = "3.0"
 
 [package.metadata.docs.rs]
