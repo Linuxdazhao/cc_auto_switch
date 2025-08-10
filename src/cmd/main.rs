@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use colored::*;
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -475,6 +476,82 @@ pub fn get_config_storage_path() -> Result<PathBuf> {
     Ok(home_dir.join(".cc-switch").join("configurations.json"))
 }
 
+/// Get the current shell type
+///
+/// Detects the current shell environment from environment variables
+///
+/// # Returns
+/// Shell type as string ("fish", "bash", "zsh", "unknown")
+fn get_current_shell() -> String {
+    // Check for fish shell specifically first
+    if let Ok(shell) = env::var("SHELL") {
+        if shell.contains("fish") {
+            return "fish".to_string();
+        } else if shell.contains("bash") {
+            return "bash".to_string();
+        } else if shell.contains("zsh") {
+            return "zsh".to_string();
+        }
+    }
+    
+    // Check current process name
+    if let Ok(shell) = env::var("0") {
+        if shell.contains("fish") {
+            return "fish".to_string();
+        } else if shell.contains("bash") {
+            return "bash".to_string();
+        } else if shell.contains("zsh") {
+            return "zsh".to_string();
+        }
+    }
+    
+    // Check for fish-specific environment variables
+    if env::var("FISH_VERSION").is_ok() {
+        return "fish".to_string();
+    }
+    
+    "unknown".to_string()
+}
+
+/// Apply color formatting based on shell type
+///
+/// # Arguments
+/// * `text` - The text to format
+/// * `color_type` - The color type to apply ("cyan", "yellow", "green", "white")
+/// * `bold` - Whether to make the text bold
+///
+/// # Returns
+/// Formatted text with appropriate ANSI escape sequences
+fn format_color(text: &str, color_type: &str, bold: bool) -> String {
+    let shell = get_current_shell();
+    
+    // For testing purposes, check for a special environment variable
+    if env::var("CC_SWITCH_TEST_FISH").is_ok() {
+        return text.to_string();
+    }
+    
+    // For fish shell, avoid color formatting in interactive display to prevent alignment issues
+    if shell == "fish" {
+        return text.to_string();
+    }
+    
+    // Use simpler formatting for fish shell to avoid display issues
+    let color_code = match color_type {
+        "cyan" => "\x1b[96m",
+        "yellow" => "\x1b[93m", 
+        "green" => "\x1b[92m",
+        "white" => "\x1b[97m",
+        "red" => "\x1b[91m",
+        _ => "",
+    };
+    
+    let bold_code = if bold { "\x1b[1m" } else { "" };
+    let reset_code = "\x1b[0m";
+    
+    // Other shells handle ANSI codes better
+    format!("{}{}{}{}", bold_code, color_code, text, reset_code)
+}
+
 /// Get the path to the Claude settings file
 ///
 /// Returns the path to settings.json, using custom directory if configured
@@ -499,33 +576,391 @@ pub fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
     }
 }
 
+/// Interactive configuration selection with keyboard navigation
+///
+/// Displays available configurations in a navigable menu with:
+/// - Keyboard up/down navigation
+/// - Visual highlighting of selected item
+/// - Color indicators for keyboard support
+/// - Enter to confirm selection
+///
+/// # Errors
+/// Returns error if file operations fail or terminal setup fails
+fn interactive_config_selection() -> Result<()> {
+    let storage = ConfigStorage::load()?;
+    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+    let claude_settings = ClaudeSettings::load(custom_dir)?;
+
+    // Get current configuration info
+    let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
+    let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+
+    // Create list of available options
+    let mut options = Vec::new();
+
+    // Add current configuration info if available
+    if current_token.is_some() || current_url.is_some() {
+        let current_info = if let (Some(token), Some(_url)) = (current_token, current_url) {
+            format!(
+                "Current: {}",
+                if token.len() > 20 {
+                    format!("{}...", &token[..20])
+                } else {
+                    token.clone()
+                }
+            )
+        } else if let Some(token) = current_token {
+            format!(
+                "Current: {}",
+                if token.len() > 20 {
+                    format!("{}...", &token[..20])
+                } else {
+                    token.clone()
+                }
+            )
+        } else if let Some(_url) = current_url {
+            format!("Current: No token")
+        } else {
+            "Current: No configuration".to_string()
+        };
+        options.push(("current", current_info));
+    }
+
+    // Add "cc" option to reset to default
+    options.push(("cc", "Reset to default".to_string()));
+
+    // Add stored configurations - simplified to just show alias
+    for (alias_name, _) in &storage.configurations {
+        options.push((alias_name.as_str(), alias_name.clone()));
+    }
+
+    // Calculate maximum description length for alignment
+    let max_desc_length = options.iter()
+        .map(|(_, desc)| desc.len())
+        .max()
+        .unwrap_or(0);
+    
+    // Ensure minimum width for better alignment
+    let min_width = 40;
+    let display_width = std::cmp::max(max_desc_length, min_width);
+
+    if options.is_empty() {
+        println!("No configurations available. Use 'add' command to create one.");
+        return Ok(());
+    }
+
+    // Setup terminal for raw mode with better error handling
+    if let Err(e) = crossterm::terminal::enable_raw_mode() {
+        eprintln!("Warning: Could not enable terminal raw mode: {}", e);
+        eprintln!("Falling back to simple display mode");
+        return show_simple_current_display();
+    }
+    
+    if let Err(e) = crossterm::execute!(
+        io::stdout(),
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+    ) {
+        eprintln!("Warning: Could not clear terminal: {}", e);
+        // Continue without clearing
+    }
+
+    let mut selected_index = 0;
+    let mut should_exit = false;
+
+    while !should_exit {
+        // Clear screen
+        crossterm::execute!(
+            io::stdout(),
+            crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+        )?;
+        crossterm::execute!(io::stdout(), crossterm::cursor::MoveTo(0, 0))?;
+
+        // Display header with keyboard instructions
+        let shell = get_current_shell();
+        let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
+        
+        if use_fish_mode {
+            println!("=== Claude Configuration Selection ===");
+            println!("Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel");
+            println!("---------------------------------------------------------");
+            println!();
+
+            // Display options with proper alignment
+            for (index, (_key, description)) in options.iter().enumerate() {
+                let padded_desc = format!("{:<width$}", description, width = display_width);
+                if index == selected_index {
+                    // Highlight selected item with proper spacing
+                    println!("  > {}", padded_desc);
+                } else {
+                    println!("    {}", padded_desc);
+                }
+            }
+
+            println!();
+            println!("---------------------------------------------------------");
+            println!("Selected: {}", &options[selected_index].1);
+        } else {
+            println!("{}", format_color("=== Claude Configuration Selection ===", "cyan", true));
+            println!("{}", format_color("Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel", "yellow", true));
+            println!("{}", format_color("---------------------------------------------------------", "cyan", false));
+            println!();
+
+            // Display options with proper alignment
+            for (index, (_key, description)) in options.iter().enumerate() {
+                let padded_desc = format!("{:<width$}", description, width = display_width);
+                if index == selected_index {
+                    // Highlight selected item with proper spacing
+                    println!("  {} {}", format_color(">", "green", true), format_color(&padded_desc, "white", true));
+                } else {
+                    println!("    {}", padded_desc);
+                }
+            }
+
+            println!();
+            println!("{}", format_color("---------------------------------------------------------", "cyan", false));
+            println!("Selected: {}", format_color(&options[selected_index].1, "yellow", false));
+        }
+
+        // Read keyboard input
+        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+            match code {
+                KeyCode::Up => {
+                    if selected_index > 0 {
+                        selected_index = selected_index.saturating_sub(1);
+                    }
+                }
+                KeyCode::Down => {
+                    if selected_index < options.len() - 1 {
+                        selected_index += 1;
+                    }
+                }
+                KeyCode::Enter => {
+                    should_exit = true;
+                }
+                KeyCode::Esc => {
+                    // Restore terminal and exit
+                    if let Err(e) = crossterm::terminal::disable_raw_mode() {
+                        eprintln!("Warning: Could not disable terminal raw mode: {}", e);
+                    }
+                    if use_fish_mode {
+                        println!("\nSelection cancelled.");
+                    } else {
+                        println!("\n{}", format_color("Selection cancelled.", "red", false));
+                    }
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Restore terminal
+    if let Err(e) = crossterm::terminal::disable_raw_mode() {
+        eprintln!("Warning: Could not disable terminal raw mode: {}", e);
+    }
+
+    // Process selection
+    let selected_key = options[selected_index].0;
+    let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
+
+    if use_fish_mode {
+        println!("\nSelected: {}", options[selected_index].1);
+
+        if selected_key == "current" {
+            // Show current configuration info
+            println!("\nCurrent Configuration:");
+            if let Some(token) = current_token {
+                println!("Token: {token}");
+            } else {
+                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            }
+
+            if let Some(url) = current_url {
+                println!("URL: {url}");
+            } else {
+                println!("URL: No ANTHROPIC_BASE_URL configured");
+            }
+        } else {
+            // Switch to selected configuration
+            handle_switch_command(selected_key)?;
+        }
+    } else {
+        println!(
+            "\n{}",
+            format_color(&format!("Selected: {}", options[selected_index].1), "green", false)
+        );
+
+        if selected_key == "current" {
+            // Show current configuration info
+            println!("\n{}", format_color("Current Configuration:", "cyan", true));
+            if let Some(token) = current_token {
+                println!("Token: {token}");
+            } else {
+                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            }
+
+            if let Some(url) = current_url {
+                println!("URL: {url}");
+            } else {
+                println!("URL: No ANTHROPIC_BASE_URL configured");
+            }
+        } else {
+            // Switch to selected configuration
+            handle_switch_command(selected_key)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Show simple current configuration display (fallback mode)
+///
+/// Displays current configuration and available options without interactive menu
+///
+/// # Errors
+/// Returns error if file operations fail
+fn show_simple_current_display() -> Result<()> {
+    let storage = ConfigStorage::load()?;
+    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+    let claude_settings = ClaudeSettings::load(custom_dir)?;
+
+    let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
+    let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+
+    let shell = get_current_shell();
+    
+    // For testing purposes, check for a special environment variable
+    let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
+    
+    // For fish shell, use simple text without color codes
+    if use_fish_mode {
+        println!("Current Configuration:");
+        if let Some(token) = current_token {
+            if let Some(url) = current_url {
+                println!("Token: {}", token);
+                println!("URL:  {}", url);
+            } else {
+                println!("Token: {}", token);
+                println!("URL:  No ANTHROPIC_BASE_URL configured");
+            }
+        } else if let Some(url) = current_url {
+            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            println!("URL:  {}", url);
+        } else {
+            println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+        }
+
+        println!("\nAvailable configurations:");
+        
+        // Show "cc" option to reset to default
+        println!("  cc  - Reset to default");
+        
+        // Show stored configurations - simplified to just show alias
+        for alias_name in storage.configurations.keys() {
+            println!("  {}  - Switch to this configuration", alias_name);
+        }
+
+        println!("\nUse 'cc-switch <alias>' to switch configuration");
+    } else {
+        // Other shells can use color formatting
+        println!("{}", format_color("Current Configuration:", "cyan", true));
+        if let Some(token) = current_token {
+            if let Some(url) = current_url {
+                println!("Token: {}", token);
+                println!("URL:  {}", url);
+            } else {
+                println!("Token: {}", token);
+                println!("URL:  No ANTHROPIC_BASE_URL configured");
+            }
+        } else if let Some(url) = current_url {
+            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            println!("URL:  {}", url);
+        } else {
+            println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+        }
+
+        println!("\n{}", format_color("Available configurations:", "yellow", true));
+        
+        // Show "cc" option to reset to default
+        println!("  cc  - Reset to default");
+        
+        // Show stored configurations - simplified to just show alias
+        for alias_name in storage.configurations.keys() {
+            println!("  {}  - Switch to this configuration", alias_name);
+        }
+
+        println!("\n{}", format_color("Use 'cc-switch <alias>' to switch configuration", "green", false));
+    }
+    Ok(())
+}
+
 /// Handle showing current configuration
 ///
 /// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+/// If configurations are available, shows interactive selection menu
 ///
 /// # Errors
 /// Returns error if file operations fail
 pub fn handle_current_command() -> Result<()> {
     let storage = ConfigStorage::load()?;
-    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-    let claude_settings = ClaudeSettings::load(custom_dir)?;
 
-    let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
-    let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
-
-    if let Some(token) = token {
-        if let Some(url) = url {
-            println!("Token: {token}");
-            println!("URL: {url}");
-        } else {
-            println!("Token: {token}");
-            println!("URL: No ANTHROPIC_BASE_URL configured");
-        }
-    } else if let Some(url) = url {
-        println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-        println!("URL: {url}");
+    // Check if we have configurations to show interactive menu
+    if !storage.configurations.is_empty() {
+        // Show interactive selection menu
+        interactive_config_selection()?;
     } else {
-        println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+        // Fallback to simple display if no configurations
+        let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+        let claude_settings = ClaudeSettings::load(custom_dir)?;
+
+        let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
+        let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+
+        // Check for fish mode
+        let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
+        
+        if use_fish_mode {
+            println!("Current Configuration:");
+            if let Some(token) = token {
+                if let Some(url) = url {
+                    println!("Token: {token}");
+                    println!("URL: {url}");
+                } else {
+                    println!("Token: {token}");
+                    println!("URL: No ANTHROPIC_BASE_URL configured");
+                }
+            } else if let Some(url) = url {
+                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+                println!("URL: {url}");
+            } else {
+                println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+            }
+
+            println!("\nNo configurations available for selection.");
+            println!("Use 'add' command to create configurations for interactive selection.");
+        } else {
+            println!("{}", format_color("Current Configuration:", "cyan", true));
+            if let Some(token) = token {
+                if let Some(url) = url {
+                    println!("Token: {token}");
+                    println!("URL: {url}");
+                } else {
+                    println!("Token: {token}");
+                    println!("URL: No ANTHROPIC_BASE_URL configured");
+                }
+            } else if let Some(url) = url {
+                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+                println!("URL: {url}");
+            } else {
+                println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+            }
+
+            println!(
+                "\n{}",
+                format_color("No configurations available for selection.", "yellow", false)
+            );
+            println!("Use 'add' command to create configurations for interactive selection.");
+        }
     }
 
     Ok(())
@@ -726,7 +1161,7 @@ pub fn handle_switch_command(alias_name: &str) -> Result<()> {
     println!("Waiting 0.5 second before launching Claude...");
     println!(
         "Executing: claude {}",
-        "--dangerously-skip-permissions".red()
+        format_color("--dangerously-skip-permissions", "red", false)
     );
     thread::sleep(Duration::from_millis(500));
 
@@ -826,7 +1261,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.zshrc'");
             println!(
                 "{}",
-                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
             );
         }
         "bash" => {
@@ -850,7 +1285,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.bashrc'");
             println!(
                 "{}",
-                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
             );
         }
         "elvish" => {
@@ -869,7 +1304,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# Elvish completion generated successfully");
             println!(
                 "{}",
-                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
             );
         }
         "powershell" => {
@@ -888,7 +1323,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# PowerShell completion generated successfully");
             println!(
                 "{}",
-                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
             );
         }
         _ => {
@@ -965,7 +1400,7 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
     println!(
         "{}",
-        "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+        format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
     );
 }
 
@@ -1046,11 +1481,8 @@ pub fn run() -> Result<()> {
                     println!("No configurations stored");
                 } else {
                     println!("Stored configurations:");
-                    for (alias_name, config) in &storage.configurations {
-                        println!(
-                            "  {}: token={}, url={}",
-                            alias_name, config.token, config.url
-                        );
+                    for alias_name in storage.configurations.keys() {
+                        println!("  {}", alias_name);
                     }
                 }
                 if let Some(dir) = &storage.claude_settings_dir {
