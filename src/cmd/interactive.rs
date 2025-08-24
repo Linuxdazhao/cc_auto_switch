@@ -6,7 +6,7 @@ use crossterm::{
     execute, terminal,
 };
 use std::io::{self, Write};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
@@ -119,7 +119,11 @@ fn handle_main_menu_interactive(
                         return handle_main_menu_action(selected_index, storage);
                     }
                     KeyCode::Esc => {
-                        println!("Exiting...");
+                        // Clean up terminal before exit
+                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                        let _ = terminal::disable_raw_mode();
+                        
+                        println!("\nExiting...");
                         return Ok(());
                     }
                     _ => {}
@@ -330,10 +334,18 @@ fn handle_full_interactive_menu(
                     }
                 }
                 KeyCode::Enter => {
+                    // Clean up terminal before processing selection
+                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                    let _ = terminal::disable_raw_mode();
+                    
                     return handle_selection_action(configs, *selected_index);
                 }
                 KeyCode::Esc => {
-                    println!("Selection cancelled");
+                    // Clean up terminal before exit
+                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                    let _ = terminal::disable_raw_mode();
+                    
+                    println!("\nSelection cancelled");
                     return Ok(());
                 }
                 _ => {}
@@ -413,7 +425,7 @@ fn handle_selection_action(
         let env_config = EnvironmentConfig::from_config(&selected_config);
 
         println!(
-            "Switched to configuration '{}'",
+            "\nSwitched to configuration '{}'",
             selected_config.alias_name.green().bold()
         );
         println!(
@@ -436,74 +448,110 @@ fn handle_selection_action(
         launch_claude_with_env(env_config)
     } else if selected_index == configs.len() {
         // Reset to default
-        println!("Using default Claude configuration");
+        println!("\nUsing default Claude configuration");
         launch_claude_with_env(EnvironmentConfig::empty())
     } else {
         // Exit
-        println!("Exiting...");
+        println!("\nExiting...");
         Ok(())
     }
 }
 
-/// Launch Claude CLI with environment variables
+/// Launch Claude CLI with environment variables and exec to replace current process
 fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
     println!("\nWaiting 0.5 seconds before launching Claude...");
     thread::sleep(Duration::from_millis(500));
 
     println!("Launching Claude CLI...");
-    let mut cmd = Command::new("claude");
-    cmd.arg("--dangerously-skip-permissions");
     
-    // Set environment variables
+    // Set environment variables for current process
     for (key, value) in env_config.as_env_tuples() {
-        cmd.env(&key, &value);
+        unsafe {
+            std::env::set_var(&key, &value);
+        }
     }
     
-    let mut child = cmd
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .with_context(
-            || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
-        )?;
-
-    let status = child.wait()?;
-
-    if !status.success() {
-        anyhow::bail!("Claude CLI exited with error status: {}", status);
+    // On Unix systems, use exec to replace current process
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let error = Command::new("claude")
+            .arg("--dangerously-skip-permissions")
+            .exec();
+        // exec never returns on success, so if we get here, it failed
+        anyhow::bail!("Failed to exec claude: {}", error);
     }
+    
+    // On non-Unix systems, fallback to spawn and wait
+    #[cfg(not(unix))]
+    {
+        use std::process::Stdio;
+        let mut child = Command::new("claude")
+            .arg("--dangerously-skip-permissions")
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .context("Failed to launch Claude CLI. Make sure 'claude' command is available in PATH")?;
 
+        let status = child.wait()?;
+
+        if !status.success() {
+            anyhow::bail!("Claude CLI exited with error status: {}", status);
+        }
+    }
+    
     Ok(())
 }
 
-/// Execute claude command with or without --dangerously-skip-permissions
+/// Execute claude command with or without --dangerously-skip-permissions using exec
 ///
 /// # Arguments
 /// * `skip_permissions` - Whether to add --dangerously-skip-permissions flag
 fn execute_claude_command(skip_permissions: bool) -> Result<()> {
-    let mut command = Command::new("claude");
-    if skip_permissions {
-        command.arg("--dangerously-skip-permissions");
+    println!("Launching Claude CLI...");
+    
+    // On Unix systems, use exec to replace current process
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let mut command = Command::new("claude");
+        if skip_permissions {
+            command.arg("--dangerously-skip-permissions");
+        }
+        
+        let error = command.exec();
+        // exec never returns on success, so if we get here, it failed
+        anyhow::bail!("Failed to exec claude: {}", error);
     }
+    
+    // On non-Unix systems, fallback to spawn and wait
+    #[cfg(not(unix))]
+    {
+        use std::process::Stdio;
+        let mut command = Command::new("claude");
+        if skip_permissions {
+            command.arg("--dangerously-skip-permissions");
+        }
 
-    command
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit());
+        command
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
 
-    let mut child = command.spawn().with_context(
-        || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
-    )?;
+        let mut child = command.spawn().context(
+            "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH"
+        )?;
 
-    let status = child
-        .wait()
-        .with_context(|| "Failed to wait for Claude CLI process")?;
+        let status = child
+            .wait()
+            .context("Failed to wait for Claude CLI process")?;
 
-    if !status.success() {
-        anyhow::bail!("Claude CLI exited with error status: {}", status);
+        if !status.success() {
+            anyhow::bail!("Claude CLI exited with error status: {}", status);
+        }
     }
-
+    
     Ok(())
 }
 

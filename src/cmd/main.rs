@@ -5,7 +5,7 @@ use crate::cmd::interactive::{handle_current_command, handle_interactive_selecti
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
@@ -199,34 +199,49 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
     );
     thread::sleep(Duration::from_millis(500));
 
-    // Launch Claude CLI with environment variables and --dangerously-skip-permissions flag
-    println!("Launching Claude CLI...");
-    let mut cmd = Command::new("claude");
-    cmd.arg("--dangerously-skip-permissions");
-    
-    // Set environment variables
+    // Set environment variables for current process
     for (key, value) in env_config.as_env_tuples() {
-        cmd.env(&key, &value);
+        unsafe {
+            std::env::set_var(&key, &value);
+        }
+    }
+
+    // Launch Claude CLI with exec to replace current process
+    println!("Launching Claude CLI...");
+    
+    // On Unix systems, use exec to replace current process
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let error = Command::new("claude")
+            .arg("--dangerously-skip-permissions")
+            .exec();
+        // exec never returns on success, so if we get here, it failed
+        anyhow::bail!("Failed to exec claude: {}", error);
     }
     
-    let mut child = cmd
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .with_context(
-            || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
-        )?;
+    // On non-Unix systems, fallback to spawn and wait
+    #[cfg(not(unix))]
+    {
+        use std::process::Stdio;
+        let mut child = Command::new("claude")
+            .arg("--dangerously-skip-permissions")
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .context("Failed to launch Claude CLI. Make sure 'claude' command is available in PATH")?;
 
-    // Wait for the Claude process to finish and pass control to it
-    let status = child
-        .wait()
-        .with_context(|| "Failed to wait for Claude CLI process")?;
+        // Wait for the Claude process to finish and pass control to it
+        let status = child
+            .wait()
+            .context("Failed to wait for Claude CLI process")?;
 
-    if !status.success() {
-        anyhow::bail!("Claude CLI exited with error status: {}", status);
+        if !status.success() {
+            anyhow::bail!("Claude CLI exited with error status: {}", status);
+        }
     }
-
+    
     Ok(())
 }
 
