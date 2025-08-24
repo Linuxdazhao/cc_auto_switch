@@ -727,34 +727,30 @@ fn handle_interactive_selection(storage: &ConfigStorage, custom_dir: Option<&str
         // Draw menu
         for (index, config) in configs.iter().enumerate() {
             if index == selected_index {
-                print!("> ");
-                println!("{}", config.alias_name.blue().bold());
+                println!("> {}", config.alias_name.blue().bold());
 
-                // Show details for selected config
-                println!("  Token: {}", config.token);
-                println!("  URL: {}", config.url);
+                // Show details for selected config with proper indentation
+                println!("    Token: {}", config.token);
+                println!("    URL: {}", config.url);
                 if let Some(model) = &config.model {
-                    println!("  Model: {model}");
+                    println!("    Model: {model}");
                 }
                 if let Some(small_fast_model) = &config.small_fast_model {
-                    println!("  Small Fast Model: {small_fast_model}");
+                    println!("    Small Fast Model: {small_fast_model}");
                 }
                 println!();
             } else {
-                print!("  ");
-                println!("{}", config.alias_name);
+                println!("  {}", config.alias_name);
             }
         }
 
         // Add reset option
         let reset_index = configs.len();
         if selected_index == reset_index {
-            print!("> ");
-            println!("{}", "Reset to default".red().bold());
-            println!("  Remove API configuration, use default Claude settings\n");
+            println!("> {}", "Reset to default".red().bold());
+            println!("    Remove API configuration, use default Claude settings\n");
         } else {
-            print!("  ");
-            println!("Reset to default\n");
+            println!("  Reset to default\n");
         }
 
         // Handle input
