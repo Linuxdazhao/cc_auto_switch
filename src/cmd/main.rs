@@ -824,7 +824,7 @@ fn handle_full_interactive_menu(
 /// Handle simple interactive menu (fallback)
 fn handle_simple_interactive_menu(
     configs: &[&Configuration],
-    storage: &ConfigStorage,
+    _storage: &ConfigStorage,
     custom_dir: Option<&str>,
 ) -> Result<()> {
     println!("\n{}", "Available Configurations:".blue().bold());
