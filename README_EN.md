@@ -6,20 +6,20 @@
 [![Build Status](https://github.com/jingzhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/jingzhao/cc_auto_switch/actions)
 [![Release](https://github.com/jingzhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/jingzhao/cc_auto_switch/releases)
 
-A powerful command-line tool for managing multiple Claude API configurations and switching between them effortlessly.
+A powerful command-line tool for managing multiple Claude API configurations and switching between them effortlessly through environment variables.
 
-If you've ever used Claude API in different environments (development, testing, production, or even different client accounts), you deeply understand the pain of manually editing configuration files or setting environment variables. cc-switch eliminates this pain by providing a centralized solution:
+If you've ever used Claude API in different environments (development, testing, production, or even different client accounts), you deeply understand the pain of manually setting environment variables or managing different configurations. cc-switch eliminates this pain by providing a centralized environment variable management solution:
 
 * **Store multiple API configurations** with easy-to-remember aliases
-* **Instantly switch configurations** with a single command
+* **Instantly switch configurations** by launching Claude with environment variables safely
 * **Maintain separate settings for different projects or environments**
-* **Preserve existing Claude settings** while only modifying API-related configurations
+* **Environment variable isolation** with independent environment configuration for each execution
 
 ## 🏗️ Core Architecture
 
 The tool is built with a clean, modular architecture that effectively separates concerns:
 
-The application follows a simple yet powerful design pattern, with the main entry point delegating tasks to a command module that handles all CLI operations. `ConfigStorage` manages the persistence of configurations, while `ClaudeSettings` handles integration with Claude's native configuration system.
+The application follows a simple yet powerful design pattern, with the main entry point delegating tasks to a command module that handles all CLI operations. `ConfigStorage` manages the persistence of configurations, while `EnvironmentConfig` handles integration with environment variables, ensuring configuration isolation by setting specific environment variables for each command execution.
 
 ## 🎯 Key Features
 
@@ -28,14 +28,14 @@ cc-switch comes packed with features that make API configuration management effo
 | Feature | Description | Benefits |
 |---------|-------------|----------|
 | **Multi-Configuration Management** | Store unlimited API configurations using custom aliases | Keep all environments organized |
-| **Instant Switching** | Switch configurations with `cc-switch use <alias>` | Save time from manual configuration changes |
+| **Environment Variable Switching** | Switch configurations with `cc-switch use <alias>` via environment variables | Safe isolation, no global settings affected |
 | **Interactive Selection Mode** | Visual menu with real-time configuration preview | Browse configurations with full details before switching |
 | **Shell Auto-Completion** | Built-in completion support for fish, zsh, bash, and more | Speed up command entry with auto-completion |
 | **Dynamic Alias Completion** | Auto-complete configuration names for switch/remove commands | Reduce errors and typing effort |
 | **Shell Alias Generation** | Generate eval-compatible aliases for quick access | Streamline workflow with convenient shortcuts |
 | **Secure Storage** | Configurations securely stored in `~/.cc-switch/` directory | Your API keys are kept separate and organized |
-| **Cross-Platform Support** | Supports Linux, macOS, and Windows | Use the same tool across all development environments |
-| **Custom Directory Support** | Supports custom Claude settings directories | Flexibility for non-standard installations |
+| **Cross-Platform Support** | Supports Linux and macOS | Use the same tool across all major development environments |
+| **Environment Variable Isolation** | Independent environment variables per execution | Avoid global configuration conflicts |
 
 ## ⚡ 3-Minute Quick Start
 
@@ -61,7 +61,18 @@ The beauty of cc-switch lies in its simplicity. Here are the steps to get up and
    cc-switch current
    ```
 
+**Important Change:** The `cc-switch use` command now launches Claude through environment variables rather than modifying global configuration files. This ensures complete configuration isolation and security.
+
 **Tip:** Running `cc-switch` directly (without any arguments) enters the interactive main menu mode, giving you quick access to all features!
+
+## 🔒 Environment Variable Mode
+
+cc-switch now uses environment variable mode for better security and isolation:
+
+- ✅ **Isolation**: Each execution uses independent environment variables, not affecting global system settings
+- ✅ **Security**: API keys are not written to any configuration files, only used during command execution
+- ✅ **Simplicity**: No need to manage complex configuration files or worry about configuration conflicts
+- ✅ **Convenience**: `cc-switch use <alias>` automatically sets environment variables and launches Claude
 
 That's it! You're now managing Claude API configurations like a pro.
 
@@ -146,11 +157,11 @@ cc-switch add dev sk-ant-dev-xxx https://api.anthropic.com
 cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
 cc-switch add prod sk-ant-prod-xxx https://api.anthropic.com
 
-# Switch between environments as needed
+# Switch between environments as needed (each launches a new Claude instance)
 cc-switch use dev      # Development work
 cc-switch use staging  # Testing
 cc-switch use prod     # Production deployment
-cc-switch use cc       # Reset to default
+cc-switch use cc       # Launch with default settings
 ```
 
 ### Client Project Management
@@ -250,17 +261,19 @@ Claude settings directory: ~/.claude/ (default)
 #### Switch Configuration
 
 ```bash
-# Switch to a specific configuration
+# Switch to a specific configuration (launches Claude with configuration's environment variables)
 cc-switch use my-config
 
-# Reset to default (remove API configuration)
+# Launch with default settings (no custom API configuration)
 cc-switch use cc
 ```
+
+**Note:** The `use` command now launches Claude CLI through environment variables, ensuring configuration isolation and security.
 
 #### Current Configuration Interactive Menu
 
 ```bash
-# Show current configuration and interactive menu
+# Show environment variable mode information and interactive menu
 cc-switch current
 
 # Or run directly (enters interactive main menu when no arguments)
@@ -268,9 +281,9 @@ cc-switch
 ```
 
 The `current` command provides an interactive menu with:
-- Display of current API token and URL
+- Display of environment variable mode information
 - Option 1: Execute `claude --dangerously-skip-permissions`
-- Option 2: Switch configuration (with real-time preview)
+- Option 2: Switch configuration (with real-time preview and launches Claude)
 - Option 3: Exit
 
 Navigation:
@@ -296,12 +309,12 @@ cc-switch use  # Interactive mode when no alias specified
 In interactive selection mode:
 - Use **↑↓** arrow keys to navigate through configurations
 - View detailed information (token, URL, model, small-fast-model) for the selected configuration
-- Press **Enter** to select and automatically launch Claude
+- Press **Enter** to select and launch Claude with that configuration's environment variables
 - Press **Esc** to cancel selection
-- Includes "Reset to default" option to remove API configuration
+- Includes "Launch with default settings" option to run Claude without custom API configuration
 - Smart fallback to numbered menu if terminal doesn't support advanced features
 
-Interactive mode provides a visual way to browse and select configurations with full details preview before switching, and automatically launches Claude CLI after switching.
+Interactive mode provides a visual way to browse and select configurations with full details preview before switching, and automatically launches Claude CLI with the selected configuration's environment variables.
 
 #### Remove a Configuration
 
@@ -338,9 +351,9 @@ cc-switch completion bash  > ~/.bash_completion.d/cc-switch
 
 ## 🛠️ Development and Build Process
 
-The project includes a comprehensive build process that supports cross-platform compilation, making it simple to build for multiple targets:
+The project includes a comprehensive build process that supports cross-platform compilation for Linux and macOS, making it simple to build for multiple targets:
 
-This ensures cc-switch can be distributed on all major platforms and maintains consistent behavior.
+This ensures cc-switch can be distributed on Linux and macOS platforms and maintains consistent behavior.
 
 ## 🤝 Contributing
 

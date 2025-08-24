@@ -8,20 +8,20 @@
 [![Build Status](https://github.com/jingzhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/jingzhao/cc_auto_switch/actions)
 [![Release](https://github.com/jingzhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/jingzhao/cc_auto_switch/releases)
 
-一个强大的命令行工具，用于管理多个 Claude API 配置并在它们之间轻松切换。
+一个强大的命令行工具，用于管理多个 Claude API 配置并通过环境变量在它们之间轻松切换。
 
-如果您曾经在不同环境（开发、测试、生产，或者不同客户账户）中使用 Claude API，您一定深刻理解手动编辑配置文件或设置环境变量的痛苦。cc-switch 通过提供集中化解决方案消除了这种痛苦：
+如果您曾经在不同环境（开发、测试、生产，或者不同客户账户）中使用 Claude API，您一定深刻理解手动设置环境变量或管理不同配置的痛苦。cc-switch 通过提供集中化环境变量管理解决方案消除了这种痛苦：
 
 * **存储多个 API 配置**，使用易于记忆的别名
-* **一键切换配置**，单个命令即可完成
+* **一键切换配置**，通过环境变量安全启动 Claude
 * **为不同项目或环境维护独立设置**
-* **保留现有 Claude 设置**，仅修改 API 相关配置
+* **环境变量隔离**，每次执行使用独立的环境配置
 
 ## 🏗️ 核心架构
 
 该工具采用清晰的模块化架构，有效分离关注点：
 
-应用程序遵循简单而强大的设计模式，主入口点将任务委托给处理所有 CLI 操作的命令模块。`ConfigStorage` 管理配置的持久化，而 `ClaudeSettings` 处理与 Claude 原生配置系统的集成。
+应用程序遵循简单而强大的设计模式，主入口点将任务委托给处理所有 CLI 操作的命令模块。`ConfigStorage` 管理配置的持久化，而 `EnvironmentConfig` 处理与环境变量的集成，通过为每个命令执行设置特定的环境变量来确保配置隔离。
 
 ## 🎯 核心功能
 
@@ -30,14 +30,14 @@ cc-switch 功能丰富，让 API 配置管理变得轻松：
 | 功能 | 描述 | 优势 |
 |------|------|------|
 | **多配置管理** | 使用自定义别名存储无限数量的 API 配置 | 保持所有环境井然有序 |
-| **即时切换** | 使用 `cc-switch use <别名>` 切换配置 | 节省手动配置更改的时间 |
+| **环境变量切换** | 使用 `cc-switch use <别名>` 通过环境变量启动 Claude | 安全隔离，不影响全局设置 |
 | **交互式选择模式** | 带实时配置预览的可视化菜单 | 切换前浏览配置的完整详情 |
 | **Shell 自动补全** | 内置对 fish、zsh、bash 等的补全支持 | 加速命令输入和自动补全 |
 | **动态别名补全** | 为 use/remove 命令自动补全配置名称 | 减少错误和输入工作量 |
 | **Shell 别名生成** | 生成兼容 eval 的别名以快速访问 | 通过便捷快捷方式简化工作流 |
 | **安全存储** | 配置安全存储在 `~/.cc-switch/` 目录 | 您的 API 密钥保持独立和有序 |
-| **跨平台支持** | 支持 Linux、macOS 和 Windows | 在所有开发环境中使用同一工具 |
-| **自定义目录支持** | 支持自定义 Claude 设置目录 | 为非标准安装提供灵活性 |
+| **跨平台支持** | 支持 Linux 和 macOS | 在所有主要开发环境中使用同一工具 |
+| **环境变量隔离** | 每次执行使用独立环境变量 | 避免全局配置冲突 |
 
 ## ⚡ 3分钟快速开始
 
@@ -57,13 +57,25 @@ cc-switch 的美妙之处在于其简洁性。以下是快速启动和运行的�
    ```bash
    cc-switch use my-project
    ```
+   这将使用您的配置启动 Claude CLI，而不是修改任何全局设置。
 
 4. **验证是否工作**（约10秒）：
    ```bash
    cc-switch current
    ```
 
+**重要变化：** `cc-switch use` 命令现在通过环境变量启动 Claude，而不是修改全局配置文件。这确保了完全的配置隔离和安全性。
+
 **提示：** 直接运行 `cc-switch`（不带任何参数）会进入交互式主菜单模式，让您可以快速访问所有功能！
+
+## 🔒 环境变量模式
+
+cc-switch 现在使用环境变量模式，提供更好的安全性和隔离：
+
+- ✅ **隔离性**：每次执行使用独立的环境变量，不影响系统全局设置
+- ✅ **安全性**：API 密钥不会写入任何配置文件，只在命令执行时使用
+- ✅ **简洁性**：无需管理复杂的配置文件或担心配置冲突
+- ✅ **便捷性**：`cc-switch use <alias>` 自动设置环境变量并启动 Claude
 
 就是这样！您现在像专家一样管理 Claude API 配置了。
 
@@ -148,11 +160,11 @@ cc-switch add dev sk-ant-dev-xxx https://api.anthropic.com
 cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
 cc-switch add prod sk-ant-prod-xxx https://api.anthropic.com
 
-# 根据需要在环境间切换
+# 根据需要在环境间切换（每次都启动新的 Claude 实例）
 cc-switch use dev      # 开发工作
-cc-switch use staging  # 测试
+cc-switch use staging  # 测试  
 cc-switch use prod     # 生产部署
-cc-switch use cc       # 重置为默认
+cc-switch use cc       # 使用默认设置启动
 ```
 
 ### 客户项目管理
@@ -181,7 +193,15 @@ cc-switch 使用现代 Rust 实践构建，并利用几个关键库：
 * **anyhow** 用于全面的错误处理
 * **colored** 用于终端输出格式化
 
-该工具采用**零配置**理念设计 - 开箱即用具有合理默认值，但在需要时提供自定义选项。
+该工具采用**零配置**理念设计 - 开箱即用具有合理默认值，专注于环境变量模式的简洁性和安全性。
+
+## 🌐 平台支持
+
+cc-switch 现在专注于主要的开发平台：
+
+- ✅ **Linux** (x86_64, aarch64)
+- ✅ **macOS** (Intel, Apple Silicon)
+- ❌ **Windows** (已移除支持，专注于 Unix-like 系统)
 
 ## 🚀 安装
 
@@ -246,23 +266,24 @@ cc-switch list
 存储的配置：
   my-config: token=sk-ant-xxx, url=https://api.anthropic.com
   work-config: token=sk-ant-work-123, url=https://api.anthropic.com
-Claude 设置目录：~/.claude/（默认）
 ```
 
 #### 切换配置
 
 ```bash
-# 切换到特定配置
+# 使用特定配置启动 Claude
 cc-switch use my-config
 
-# 重置为默认（移除 API 配置）
+# 使用默认设置启动 Claude（无自定义 API 配置）
 cc-switch use cc
 ```
+
+**注意：** `use` 命令现在通过环境变量启动 Claude CLI，确保配置隔离和安全性。
 
 #### 当前配置交互菜单
 
 ```bash
-# 显示当前配置和交互菜单
+# 显示环境变量模式信息和交互菜单
 cc-switch current
 
 # 或直接运行（无参数时进入交互式主菜单）
@@ -270,9 +291,9 @@ cc-switch
 ```
 
 `current` 命令提供交互菜单，包含：
-- 显示当前 API 令牌和 URL
+- 显示环境变量模式的信息说明
 - 选项 1：执行 `claude --dangerously-skip-permissions`
-- 选项 2：切换配置（带实时预览）
+- 选项 2：切换配置（带实时预览并启动 Claude）
 - 选项 3：退出
 
 导航：
@@ -298,12 +319,12 @@ cc-switch use  # 未指定别名时为交互模式
 在交互选择模式中：
 - 使用 **↑↓** 箭头键浏览配置
 - 查看所选配置的详细信息（令牌、URL、模型、小型快速模型）
-- 按 **Enter** 选择并自动启动 Claude
+- 按 **Enter** 选择并使用该配置启动 Claude
 - 按 **Esc** 取消选择
-- 包括"重置为默认"选项以移除 API 配置
+- 包括"使用默认设置"选项以无自定义配置启动 Claude
 - 如果终端不支持高级功能，智能回退到编号菜单
 
-交互模式提供可视化方式浏览和选择配置，切换前提供完整详情预览，切换后自动启动 Claude CLI。
+交互模式提供可视化方式浏览和选择配置，选择后使用指定配置的环境变量自动启动 Claude CLI。
 
 #### 移除配置
 
@@ -340,9 +361,13 @@ cc-switch completion bash  > ~/.bash_completion.d/cc-switch
 
 ## 🛠️ 开发和构建流程
 
-项目包含支持跨平台编译的全面构建流程，使为多个目标构建变得简单：
+项目包含支持 Linux 和 macOS 跨平台编译的全面构建流程：
 
-这确保 cc-switch 可以在所有主要平台上分发并保持一致的行为。
+- **CI 管道**：自动在 Ubuntu 和 macOS 上测试
+- **跨架构支持**：支持 x86_64 和 aarch64 架构
+- **发布自动化**：自动构建和发布多个目标平台的二进制文件
+
+这确保 cc-switch 可以在所有支持的平台上分发并保持一致的行为。
 
 ## 🤝 贡献
 

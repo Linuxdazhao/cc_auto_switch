@@ -21,7 +21,6 @@ EXAMPLES:
     cc-switch use cc
     cc-switch list
     cc-switch remove config1 config2 config3
-    cc-switch set-default-dir /path/to/claude/config
     cc-switch current  # Interactive menu for configuration management
 
 SHELL COMPLETION AND ALIASES:
@@ -130,15 +129,6 @@ pub enum Commands {
     /// Displays all saved configurations with their aliases, tokens, and URLs
     #[command(alias = "l")]
     List,
-    /// Set default directory for Claude settings.json
-    ///
-    /// Configures the directory where Claude settings.json file is located
-    /// Default is ~/.claude/
-    #[command(alias = "s")]
-    SetDefaultDir {
-        /// Directory path for Claude settings (e.g., /path/to/claude/config)
-        directory: String,
-    },
     /// Generate shell completion scripts
     ///
     /// Generates completion scripts for supported shells and adds useful aliases:

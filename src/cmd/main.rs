@@ -1,6 +1,6 @@
 use crate::cmd::cli::{Cli, Commands};
 use crate::cmd::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
-use crate::cmd::config::{validate_alias_name, ClaudeSettings, Configuration, ConfigStorage};
+use crate::cmd::config::{validate_alias_name, EnvironmentConfig, Configuration, ConfigStorage};
 use crate::cmd::interactive::{handle_current_command, handle_interactive_selection, read_input, read_sensitive_input};
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -147,38 +147,33 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
 /// Handle configuration switching command
 ///
 /// Processes the switch subcommand to switch Claude API configuration:
-/// - None: Enter interactive selection mode
-/// - "cc": Remove API configuration (reset to default)
-/// - Other alias: Switch to the specified configuration
+/// - None: Enter interactive selection mode  
+/// - "cc": Launch Claude without custom environment variables (default behavior)
+/// - Other alias: Launch Claude with the specified configuration's environment variables
 ///
 /// After switching, displays the current URL and automatically launches Claude CLI
 ///
 /// # Arguments
-/// * `alias_name` - Optional name of configuration to switch to, or "cc" to reset
+/// * `alias_name` - Optional name of configuration to switch to, or "cc" for default
 ///
 /// # Errors
-/// Returns error if configuration is not found or file operations fail
+/// Returns error if configuration is not found or Claude CLI fails to launch
 pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
     let storage = ConfigStorage::load()?;
-    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-    let mut claude_settings = ClaudeSettings::load(custom_dir)?;
 
     // If no alias provided, enter interactive mode
     if alias_name.is_none() {
-        return handle_interactive_selection(&storage, custom_dir);
+        return handle_interactive_selection(&storage);
     }
 
     let alias_name = alias_name.unwrap();
 
-    if alias_name == "cc" {
-        // Default operation: remove ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL
-        claude_settings.remove_anthropic_env();
-        claude_settings.save(custom_dir)?;
-        println!("Removed ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings");
-        println!("Current URL: Default (no custom URL configured)");
+    let env_config = if alias_name == "cc" {
+        // Default operation: launch Claude without custom environment variables
+        println!("Using default Claude configuration (no custom API settings)");
+        println!("Current URL: Default (api.anthropic.com)");
+        EnvironmentConfig::empty()
     } else if let Some(config) = storage.get_configuration(alias_name) {
-        claude_settings.switch_to_config(config);
-        claude_settings.save(custom_dir)?;
         let mut config_info = format!("token: {}, url: {}", config.token, config.url);
         if let Some(model) = &config.model {
             config_info.push_str(&format!(", model: {model}"));
@@ -188,12 +183,13 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         }
         println!("Switched to configuration '{alias_name}' ({config_info})");
         println!("Current URL: {}", config.url);
+        EnvironmentConfig::from_config(config)
     } else {
         anyhow::bail!(
             "Configuration '{}' not found. Use 'list' command to see available configurations.",
             alias_name
         );
-    }
+    };
 
     // Wait 0.5 second
     println!("Waiting 0.5 second before launching Claude...");
@@ -203,10 +199,17 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
     );
     thread::sleep(Duration::from_millis(500));
 
-    // Launch Claude CLI with --dangerously-skip-permissions flag
+    // Launch Claude CLI with environment variables and --dangerously-skip-permissions flag
     println!("Launching Claude CLI...");
-    let mut child = Command::new("claude")
-        .arg("--dangerously-skip-permissions")
+    let mut cmd = Command::new("claude");
+    cmd.arg("--dangerously-skip-permissions");
+    
+    // Set environment variables
+    for (key, value) in env_config.as_env_tuples() {
+        cmd.env(&key, &value);
+    }
+    
+    let mut child = cmd
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -319,16 +322,6 @@ pub fn run() -> Result<()> {
                         println!("  {alias_name}: {info}");
                     }
                 }
-                if let Some(dir) = &storage.claude_settings_dir {
-                    println!("Claude settings directory: {dir}");
-                } else {
-                    println!("Claude settings directory: ~/.claude/ (default)");
-                }
-            }
-            Commands::SetDefaultDir { directory } => {
-                storage.set_claude_settings_dir(directory.clone());
-                storage.save()?;
-                println!("Claude settings directory set to: {directory}");
             }
             Commands::Completion { shell } => {
                 generate_completion(&shell)?;
@@ -346,8 +339,7 @@ pub fn run() -> Result<()> {
     } else {
         // No command provided, show interactive configuration selection
         let storage = ConfigStorage::load()?;
-        let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-        handle_interactive_selection(&storage, custom_dir)?;
+        handle_interactive_selection(&storage)?;
     }
 
     Ok(())

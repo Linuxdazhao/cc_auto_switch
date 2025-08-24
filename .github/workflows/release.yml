@@ -20,9 +20,6 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             artifact_name: cc_auto_switch-x86_64-unknown-linux-gnu.tar.gz
-          - target: x86_64-pc-windows-gnu
-            os: windows-latest
-            artifact_name: cc_auto_switch-x86_64-pc-windows-gnu.tar.gz
           - target: x86_64-apple-darwin
             os: macos-latest
             artifact_name: cc_auto_switch-x86_64-apple-darwin.tar.gz
@@ -64,17 +61,9 @@ jobs:
     - name: Package artifacts
       run: |
         mkdir -p dist/${{ matrix.target }}
-        
-        # Copy binary with correct extension
-        if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-          cp target/${{ matrix.target }}/release/cc_auto_switch.exe dist/${{ matrix.target }}/cc_auto_switch.exe
-          cd dist/${{ matrix.target }}
-          tar -czf ../../${{ matrix.artifact_name }} cc_auto_switch.exe
-        else
-          cp target/${{ matrix.target }}/release/cc_auto_switch dist/${{ matrix.target }}/cc_auto_switch
-          cd dist/${{ matrix.target }}
-          tar -czf ../../${{ matrix.artifact_name }} cc_auto_switch
-        fi
+        cp target/${{ matrix.target }}/release/cc_auto_switch dist/${{ matrix.target }}/cc_auto_switch
+        cd dist/${{ matrix.target }}
+        tar -czf ../../${{ matrix.artifact_name }} cc_auto_switch
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

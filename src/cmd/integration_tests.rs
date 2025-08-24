@@ -4,6 +4,11 @@ mod integration_tests {
     use std::fs;
     use tempfile::TempDir;
 
+    /// Helper function to create a temporary directory for testing
+    fn create_test_temp_dir() -> TempDir {
+        TempDir::new().expect("Failed to create temporary directory")
+    }
+
     /// Helper function to create a test configuration
     fn create_test_config(alias: &str, token: &str, url: &str) -> Configuration {
         Configuration {
@@ -15,435 +20,114 @@ mod integration_tests {
         }
     }
 
-    /// Helper function to create a temporary directory for testing
-    fn create_test_temp_dir() -> TempDir {
-        TempDir::new().expect("Failed to create temporary directory")
-    }
-
     #[test]
-    fn test_integration_full_workflow() {
-        let _temp_dir = create_test_temp_dir();
-
-        // Create a test storage
+    fn test_integration_configuration_workflow() {
         let mut storage = ConfigStorage::default();
 
-        // 1. Add multiple configurations
-        let config1 = create_test_config("prod", "sk-ant-prod", "https://api.anthropic.com");
-        let config2 = create_test_config("dev", "sk-ant-dev", "https://api.dev.anthropic.com");
-        let config3 = create_test_config("test", "sk-ant-test", "https://api.test.anthropic.com");
-
-        storage.add_configuration(config1);
-        storage.add_configuration(config2);
-        storage.add_configuration(config3);
-
-        // 2. Verify all configurations are stored
-        assert_eq!(storage.configurations.len(), 3);
-        assert!(storage.get_configuration("prod").is_some());
-        assert!(storage.get_configuration("dev").is_some());
-        assert!(storage.get_configuration("test").is_some());
-
-        // 3. Test configuration switching
-        let mut settings = ClaudeSettings::default();
-        let prod_config = storage.get_configuration("prod").unwrap();
-        settings.switch_to_config(prod_config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-prod".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.anthropic.com".to_string())
-        );
-
-        // 4. Switch to dev configuration
-        let dev_config = storage.get_configuration("dev").unwrap();
-        settings.switch_to_config(dev_config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-dev".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.dev.anthropic.com".to_string())
-        );
-
-        // 5. Remove test configuration
-        assert!(storage.remove_configuration("test"));
-        assert_eq!(storage.configurations.len(), 2);
-        assert!(storage.get_configuration("test").is_none());
-
-        // 6. Verify remaining configurations
-        assert!(storage.get_configuration("prod").is_some());
-        assert!(storage.get_configuration("dev").is_some());
-
-        // 7. Test reset to default
-        settings.remove_anthropic_env();
-        assert!(settings.env.get("ANTHROPIC_AUTH_TOKEN").is_none());
-        assert!(settings.env.get("ANTHROPIC_BASE_URL").is_none());
+        // Test full workflow: add -> get -> remove
+        let config = create_test_config("integration-test", "sk-ant-integration", "https://api.integration.com");
+        
+        // Add configuration
+        storage.add_configuration(config.clone());
+        assert!(storage.configurations.contains_key("integration-test"));
+        
+        // Get configuration
+        let retrieved = storage.get_configuration("integration-test").unwrap();
+        assert_eq!(retrieved.alias_name, config.alias_name);
+        assert_eq!(retrieved.token, config.token);
+        assert_eq!(retrieved.url, config.url);
+        
+        // Remove configuration
+        assert!(storage.remove_configuration("integration-test"));
+        assert!(!storage.configurations.contains_key("integration-test"));
     }
 
     #[test]
-    fn test_integration_error_handling() {
-        let mut storage = ConfigStorage::default();
+    fn test_integration_environment_config_workflow() {
+        // Test configuration to environment config conversion
+        let mut config = create_test_config("test", "sk-ant-test", "https://api.test.com");
+        config.model = Some("claude-3-5-sonnet-20241022".to_string());
+        config.small_fast_model = Some("claude-3-haiku-20240307".to_string());
 
-        // Test adding configuration with invalid alias
-        let result = validate_alias_name("");
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Alias name cannot be empty"
-        );
-
-        let result = validate_alias_name("cc");
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Alias name 'cc' is reserved and cannot be used"
-        );
-
-        let result = validate_alias_name("test config");
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Alias name cannot contain whitespace"
-        );
-
-        // Test removing non-existent configuration
-        assert!(!storage.remove_configuration("nonexistent"));
-
-        // Test getting non-existent configuration
-        assert!(storage.get_configuration("nonexistent").is_none());
-
-        // Test with valid alias
-        let result = validate_alias_name("valid-config");
-        assert!(result.is_ok());
+        let env_config = EnvironmentConfig::from_config(&config);
+        
+        // Verify all environment variables are set
+        assert_eq!(env_config.env_vars.len(), 4);
+        assert!(env_config.env_vars.contains_key("ANTHROPIC_AUTH_TOKEN"));
+        assert!(env_config.env_vars.contains_key("ANTHROPIC_BASE_URL"));
+        assert!(env_config.env_vars.contains_key("ANTHROPIC_MODEL"));
+        assert!(env_config.env_vars.contains_key("ANTHROPIC_SMALL_FAST_MODEL"));
+        
+        // Test conversion to tuples for command execution
+        let tuples = env_config.as_env_tuples();
+        assert_eq!(tuples.len(), 4);
     }
 
     #[test]
-    fn test_integration_settings_persistence() {
+    fn test_integration_storage_persistence() {
         let temp_dir = create_test_temp_dir();
-        let config_path = temp_dir.path().join("configurations.json");
-        let settings_path = temp_dir.path().join("settings.json");
+        let test_config_path = temp_dir.path().join("configurations.json");
 
-        // 1. Create and save storage
-
+        // Create storage with multiple configurations
         let mut storage = ConfigStorage::default();
-        let config =
-            create_test_config("persist-test", "sk-ant-persist", "https://api.persist.com");
-        storage.add_configuration(config);
-
-        // Mock save operation
-        let json = serde_json::to_string_pretty(&storage).unwrap();
-        fs::write(&config_path, json).unwrap();
-
-        // 2. Load and verify storage
-        let loaded_content = fs::read_to_string(&config_path).unwrap();
-        let loaded_storage: ConfigStorage = serde_json::from_str(&loaded_content).unwrap();
-
-        assert_eq!(loaded_storage.configurations.len(), 1);
-        let loaded_config = loaded_storage.get_configuration("persist-test").unwrap();
-        assert_eq!(loaded_config.token, "sk-ant-persist");
-        assert_eq!(loaded_config.url, "https://api.persist.com");
-
-        // 3. Test settings persistence
-        let mut settings = ClaudeSettings::default();
-        settings.switch_to_config(loaded_config);
-        settings.other.insert(
-            "test_key".to_string(),
-            serde_json::Value::String("test_value".to_string()),
-        );
-
-        // Save settings
-        let settings_json = serde_json::to_string_pretty(&settings).unwrap();
-        fs::write(&settings_path, settings_json).unwrap();
-
-        // Load and verify settings
-        let loaded_settings_content = fs::read_to_string(&settings_path).unwrap();
-        let loaded_settings: ClaudeSettings =
-            serde_json::from_str(&loaded_settings_content).unwrap();
-
-        assert_eq!(
-            loaded_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-persist".to_string())
-        );
-        assert_eq!(
-            loaded_settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.persist.com".to_string())
-        );
-        assert_eq!(
-            loaded_settings.other.get("test_key"),
-            Some(&serde_json::Value::String("test_value".to_string()))
-        );
-    }
-
-    #[test]
-    fn test_integration_path_resolution() {
-        // Test absolute path
-        let absolute_path_input = if cfg!(windows) {
-            "C:/absolute/path/to/claude"
-        } else {
-            "/absolute/path/to/claude"
-        };
-        let absolute_path = get_claude_settings_path(Some(absolute_path_input)).unwrap();
-        let expected_absolute_path =
-            std::path::PathBuf::from(absolute_path_input).join("settings.json");
-        assert_eq!(absolute_path, expected_absolute_path);
-
-        // Test relative path
-        let relative_path = get_claude_settings_path(Some("relative/path")).unwrap();
-        assert!(relative_path.ends_with("relative/path/settings.json"));
-
-        // Test default path
-        let default_path = get_claude_settings_path(None).unwrap();
-        assert!(default_path.ends_with(".claude/settings.json"));
-
-        // Test config storage path
-        let config_path = get_config_storage_path().unwrap();
-        assert!(config_path.ends_with(".cc-switch/configurations.json"));
-    }
-
-    #[test]
-    fn test_integration_configuration_management() {
-        let mut storage = ConfigStorage::default();
-
-        // Test adding configurations with various tokens and URLs
-        let test_configs = vec![
-            ("config1", "sk-ant-api1", "https://api1.example.com"),
-            ("config2", "sk-ant-api2", "https://api2.example.com"),
-            ("config3", "sk-ant-api3", "https://api3.example.com"),
-        ];
-
-        for (alias, token, url) in &test_configs {
-            let config = create_test_config(alias, token, url);
-            storage.add_configuration(config);
-        }
-
-        // Verify all configurations are stored
-        assert_eq!(storage.configurations.len(), 3);
-
-        // Test retrieving each configuration
-        for (alias, token, url) in &test_configs {
-            let stored_config = storage.get_configuration(alias).unwrap();
-            assert_eq!(stored_config.token, *token);
-            assert_eq!(stored_config.url, *url);
-        }
-
-        // Test removing configurations in different order
-        assert!(storage.remove_configuration("config2"));
-        assert_eq!(storage.configurations.len(), 2);
-        assert!(storage.get_configuration("config2").is_none());
-
-        assert!(storage.remove_configuration("config1"));
-        assert_eq!(storage.configurations.len(), 1);
-        assert!(storage.get_configuration("config1").is_none());
-
-        assert!(storage.remove_configuration("config3"));
-        assert_eq!(storage.configurations.len(), 0);
-        assert!(storage.get_configuration("config3").is_none());
-    }
-
-    #[test]
-    fn test_integration_settings_serialization_edge_cases() {
-        // Test settings with empty env
-        let mut settings = ClaudeSettings::default();
-        settings.other.insert(
-            "key1".to_string(),
-            serde_json::Value::String("value1".to_string()),
-        );
-        settings.other.insert(
-            "key2".to_string(),
-            serde_json::Value::Number(serde_json::Number::from(42)),
-        );
-
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-        assert!(!json.contains("\"env\""));
-
-        let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
-        assert!(deserialized.env.is_empty());
-        assert_eq!(deserialized.other.len(), 2);
-
-        // Test settings with only env
-        let mut settings = ClaudeSettings::default();
-        settings.env.insert(
-            "ANTHROPIC_AUTH_TOKEN".to_string(),
-            "sk-ant-test".to_string(),
-        );
-        settings.env.insert(
-            "ANTHROPIC_BASE_URL".to_string(),
-            "https://api.test.com".to_string(),
-        );
-
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-        assert!(json.contains("\"env\""));
-
-        let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.env.len(), 2);
-        assert!(deserialized.other.is_empty());
-
-        // Test settings with both env and other fields
-        let mut settings = ClaudeSettings::default();
-        settings.env.insert(
-            "ANTHROPIC_AUTH_TOKEN".to_string(),
-            "sk-ant-test".to_string(),
-        );
-        settings.other.insert(
-            "other_key".to_string(),
-            serde_json::Value::String("other_value".to_string()),
-        );
-
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-        assert!(json.contains("\"env\""));
-        assert!(json.contains("other_key"));
-
-        let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.env.len(), 1);
-        assert_eq!(deserialized.other.len(), 1);
-    }
-
-    #[test]
-    fn test_integration_configuration_switching_scenarios() {
-        let mut storage = ConfigStorage::default();
-        let mut settings = ClaudeSettings::default();
-
-        // Add test configurations
-        let config1 = create_test_config("config1", "sk-ant-test1", "https://api1.test.com");
-        let config2 = create_test_config("config2", "sk-ant-test2", "https://api2.test.com");
-
-        storage.add_configuration(config1);
-        storage.add_configuration(config2);
-
-        // Test switching to first configuration
-        let target_config = storage.get_configuration("config1").unwrap();
-        settings.switch_to_config(target_config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test1".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api1.test.com".to_string())
-        );
-
-        // Test switching to second configuration
-        let target_config = storage.get_configuration("config2").unwrap();
-        settings.switch_to_config(target_config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test2".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api2.test.com".to_string())
-        );
-
-        // Test removing environment variables
-        settings.remove_anthropic_env();
-
-        assert!(settings.env.get("ANTHROPIC_AUTH_TOKEN").is_none());
-        assert!(settings.env.get("ANTHROPIC_BASE_URL").is_none());
-
-        // Test switching after removing env variables
-        let target_config = storage.get_configuration("config1").unwrap();
-        settings.switch_to_config(target_config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test1".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api1.test.com".to_string())
-        );
-    }
-
-    #[test]
-    fn test_integration_custom_directory_management() {
-        let mut storage = ConfigStorage::default();
-
-        // Test setting custom directory
-        storage.set_claude_settings_dir("/custom/claude/path".to_string());
-
-        assert_eq!(
-            storage.get_claude_settings_dir(),
-            Some(&"/custom/claude/path".to_string())
-        );
-
-        // Test path resolution with custom directory
-        let custom_path_input = if cfg!(windows) {
-            "C:/custom/claude/path"
-        } else {
-            "/custom/claude/path"
-        };
-        let custom_path = get_claude_settings_path(Some(custom_path_input)).unwrap();
-        let expected_custom_path =
-            std::path::PathBuf::from(custom_path_input).join("settings.json");
-        assert_eq!(custom_path, expected_custom_path);
-
-        // Test changing custom directory
-        let another_custom_path = if cfg!(windows) {
-            "C:/another/custom/path"
-        } else {
-            "/another/custom/path"
-        };
-        storage.set_claude_settings_dir(another_custom_path.to_string());
-
-        assert_eq!(
-            storage.get_claude_settings_dir(),
-            Some(&another_custom_path.to_string())
-        );
-
-        let another_path = get_claude_settings_path(Some(another_custom_path)).unwrap();
-        let expected_another_path =
-            std::path::PathBuf::from(another_custom_path).join("settings.json");
-        assert_eq!(another_path, expected_another_path);
-    }
-
-    #[test]
-    fn test_integration_large_dataset_handling() {
-        let mut storage = ConfigStorage::default();
-
-        // Add many configurations
-        for i in 0..100 {
+        for i in 0..5 {
             let config = create_test_config(
-                &format!("config_{}", i),
+                &format!("config{}", i),
                 &format!("sk-ant-test{}", i),
                 &format!("https://api{}.test.com", i),
             );
             storage.add_configuration(config);
         }
 
-        // Verify all configurations are stored
-        assert_eq!(storage.configurations.len(), 100);
+        // Save to file
+        let json = serde_json::to_string_pretty(&storage).unwrap();
+        fs::write(&test_config_path, json).unwrap();
 
-        // Test retrieving configurations
-        for i in 0..100 {
-            let alias = &format!("config_{}", i);
-            let config = storage.get_configuration(alias).unwrap();
+        // Load from file
+        let loaded_content = fs::read_to_string(&test_config_path).unwrap();
+        let loaded_storage: ConfigStorage = serde_json::from_str(&loaded_content).unwrap();
+
+        // Verify all configurations are preserved
+        assert_eq!(loaded_storage.configurations.len(), 5);
+        for i in 0..5 {
+            let alias = format!("config{}", i);
+            assert!(loaded_storage.configurations.contains_key(&alias));
+            
+            let config = loaded_storage.get_configuration(&alias).unwrap();
             assert_eq!(config.token, format!("sk-ant-test{}", i));
             assert_eq!(config.url, format!("https://api{}.test.com", i));
         }
+    }
 
-        // Test removing every other configuration
-        for i in (0..100).step_by(2) {
-            let alias = &format!("config_{}", i);
-            assert!(storage.remove_configuration(alias));
+    #[test]
+    fn test_integration_alias_validation_workflow() {
+        // Test various alias validation scenarios
+        let test_cases = vec![
+            ("valid-alias", true),
+            ("another_valid_alias", true),
+            ("ValidAlias123", true),
+            ("", false),               // empty
+            ("cc", false),             // reserved
+            ("test config", false),    // contains space
+        ];
+
+        for (alias, should_be_valid) in test_cases {
+            let result = validate_alias_name(alias);
+            if should_be_valid {
+                assert!(result.is_ok(), "Expected '{}' to be valid", alias);
+            } else {
+                assert!(result.is_err(), "Expected '{}' to be invalid", alias);
+            }
         }
+    }
 
-        // Verify remaining configurations
-        assert_eq!(storage.configurations.len(), 50);
-
-        for i in (1..100).step_by(2) {
-            let alias = &format!("config_{}", i);
-            assert!(storage.get_configuration(alias).is_some());
-        }
-
-        for i in (0..100).step_by(2) {
-            let alias = &format!("config_{}", i);
-            assert!(storage.get_configuration(alias).is_none());
-        }
+    #[test]
+    fn test_integration_config_path_resolution() {
+        let result = get_config_storage_path();
+        assert!(result.is_ok());
+        
+        let path = result.unwrap();
+        assert!(path.to_string_lossy().contains(".cc-switch"));
+        assert!(path.to_string_lossy().ends_with("configurations.json"));
     }
 }

@@ -1,4 +1,4 @@
-use crate::cmd::config::{ClaudeSettings, Configuration, ConfigStorage};
+use crate::cmd::config::{EnvironmentConfig, Configuration, ConfigStorage};
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -21,28 +21,11 @@ use std::time::Duration;
 /// Returns error if file operations fail or user input fails
 pub fn handle_current_command() -> Result<()> {
     let storage = ConfigStorage::load()?;
-    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-    let claude_settings = ClaudeSettings::load(custom_dir)?;
-
-    // Show current configuration
-    let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
-    let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
 
     println!("\n{}", "Current Configuration:".green().bold());
-    if let Some(token) = token {
-        if let Some(url) = url {
-            println!("Token: {token}");
-            println!("URL: {url}");
-        } else {
-            println!("Token: {token}");
-            println!("URL: No ANTHROPIC_BASE_URL configured");
-        }
-    } else if let Some(url) = url {
-        println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-        println!("URL: {url}");
-    } else {
-        println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
-    }
+    println!("Environment variable mode: configurations are set per-command execution");
+    println!("Use 'cc-switch use <alias>' to launch Claude with specific configuration");
+    println!("Use 'cc-switch use cc' to launch Claude with default settings");
 
     // Try to enable interactive menu with keyboard navigation
     let raw_mode_enabled = terminal::enable_raw_mode().is_ok();
@@ -57,7 +40,7 @@ pub fn handle_current_command() -> Result<()> {
         .is_ok()
         {
             // Full interactive mode with arrow keys for main menu
-            let result = handle_main_menu_interactive(&mut stdout, &storage, custom_dir);
+            let result = handle_main_menu_interactive(&mut stdout, &storage);
 
             // Always restore terminal
             let _ = execute!(stdout, terminal::LeaveAlternateScreen);
@@ -71,14 +54,13 @@ pub fn handle_current_command() -> Result<()> {
     }
 
     // Fallback to simple numbered menu
-    handle_main_menu_simple(&storage, custom_dir)
+    handle_main_menu_simple(&storage)
 }
 
 /// Handle main menu with keyboard navigation
 fn handle_main_menu_interactive(
     stdout: &mut io::Stdout,
     storage: &ConfigStorage,
-    custom_dir: Option<&str>,
 ) -> Result<()> {
     let menu_items = [
         "Execute claude --dangerously-skip-permissions",
@@ -134,7 +116,7 @@ fn handle_main_menu_interactive(
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
 
-                        return handle_main_menu_action(selected_index, storage, custom_dir);
+                        return handle_main_menu_action(selected_index, storage);
                     }
                     KeyCode::Esc => {
                         println!("Exiting...");
@@ -150,7 +132,7 @@ fn handle_main_menu_interactive(
 }
 
 /// Handle main menu simple fallback
-fn handle_main_menu_simple(storage: &ConfigStorage, custom_dir: Option<&str>) -> Result<()> {
+fn handle_main_menu_simple(storage: &ConfigStorage) -> Result<()> {
     loop {
         println!("\n{}", "Available Actions:".blue().bold());
         println!("1. Execute claude --dangerously-skip-permissions");
@@ -168,9 +150,9 @@ fn handle_main_menu_simple(storage: &ConfigStorage, custom_dir: Option<&str>) ->
         let choice = input.trim();
 
         match choice {
-            "1" => return handle_main_menu_action(0, storage, custom_dir),
-            "2" => return handle_main_menu_action(1, storage, custom_dir),
-            "3" => return handle_main_menu_action(2, storage, custom_dir),
+            "1" => return handle_main_menu_action(0, storage),
+            "2" => return handle_main_menu_action(1, storage),
+            "3" => return handle_main_menu_action(2, storage),
             _ => {
                 println!("Invalid option. Please select 1-3.");
             }
@@ -182,7 +164,6 @@ fn handle_main_menu_simple(storage: &ConfigStorage, custom_dir: Option<&str>) ->
 fn handle_main_menu_action(
     selected_index: usize,
     storage: &ConfigStorage,
-    custom_dir: Option<&str>,
 ) -> Result<()> {
     match selected_index {
         0 => {
@@ -191,7 +172,7 @@ fn handle_main_menu_action(
         }
         1 => {
             // Use the interactive selection instead of simple menu
-            handle_interactive_selection(storage, custom_dir)?;
+            handle_interactive_selection(storage)?;
         }
         2 => {
             println!("Exiting...");
@@ -207,11 +188,10 @@ fn handle_main_menu_action(
 ///
 /// # Arguments
 /// * `storage` - Reference to configuration storage
-/// * `custom_dir` - Optional custom directory for Claude settings
 ///
 /// # Errors
 /// Returns error if terminal operations fail or user selection fails
-pub fn handle_interactive_selection(storage: &ConfigStorage, custom_dir: Option<&str>) -> Result<()> {
+pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
     if storage.configurations.is_empty() {
         println!("No configurations available. Use 'add' command to create configurations first.");
         return Ok(());
@@ -239,7 +219,6 @@ pub fn handle_interactive_selection(storage: &ConfigStorage, custom_dir: Option<
                 &mut stdout,
                 &configs,
                 &mut selected_index,
-                custom_dir,
             );
 
             // Always restore terminal
@@ -254,7 +233,7 @@ pub fn handle_interactive_selection(storage: &ConfigStorage, custom_dir: Option<
     }
 
     // Fallback to simple numbered menu
-    handle_simple_interactive_menu(&configs, storage, custom_dir)
+    handle_simple_interactive_menu(&configs, storage)
 }
 
 /// Handle full interactive menu with arrow key navigation
@@ -262,7 +241,6 @@ fn handle_full_interactive_menu(
     stdout: &mut io::Stdout,
     configs: &[&Configuration],
     selected_index: &mut usize,
-    custom_dir: Option<&str>,
 ) -> Result<()> {
     loop {
         // Clear screen and redraw
@@ -352,7 +330,7 @@ fn handle_full_interactive_menu(
                     }
                 }
                 KeyCode::Enter => {
-                    return handle_selection_action(configs, *selected_index, custom_dir);
+                    return handle_selection_action(configs, *selected_index);
                 }
                 KeyCode::Esc => {
                     println!("Selection cancelled");
@@ -370,7 +348,6 @@ fn handle_full_interactive_menu(
 fn handle_simple_interactive_menu(
     configs: &[&Configuration],
     _storage: &ConfigStorage,
-    custom_dir: Option<&str>,
 ) -> Result<()> {
     println!("\n{}", "Available Configurations:".blue().bold());
 
@@ -407,15 +384,12 @@ fn handle_simple_interactive_menu(
 
     match input.trim().parse::<usize>() {
         Ok(num) if num >= 1 && num <= configs.len() => {
-            handle_selection_action(configs, num - 1, custom_dir)
+            handle_selection_action(configs, num - 1)
         }
         Ok(num) if num == configs.len() + 1 => {
             // Reset to default
-            let mut claude_settings = ClaudeSettings::load(custom_dir)?;
-            claude_settings.remove_anthropic_env();
-            claude_settings.save(custom_dir)?;
-            println!("Reset to default configuration");
-            launch_claude()
+            println!("Using default Claude configuration");
+            launch_claude_with_env(EnvironmentConfig::empty())
         }
         Ok(num) if num == configs.len() + 2 => {
             println!("Exiting...");
@@ -432,14 +406,11 @@ fn handle_simple_interactive_menu(
 fn handle_selection_action(
     configs: &[&Configuration],
     selected_index: usize,
-    custom_dir: Option<&str>,
 ) -> Result<()> {
     if selected_index < configs.len() {
         // Switch to selected configuration
         let selected_config = configs[selected_index].clone();
-        let mut claude_settings = ClaudeSettings::load(custom_dir)?;
-        claude_settings.switch_to_config(&selected_config);
-        claude_settings.save(custom_dir)?;
+        let env_config = EnvironmentConfig::from_config(&selected_config);
 
         println!(
             "Switched to configuration '{}'",
@@ -455,34 +426,40 @@ fn handle_selection_action(
             .dimmed()
         );
         println!("URL: {}", selected_config.url.cyan());
+        if let Some(model) = &selected_config.model {
+            println!("Model: {}", model.yellow());
+        }
+        if let Some(small_fast_model) = &selected_config.small_fast_model {
+            println!("Small Fast Model: {}", small_fast_model.yellow());
+        }
 
-        launch_claude()
+        launch_claude_with_env(env_config)
     } else if selected_index == configs.len() {
         // Reset to default
-        let mut claude_settings = ClaudeSettings::load(custom_dir)?;
-        claude_settings.remove_anthropic_env();
-        claude_settings.save(custom_dir)?;
-        println!("Reset to default configuration");
-
-        launch_claude()
-    } else if selected_index == configs.len() + 1 {
-        // Exit option
-        println!("Exiting...");
-        Ok(())
+        println!("Using default Claude configuration");
+        launch_claude_with_env(EnvironmentConfig::empty())
     } else {
-        println!("Invalid selection");
+        // Exit
+        println!("Exiting...");
         Ok(())
     }
 }
 
-/// Launch Claude CLI with proper delay
-fn launch_claude() -> Result<()> {
+/// Launch Claude CLI with environment variables
+fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
     println!("\nWaiting 0.5 seconds before launching Claude...");
     thread::sleep(Duration::from_millis(500));
 
     println!("Launching Claude CLI...");
-    let mut child = Command::new("claude")
-        .arg("--dangerously-skip-permissions")
+    let mut cmd = Command::new("claude");
+    cmd.arg("--dangerously-skip-permissions");
+    
+    // Set environment variables
+    for (key, value) in env_config.as_env_tuples() {
+        cmd.env(&key, &value);
+    }
+    
+    let mut child = cmd
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

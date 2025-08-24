@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -36,67 +36,17 @@ pub struct Configuration {
 pub struct ConfigStorage {
     /// Map of alias names to configuration objects
     pub configurations: HashMap<String, Configuration>,
-    /// Custom directory for Claude settings (optional)
-    pub claude_settings_dir: Option<String>,
 }
 
-/// Claude settings manager for API configuration
+/// Environment variable manager for API configuration
 ///
-/// Manages the Claude settings.json file to control Claude's API configuration
-/// Handles environment variables and preserves other settings
+/// Handles setting environment variables for the Claude CLI process
 #[derive(Default, Clone)]
-pub struct ClaudeSettings {
-    /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, ANTHROPIC_SMALL_FAST_MODEL)
-    pub env: HashMap<String, String>,
-    /// Other settings to preserve when modifying API configuration
-    pub other: HashMap<String, serde_json::Value>,
+pub struct EnvironmentConfig {
+    /// Environment variables to be set
+    pub env_vars: HashMap<String, String>,
 }
 
-impl Serialize for ClaudeSettings {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeMap;
-
-        let mut map = serializer.serialize_map(Some(
-            self.other.len() + if self.env.is_empty() { 0 } else { 1 },
-        ))?;
-
-        // Serialize env field only if it has content
-        if !self.env.is_empty() {
-            map.serialize_entry("env", &self.env)?;
-        }
-
-        // Serialize other fields
-        for (key, value) in &self.other {
-            map.serialize_entry(key, value)?;
-        }
-
-        map.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for ClaudeSettings {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct ClaudeSettingsHelper {
-            #[serde(default)]
-            env: HashMap<String, String>,
-            #[serde(flatten)]
-            other: HashMap<String, serde_json::Value>,
-        }
-
-        let helper = ClaudeSettingsHelper::deserialize(deserializer)?;
-        Ok(ClaudeSettings {
-            env: helper.env,
-            other: helper.other,
-        })
-    }
-}
 
 impl ConfigStorage {
     /// Load configurations from disk
@@ -182,189 +132,62 @@ impl ConfigStorage {
     pub fn get_configuration(&self, alias_name: &str) -> Option<&Configuration> {
         self.configurations.get(alias_name)
     }
-
-    /// Set the default directory for Claude settings
-    ///
-    /// # Arguments
-    /// * `directory` - Directory path for Claude settings
-    pub fn set_claude_settings_dir(&mut self, directory: String) {
-        self.claude_settings_dir = Some(directory);
-    }
-
-    /// Get the current Claude settings directory
-    ///
-    /// # Returns
-    /// `Some(&String)` if custom directory is set, `None` if using default
-    pub fn get_claude_settings_dir(&self) -> Option<&String> {
-        self.claude_settings_dir.as_ref()
-    }
 }
 
-impl ClaudeSettings {
-    /// Load Claude settings from disk
-    ///
-    /// Reads the JSON file from the configured Claude settings directory
-    /// Returns default empty settings if file doesn't exist
-    /// Creates the file with default structure if it doesn't exist
+impl EnvironmentConfig {
+    /// Create a new environment configuration from a Claude configuration
     ///
     /// # Arguments
-    /// * `custom_dir` - Optional custom directory for Claude settings
+    /// * `config` - Configuration containing token, URL, and optional model settings
     ///
-    /// # Errors
-    /// Returns error if file exists but cannot be read or parsed
-    pub fn load(custom_dir: Option<&str>) -> Result<Self> {
-        let path = get_claude_settings_path(custom_dir)?;
-
-        if !path.exists() {
-            // Create default settings file if it doesn't exist
-            let default_settings = ClaudeSettings::default();
-            default_settings.save(custom_dir)?;
-            return Ok(default_settings);
-        }
-
-        let content = fs::read_to_string(&path)
-            .with_context(|| format!("Failed to read Claude settings from {}", path.display()))?;
-
-        // Parse with better error handling for missing env field
-        let mut settings: ClaudeSettings = if content.trim().is_empty() {
-            ClaudeSettings::default()
-        } else {
-            serde_json::from_str(&content)
-                .with_context(|| "Failed to parse Claude settings JSON")?
-        };
-
-        // Ensure env field exists (handle case where it might be missing from JSON)
-        if settings.env.is_empty() && !content.contains("\"env\"") {
-            settings.env = HashMap::new();
-        }
-
-        Ok(settings)
-    }
-
-    /// Save Claude settings to disk
-    ///
-    /// Writes the current state to the configured Claude settings directory
-    /// Creates the directory structure if it doesn't exist
-    /// Ensures the env field is properly serialized
-    ///
-    /// # Arguments
-    /// * `custom_dir` - Optional custom directory for Claude settings
-    ///
-    /// # Errors
-    /// Returns error if directory cannot be created or file cannot be written
-    pub fn save(&self, custom_dir: Option<&str>) -> Result<()> {
-        let path = get_claude_settings_path(custom_dir)?;
-
-        // Create directory if it doesn't exist
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
-        }
-
-        // The custom Serialize implementation handles env field inclusion automatically
-        let settings_to_save = self;
-
-        let json = serde_json::to_string_pretty(&settings_to_save)
-            .with_context(|| "Failed to serialize Claude settings")?;
-
-        fs::write(&path, json).with_context(|| format!("Failed to write to {}", path.display()))?;
-
-        Ok(())
-    }
-
-    /// Switch to a specific API configuration
-    ///
-    /// Updates the environment variables with the provided configuration
-    /// Ensures env field exists before updating
-    ///
-    /// # Arguments
-    /// * `config` - Configuration containing token, URL, and optional model settings to apply
-    pub fn switch_to_config(&mut self, config: &Configuration) {
-        // Ensure env field exists
-        if self.env.is_empty() {
-            self.env = HashMap::new();
-        }
-
-        // First remove all Anthropic environment variables to ensure clean state
-        self.env.remove("ANTHROPIC_AUTH_TOKEN");
-        self.env.remove("ANTHROPIC_BASE_URL");
-        self.env.remove("ANTHROPIC_MODEL");
-        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
-
+    /// # Returns
+    /// EnvironmentConfig with the appropriate environment variables set
+    pub fn from_config(config: &Configuration) -> Self {
+        let mut env_vars = HashMap::new();
+        
         // Set required environment variables
-        self.env
-            .insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
-        self.env
-            .insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
-
-        // Set model configurations only if provided (don't set empty values)
+        env_vars.insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
+        env_vars.insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
+        
+        // Set model configurations only if provided
         if let Some(model) = &config.model {
             if !model.is_empty() {
-                self.env
-                    .insert("ANTHROPIC_MODEL".to_string(), model.clone());
+                env_vars.insert("ANTHROPIC_MODEL".to_string(), model.clone());
             }
         }
-
+        
         if let Some(small_fast_model) = &config.small_fast_model {
             if !small_fast_model.is_empty() {
-                self.env.insert(
-                    "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
-                    small_fast_model.clone(),
-                );
+                env_vars.insert("ANTHROPIC_SMALL_FAST_MODEL".to_string(), small_fast_model.clone());
             }
         }
+        
+        EnvironmentConfig { env_vars }
     }
-
-    /// Remove Anthropic environment variables
-    ///
-    /// Clears all Anthropic-related environment variables from settings
-    /// Used to reset to default Claude behavior
-    pub fn remove_anthropic_env(&mut self) {
-        // Ensure env field exists
-        if self.env.is_empty() {
-            self.env = HashMap::new();
+    
+    /// Create an empty environment configuration (for reset)
+    pub fn empty() -> Self {
+        EnvironmentConfig {
+            env_vars: HashMap::new(),
         }
-
-        self.env.remove("ANTHROPIC_AUTH_TOKEN");
-        self.env.remove("ANTHROPIC_BASE_URL");
-        self.env.remove("ANTHROPIC_MODEL");
-        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
+    }
+    
+    /// Get environment variables as a Vec of (key, value) tuples
+    /// for use with Command::envs()
+    pub fn as_env_tuples(&self) -> Vec<(String, String)> {
+        self.env_vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 }
 
 /// Get the path to the configuration storage file
 ///
-/// Returns `~/.cc_auto_switch/configurations.json`
+/// Returns `~/.cc-switch/configurations.json`
 ///
 /// # Errors
 /// Returns error if home directory cannot be found
 pub fn get_config_storage_path() -> Result<PathBuf> {
     let home_dir = dirs::home_dir().context("Could not find home directory")?;
     Ok(home_dir.join(".cc-switch").join("configurations.json"))
-}
-
-/// Get the path to the Claude settings file
-///
-/// Returns the path to settings.json, using custom directory if configured
-/// Defaults to `~/.claude/settings.json`
-///
-/// # Errors
-/// Returns error if home directory cannot be found or path is invalid
-pub fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
-    if let Some(dir) = custom_dir {
-        let custom_path = PathBuf::from(dir);
-        if custom_path.is_absolute() {
-            Ok(custom_path.join("settings.json"))
-        } else {
-            // If relative path, resolve from home directory
-            let home_dir = dirs::home_dir().context("Could not find home directory")?;
-            Ok(home_dir.join(custom_path).join("settings.json"))
-        }
-    } else {
-        // Default path
-        let home_dir = dirs::home_dir().context("Could not find home directory")?;
-        Ok(home_dir.join(".claude").join("settings.json"))
-    }
 }
 
 /// Validate alias name

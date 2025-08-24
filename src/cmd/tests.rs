@@ -46,7 +46,6 @@ mod tests {
         let storage = ConfigStorage::default();
 
         assert!(storage.configurations.is_empty());
-        assert!(storage.claude_settings_dir.is_none());
     }
 
     #[test]
@@ -98,32 +97,6 @@ mod tests {
     }
 
     #[test]
-    fn test_config_storage_set_claude_settings_dir() {
-        let mut storage = ConfigStorage::default();
-
-        assert!(storage.claude_settings_dir.is_none());
-
-        storage.set_claude_settings_dir("/test/path".to_string());
-
-        assert_eq!(storage.claude_settings_dir, Some("/test/path".to_string()));
-    }
-
-    #[test]
-    fn test_config_storage_get_claude_settings_dir() {
-        let mut storage = ConfigStorage::default();
-
-        // Test when no custom directory is set
-        assert!(storage.get_claude_settings_dir().is_none());
-
-        // Test when custom directory is set
-        storage.set_claude_settings_dir("/test/path".to_string());
-        assert_eq!(
-            storage.get_claude_settings_dir(),
-            Some(&"/test/path".to_string())
-        );
-    }
-
-    #[test]
     fn test_config_storage_save_and_load() {
         let temp_dir = create_test_temp_dir();
         let test_config_path = temp_dir.path().join("configurations.json");
@@ -138,7 +111,6 @@ mod tests {
 
         storage.add_configuration(config1);
         storage.add_configuration(config2);
-        storage.set_claude_settings_dir("/custom/path".to_string());
 
         // Mock the save operation to use temp directory
         let json = serde_json::to_string_pretty(&storage).unwrap();
@@ -151,10 +123,6 @@ mod tests {
         assert_eq!(loaded_storage.configurations.len(), 2);
         assert!(loaded_storage.configurations.contains_key("config1"));
         assert!(loaded_storage.configurations.contains_key("config2"));
-        assert_eq!(
-            loaded_storage.claude_settings_dir,
-            Some("/custom/path".to_string())
-        );
 
         let loaded_config1 = loaded_storage.get_configuration("config1").unwrap();
         assert_eq!(loaded_config1.alias_name, "config1");
@@ -176,7 +144,6 @@ mod tests {
         };
 
         assert!(result.configurations.is_empty());
-        assert!(result.claude_settings_dir.is_none());
     }
 
     #[test]
@@ -219,190 +186,64 @@ mod tests {
         }
     }
 
-    fn create_test_claude_settings() -> ClaudeSettings {
-        let mut settings = ClaudeSettings::default();
-        settings.env.insert(
-            "ANTHROPIC_AUTH_TOKEN".to_string(),
-            "sk-ant-test".to_string(),
-        );
-        settings.env.insert(
-            "ANTHROPIC_BASE_URL".to_string(),
-            "https://api.test.com".to_string(),
-        );
-        settings.other.insert(
-            "other_key".to_string(),
-            serde_json::Value::String("other_value".to_string()),
-        );
-        settings
+
+    #[test]
+    fn test_environment_config_default() {
+        let env_config = EnvironmentConfig::default();
+
+        assert!(env_config.env_vars.is_empty());
     }
 
     #[test]
-    fn test_claude_settings_default() {
-        let settings = ClaudeSettings::default();
-
-        assert!(settings.env.is_empty());
-        assert!(settings.other.is_empty());
-    }
-
-    #[test]
-    fn test_claude_settings_switch_to_config() {
-        let mut settings = ClaudeSettings::default();
+    fn test_environment_config_from_config() {
         let config = create_test_config("test", "sk-ant-test", "https://api.test.com");
+        let env_config = EnvironmentConfig::from_config(&config);
 
-        settings.switch_to_config(&config);
-
+        assert_eq!(env_config.env_vars.len(), 2);
         assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            env_config.env_vars.get("ANTHROPIC_AUTH_TOKEN"),
             Some(&"sk-ant-test".to_string())
         );
         assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
+            env_config.env_vars.get("ANTHROPIC_BASE_URL"),
             Some(&"https://api.test.com".to_string())
         );
     }
 
     #[test]
-    fn test_claude_settings_remove_anthropic_env() {
-        let mut settings = create_test_claude_settings();
+    fn test_environment_config_with_models() {
+        let mut config = create_test_config("test", "sk-ant-test", "https://api.test.com");
+        config.model = Some("claude-3-5-sonnet-20241022".to_string());
+        config.small_fast_model = Some("claude-3-haiku-20240307".to_string());
 
-        settings.remove_anthropic_env();
+        let env_config = EnvironmentConfig::from_config(&config);
 
-        assert!(settings.env.get("ANTHROPIC_AUTH_TOKEN").is_none());
-        assert!(settings.env.get("ANTHROPIC_BASE_URL").is_none());
-        // Ensure other settings are preserved
-        assert!(settings.other.contains_key("other_key"));
-    }
-
-    #[test]
-    fn test_claude_settings_serialization() {
-        let settings = create_test_claude_settings();
-
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-        let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
-
+        assert_eq!(env_config.env_vars.len(), 4);
         assert_eq!(
-            deserialized.env.get("ANTHROPIC_AUTH_TOKEN"),
-            settings.env.get("ANTHROPIC_AUTH_TOKEN")
+            env_config.env_vars.get("ANTHROPIC_MODEL"),
+            Some(&"claude-3-5-sonnet-20241022".to_string())
         );
         assert_eq!(
-            deserialized.env.get("ANTHROPIC_BASE_URL"),
-            settings.env.get("ANTHROPIC_BASE_URL")
-        );
-        assert_eq!(
-            deserialized.other.get("other_key"),
-            settings.other.get("other_key")
+            env_config.env_vars.get("ANTHROPIC_SMALL_FAST_MODEL"),
+            Some(&"claude-3-haiku-20240307".to_string())
         );
     }
 
     #[test]
-    fn test_claude_settings_serialization_empty_env() {
-        let mut settings = ClaudeSettings::default();
-        settings.other.insert(
-            "other_key".to_string(),
-            serde_json::Value::String("other_value".to_string()),
-        );
-
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-
-        // When env is empty, it should not appear in the JSON
-        assert!(!json.contains("\"env\""));
-
-        let deserialized: ClaudeSettings = serde_json::from_str(&json).unwrap();
-        assert!(deserialized.env.is_empty());
-        assert_eq!(
-            deserialized.other.get("other_key"),
-            settings.other.get("other_key")
-        );
+    fn test_environment_config_empty() {
+        let env_config = EnvironmentConfig::empty();
+        assert!(env_config.env_vars.is_empty());
     }
 
     #[test]
-    fn test_claude_settings_deserialization_missing_env() {
-        let json = r#"{
-            "other_key": "other_value",
-            "another_key": 42
-        }"#;
+    fn test_environment_config_as_env_tuples() {
+        let config = create_test_config("test", "sk-ant-test", "https://api.test.com");
+        let env_config = EnvironmentConfig::from_config(&config);
+        let tuples = env_config.as_env_tuples();
 
-        let deserialized: ClaudeSettings = serde_json::from_str(json).unwrap();
-
-        assert!(deserialized.env.is_empty());
-        assert_eq!(
-            deserialized.other.get("other_key"),
-            Some(&serde_json::Value::String("other_value".to_string()))
-        );
-        assert_eq!(
-            deserialized.other.get("another_key"),
-            Some(&serde_json::Value::Number(42.into()))
-        );
-    }
-
-    #[test]
-    fn test_claude_settings_save_and_load() {
-        let temp_dir = TempDir::new().unwrap();
-        let settings_path = temp_dir.path().join("settings.json");
-
-        let settings = create_test_claude_settings();
-
-        // Save settings
-        let json = serde_json::to_string_pretty(&settings).unwrap();
-        fs::write(&settings_path, json).unwrap();
-
-        // Load settings
-        let loaded_content = fs::read_to_string(&settings_path).unwrap();
-        let loaded_settings: ClaudeSettings = serde_json::from_str(&loaded_content).unwrap();
-
-        assert_eq!(
-            loaded_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            settings.env.get("ANTHROPIC_AUTH_TOKEN")
-        );
-        assert_eq!(
-            loaded_settings.env.get("ANTHROPIC_BASE_URL"),
-            settings.env.get("ANTHROPIC_BASE_URL")
-        );
-        assert_eq!(
-            loaded_settings.other.get("other_key"),
-            settings.other.get("other_key")
-        );
-    }
-
-    #[test]
-    fn test_claude_settings_switch_to_config_preserves_other() {
-        let mut settings = create_test_claude_settings();
-        let config = create_test_config("test", "sk-ant-new", "https://api.new.com");
-
-        settings.switch_to_config(&config);
-
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-new".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.new.com".to_string())
-        );
-        assert!(settings.other.contains_key("other_key"));
-    }
-
-    #[test]
-    fn test_claude_settings_multiple_switches() {
-        let mut settings = ClaudeSettings::default();
-        let config1 = create_test_config("test1", "sk-ant-test1", "https://api1.test.com");
-        let config2 = create_test_config("test2", "sk-ant-test2", "https://api2.test.com");
-
-        settings.switch_to_config(&config1);
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test1".to_string())
-        );
-
-        settings.switch_to_config(&config2);
-        assert_eq!(
-            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test2".to_string())
-        );
-        assert_eq!(
-            settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api2.test.com".to_string())
-        );
+        assert_eq!(tuples.len(), 2);
+        assert!(tuples.contains(&("ANTHROPIC_AUTH_TOKEN".to_string(), "sk-ant-test".to_string())));
+        assert!(tuples.contains(&("ANTHROPIC_BASE_URL".to_string(), "https://api.test.com".to_string())));
     }
 
     #[test]
@@ -440,40 +281,6 @@ mod tests {
             result.unwrap_err().to_string(),
             "Alias name cannot contain whitespace"
         );
-    }
-
-    #[test]
-    fn test_get_claude_settings_path_absolute() {
-        let custom_dir = if cfg!(windows) {
-            // On Windows, use an absolute path that doesn't start with /
-            "C:/absolute/path/to/claude"
-        } else {
-            "/absolute/path/to/claude"
-        };
-        let result = get_claude_settings_path(Some(custom_dir));
-
-        assert!(result.is_ok());
-        let expected_path = std::path::PathBuf::from(custom_dir).join("settings.json");
-        assert_eq!(result.unwrap(), expected_path);
-    }
-
-    #[test]
-    fn test_get_claude_settings_path_relative() {
-        let custom_dir = "relative/path";
-        let result = get_claude_settings_path(Some(custom_dir));
-
-        assert!(result.is_ok());
-        let path = result.unwrap();
-        assert!(path.ends_with("relative/path/settings.json"));
-    }
-
-    #[test]
-    fn test_get_claude_settings_path_default() {
-        let result = get_claude_settings_path(None);
-
-        assert!(result.is_ok());
-        let path = result.unwrap();
-        assert!(path.ends_with(".claude/settings.json"));
     }
 
     #[test]
