@@ -568,16 +568,30 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_parsing_switch_command() {
+    fn test_cli_parsing_use_command() {
+        use clap::Parser;
+
+        let args = vec!["cc-switch", "use", "my-config"];
+        let cli = Cli::try_parse_from(args).unwrap();
+
+        if let Some(Commands::Use { alias_name }) = cli.command {
+            assert_eq!(alias_name, "my-config");
+        } else {
+            panic!("Expected Use command");
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_switch_alias() {
         use clap::Parser;
 
         let args = vec!["cc-switch", "switch", "my-config"];
         let cli = Cli::try_parse_from(args).unwrap();
 
-        if let Some(Commands::Switch { alias_name }) = cli.command {
+        if let Some(Commands::Use { alias_name }) = cli.command {
             assert_eq!(alias_name, "my-config");
         } else {
-            panic!("Expected Switch command");
+            panic!("Expected Use command (switch alias)");
         }
     }
 

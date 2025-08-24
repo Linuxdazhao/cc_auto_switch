@@ -1,9 +1,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use colored::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
-use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -25,11 +24,12 @@ EXAMPLES:
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
     cc-switch add my-config -i  # Interactive mode
     cc-switch add my-config --force  # Overwrite existing config
-    cc-switch switch my-config
-    cc-switch switch cc
+    cc-switch use my-config
+    cc-switch use cc
     cc-switch list
     cc-switch remove config1 config2 config3
     cc-switch set-default-dir /path/to/claude/config
+    cc-switch current  # Interactive menu for configuration management
 
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
@@ -48,7 +48,7 @@ SHELL COMPLETION AND ALIASES:
     echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish
     
     Then use:
-    cs switch my-config    # Instead of cc-switch switch my-config
+    cs use my-config    # Instead of cc-switch use my-config
     ccd                    # Quick Claude launch"
 )]
 pub struct Cli {
@@ -171,19 +171,22 @@ pub enum Commands {
         #[arg(default_value = "fish")]
         shell: String,
     },
-    /// Switch to a configuration by alias name
+    /// Use a configuration by alias name
     ///
     /// Switches Claude to use the specified API configuration
     /// Use 'cc' as alias name to reset to default Claude behavior
-    #[command(alias = "sw")]
-    Switch {
+    #[command(alias = "sw", alias = "switch")]
+    Use {
         /// Configuration alias name (use 'cc' to reset to default)
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
     },
-    /// Show current API configuration
+    /// Interactive current configuration menu
     ///
-    /// Displays the current Anthropic environment variables from Claude settings
+    /// Shows current configuration and provides interactive menu for:
+    /// 1. Execute claude --dangerously-skip-permissions
+    /// 2. Switch configuration (lists available aliases)
+    /// 3. Execute claude command with custom arguments
     #[command(alias = "cur")]
     Current,
 }
@@ -514,82 +517,6 @@ pub fn get_config_storage_path() -> Result<PathBuf> {
     Ok(home_dir.join(".cc-switch").join("configurations.json"))
 }
 
-/// Get the current shell type
-///
-/// Detects the current shell environment from environment variables
-///
-/// # Returns
-/// Shell type as string ("fish", "bash", "zsh", "unknown")
-fn get_current_shell() -> String {
-    // Check for fish shell specifically first
-    if let Ok(shell) = env::var("SHELL") {
-        if shell.contains("fish") {
-            return "fish".to_string();
-        } else if shell.contains("bash") {
-            return "bash".to_string();
-        } else if shell.contains("zsh") {
-            return "zsh".to_string();
-        }
-    }
-
-    // Check current process name
-    if let Ok(shell) = env::var("0") {
-        if shell.contains("fish") {
-            return "fish".to_string();
-        } else if shell.contains("bash") {
-            return "bash".to_string();
-        } else if shell.contains("zsh") {
-            return "zsh".to_string();
-        }
-    }
-
-    // Check for fish-specific environment variables
-    if env::var("FISH_VERSION").is_ok() {
-        return "fish".to_string();
-    }
-
-    "unknown".to_string()
-}
-
-/// Apply color formatting based on shell type
-///
-/// # Arguments
-/// * `text` - The text to format
-/// * `color_type` - The color type to apply ("cyan", "yellow", "green", "white")
-/// * `bold` - Whether to make the text bold
-///
-/// # Returns
-/// Formatted text with appropriate ANSI escape sequences
-fn format_color(text: &str, color_type: &str, bold: bool) -> String {
-    let shell = get_current_shell();
-
-    // For testing purposes, check for a special environment variable
-    if env::var("CC_SWITCH_TEST_FISH").is_ok() {
-        return text.to_string();
-    }
-
-    // For fish shell, avoid color formatting in interactive display to prevent alignment issues
-    if shell == "fish" {
-        return text.to_string();
-    }
-
-    // Use simpler formatting for fish shell to avoid display issues
-    let color_code = match color_type {
-        "cyan" => "\x1b[96m",
-        "yellow" => "\x1b[93m",
-        "green" => "\x1b[92m",
-        "white" => "\x1b[97m",
-        "red" => "\x1b[91m",
-        _ => "",
-    };
-
-    let bold_code = if bold { "\x1b[1m" } else { "" };
-    let reset_code = "\x1b[0m";
-
-    // Other shells handle ANSI codes better
-    format!("{bold_code}{color_code}{text}{reset_code}")
-}
-
 /// Get the path to the Claude settings file
 ///
 /// Returns the path to settings.json, using custom directory if configured
@@ -614,508 +541,261 @@ pub fn get_claude_settings_path(custom_dir: Option<&str>) -> Result<PathBuf> {
     }
 }
 
-/// Interactive configuration selection with keyboard navigation
+/// Handle interactive current command
 ///
-/// Displays available configurations in a navigable menu with:
-/// - Keyboard up/down navigation
-/// - Visual highlighting of selected item
-/// - Color indicators for keyboard support
-/// - Enter to confirm selection
-///
-/// # Errors
-/// Returns error if file operations fail or terminal setup fails
-fn interactive_config_selection() -> Result<()> {
-    let storage = ConfigStorage::load()?;
-    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-    let claude_settings = ClaudeSettings::load(custom_dir)?;
-
-    // Get current configuration info
-    let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
-    let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
-    let current_model = claude_settings.env.get("ANTHROPIC_MODEL");
-    let current_small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
-
-    // Create list of available options
-    let mut options = Vec::new();
-
-    // Add current configuration info if available
-    if current_token.is_some() || current_url.is_some() {
-        let current_info = if let (Some(token), Some(_url)) = (current_token, current_url) {
-            format!(
-                "Current: {}",
-                if token.len() > 20 {
-                    format!("{}...", &token[..20])
-                } else {
-                    token.clone()
-                }
-            )
-        } else if let Some(token) = current_token {
-            format!(
-                "Current: {}",
-                if token.len() > 20 {
-                    format!("{}...", &token[..20])
-                } else {
-                    token.clone()
-                }
-            )
-        } else if let Some(_url) = current_url {
-            "Current: No token".to_string()
-        } else {
-            "Current: No configuration".to_string()
-        };
-        options.push(("current", current_info));
-    }
-
-    // Add "cc" option to reset to default
-    options.push(("cc", "Reset to default".to_string()));
-
-    // Add stored configurations - simplified to just show alias
-    for alias_name in storage.configurations.keys() {
-        options.push((alias_name.as_str(), alias_name.clone()));
-    }
-
-    // Calculate maximum description length for alignment
-    let max_desc_length = options
-        .iter()
-        .map(|(_, desc)| desc.len())
-        .max()
-        .unwrap_or(0);
-
-    // Ensure minimum width for better alignment
-    let min_width = 40;
-    let display_width = std::cmp::max(max_desc_length, min_width);
-
-    if options.is_empty() {
-        println!("No configurations available. Use 'add' command to create one.");
-        return Ok(());
-    }
-
-    // Setup terminal for raw mode with better error handling
-    if let Err(e) = crossterm::terminal::enable_raw_mode() {
-        eprintln!("Warning: Could not enable terminal raw mode: {e}");
-        eprintln!("Falling back to simple display mode");
-        return show_simple_current_display();
-    }
-
-    if let Err(e) = crossterm::execute!(
-        io::stdout(),
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-    ) {
-        eprintln!("Warning: Could not clear terminal: {e}");
-        // Continue without clearing
-    }
-
-    let mut selected_index = 0;
-    let mut should_exit = false;
-
-    while !should_exit {
-        // Clear screen
-        crossterm::execute!(
-            io::stdout(),
-            crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-        )?;
-        crossterm::execute!(io::stdout(), crossterm::cursor::MoveTo(0, 0))?;
-
-        // Display header with keyboard instructions
-        let shell = get_current_shell();
-        let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
-
-        if use_fish_mode {
-            println!("=== Claude Configuration Selection ===");
-            println!("Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel");
-            println!("---------------------------------------------------------");
-            println!();
-
-            // Display options with proper alignment
-            for (index, (_key, description)) in options.iter().enumerate() {
-                let padded_desc = format!("{description:<display_width$}");
-                if index == selected_index {
-                    // Highlight selected item with proper spacing
-                    println!("  > {padded_desc}");
-                } else {
-                    println!("    {padded_desc}");
-                }
-            }
-
-            println!();
-            println!("---------------------------------------------------------");
-            println!("Selected: {}", &options[selected_index].1);
-        } else {
-            println!(
-                "{}",
-                format_color("=== Claude Configuration Selection ===", "cyan", true)
-            );
-            println!(
-                "{}",
-                format_color(
-                    "Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel",
-                    "yellow",
-                    true
-                )
-            );
-            println!(
-                "{}",
-                format_color(
-                    "---------------------------------------------------------",
-                    "cyan",
-                    false
-                )
-            );
-            println!();
-
-            // Display options with proper alignment
-            for (index, (_key, description)) in options.iter().enumerate() {
-                let padded_desc = format!("{description:<display_width$}");
-                if index == selected_index {
-                    // Highlight selected item with proper spacing
-                    println!(
-                        "  {} {}",
-                        format_color(">", "green", true),
-                        format_color(&padded_desc, "white", true)
-                    );
-                } else {
-                    println!("    {padded_desc}");
-                }
-            }
-
-            println!();
-            println!(
-                "{}",
-                format_color(
-                    "---------------------------------------------------------",
-                    "cyan",
-                    false
-                )
-            );
-            println!(
-                "Selected: {}",
-                format_color(&options[selected_index].1, "yellow", false)
-            );
-        }
-
-        // Read keyboard input
-        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-            match code {
-                KeyCode::Up => {
-                    if selected_index > 0 {
-                        selected_index = selected_index.saturating_sub(1);
-                    }
-                }
-                KeyCode::Down => {
-                    if selected_index < options.len() - 1 {
-                        selected_index += 1;
-                    }
-                }
-                KeyCode::Enter => {
-                    should_exit = true;
-                }
-                KeyCode::Esc => {
-                    // Restore terminal and exit
-                    if let Err(e) = crossterm::terminal::disable_raw_mode() {
-                        eprintln!("Warning: Could not disable terminal raw mode: {e}");
-                    }
-                    if use_fish_mode {
-                        println!("\nSelection cancelled.");
-                    } else {
-                        println!("\n{}", format_color("Selection cancelled.", "red", false));
-                    }
-                    return Ok(());
-                }
-                _ => {}
-            }
-        }
-    }
-
-    // Restore terminal
-    if let Err(e) = crossterm::terminal::disable_raw_mode() {
-        eprintln!("Warning: Could not disable terminal raw mode: {e}");
-    }
-
-    // Process selection
-    let selected_key = options[selected_index].0;
-    let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
-
-    if use_fish_mode {
-        println!("\nSelected: {}", options[selected_index].1);
-
-        if selected_key == "current" {
-            // Show current configuration info
-            println!("\nCurrent Configuration:");
-            if let Some(token) = current_token {
-                println!("Token: {token}");
-            } else {
-                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            }
-
-            if let Some(url) = current_url {
-                println!("URL: {url}");
-            } else {
-                println!("URL: No ANTHROPIC_BASE_URL configured");
-            }
-
-            if let Some(model) = current_model {
-                println!("Model: {model}");
-            } else {
-                println!("Model: Not configured (using default)");
-            }
-
-            if let Some(small_fast_model) = current_small_fast_model {
-                println!("Small Fast Model: {small_fast_model}");
-            } else {
-                println!("Small Fast Model: Not configured (using default)");
-            }
-        } else {
-            // Switch to selected configuration
-            handle_switch_command(selected_key)?;
-        }
-    } else {
-        println!(
-            "\n{}",
-            format_color(
-                &format!("Selected: {}", options[selected_index].1),
-                "green",
-                false
-            )
-        );
-
-        if selected_key == "current" {
-            // Show current configuration info
-            println!("\n{}", format_color("Current Configuration:", "cyan", true));
-            if let Some(token) = current_token {
-                println!("Token: {token}");
-            } else {
-                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            }
-
-            if let Some(url) = current_url {
-                println!("URL: {url}");
-            } else {
-                println!("URL: No ANTHROPIC_BASE_URL configured");
-            }
-
-            if let Some(model) = current_model {
-                println!("Model: {model}");
-            } else {
-                println!("Model: Not configured (using default)");
-            }
-
-            if let Some(small_fast_model) = current_small_fast_model {
-                println!("Small Fast Model: {small_fast_model}");
-            } else {
-                println!("Small Fast Model: Not configured (using default)");
-            }
-        } else {
-            // Switch to selected configuration
-            handle_switch_command(selected_key)?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Show simple current configuration display (fallback mode)
-///
-/// Displays current configuration and available options without interactive menu
+/// Provides interactive menu for:
+/// 1. Execute claude --dangerously-skip-permissions
+/// 2. Switch configuration (lists available aliases)
+/// 3. Execute claude command
 ///
 /// # Errors
-/// Returns error if file operations fail
-fn show_simple_current_display() -> Result<()> {
-    let storage = ConfigStorage::load()?;
-    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-    let claude_settings = ClaudeSettings::load(custom_dir)?;
-
-    let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
-    let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
-    let current_model = claude_settings.env.get("ANTHROPIC_MODEL");
-    let current_small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
-
-    let shell = get_current_shell();
-
-    // For testing purposes, check for a special environment variable
-    let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
-
-    // For fish shell, use simple text without color codes
-    if use_fish_mode {
-        println!("Current Configuration:");
-        if let Some(token) = current_token {
-            println!("Token: {token}");
-        } else {
-            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-        }
-        
-        if let Some(url) = current_url {
-            println!("URL: {url}");
-        } else {
-            println!("URL: No ANTHROPIC_BASE_URL configured");
-        }
-        
-        if let Some(model) = current_model {
-            println!("Model: {model}");
-        } else {
-            println!("Model: Not configured (using default)");
-        }
-        
-        if let Some(small_fast_model) = current_small_fast_model {
-            println!("Small Fast Model: {small_fast_model}");
-        } else {
-            println!("Small Fast Model: Not configured (using default)");
-        }
-
-        println!("\nAvailable configurations:");
-
-        // Show "cc" option to reset to default
-        println!("  cc  - Reset to default");
-
-        // Show stored configurations - simplified to just show alias
-        for alias_name in storage.configurations.keys() {
-            println!("  {alias_name}  - Switch to this configuration");
-        }
-
-        println!("\nUse 'cc-switch <alias>' to switch configuration");
-    } else {
-        // Other shells can use color formatting
-        println!("{}", format_color("Current Configuration:", "cyan", true));
-        if let Some(token) = current_token {
-            println!("Token: {token}");
-        } else {
-            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-        }
-        
-        if let Some(url) = current_url {
-            println!("URL: {url}");
-        } else {
-            println!("URL: No ANTHROPIC_BASE_URL configured");
-        }
-        
-        if let Some(model) = current_model {
-            println!("Model: {model}");
-        } else {
-            println!("Model: Not configured (using default)");
-        }
-        
-        if let Some(small_fast_model) = current_small_fast_model {
-            println!("Small Fast Model: {small_fast_model}");
-        } else {
-            println!("Small Fast Model: Not configured (using default)");
-        }
-
-        println!(
-            "\n{}",
-            format_color("Available configurations:", "yellow", true)
-        );
-
-        // Show "cc" option to reset to default
-        println!("  cc  - Reset to default");
-
-        // Show stored configurations - simplified to just show alias
-        for alias_name in storage.configurations.keys() {
-            println!("  {alias_name}  - Switch to this configuration");
-        }
-
-        println!(
-            "\n{}",
-            format_color(
-                "Use 'cc-switch <alias>' to switch configuration",
-                "green",
-                false
-            )
-        );
-    }
-    Ok(())
-}
-
-/// Handle showing current configuration
-///
-/// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
-/// If configurations are available, shows interactive selection menu
-///
-/// # Errors
-/// Returns error if file operations fail
+/// Returns error if file operations fail or user input fails
 pub fn handle_current_command() -> Result<()> {
     let storage = ConfigStorage::load()?;
+    let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+    let claude_settings = ClaudeSettings::load(custom_dir)?;
 
-    // Check if we have configurations to show interactive menu
-    if !storage.configurations.is_empty() {
-        // Show interactive selection menu
-        interactive_config_selection()?;
-    } else {
-        // Fallback to simple display if no configurations
-        let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-        let claude_settings = ClaudeSettings::load(custom_dir)?;
+    // Show current configuration
+    let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
+    let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
 
-        let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
-        let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
-        let model = claude_settings.env.get("ANTHROPIC_MODEL");
-        let small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
-
-        // Check for fish mode
-        let use_fish_mode =
-            env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
-
-        if use_fish_mode {
-            println!("Current Configuration:");
-            if let Some(token) = token {
-                println!("Token: {token}");
-            } else {
-                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            }
-            
-            if let Some(url) = url {
-                println!("URL: {url}");
-            } else {
-                println!("URL: No ANTHROPIC_BASE_URL configured");
-            }
-            
-            if let Some(model) = model {
-                println!("Model: {model}");
-            } else {
-                println!("Model: Not configured (using default)");
-            }
-            
-            if let Some(small_fast_model) = small_fast_model {
-                println!("Small Fast Model: {small_fast_model}");
-            } else {
-                println!("Small Fast Model: Not configured (using default)");
-            }
-
-            println!("\nNo configurations available for selection.");
-            println!("Use 'add' command to create configurations for interactive selection.");
+    println!("\n{}", "Current Configuration:".green().bold());
+    if let Some(token) = token {
+        if let Some(url) = url {
+            println!("Token: {token}");
+            println!("URL: {url}");
         } else {
-            println!("{}", format_color("Current Configuration:", "cyan", true));
-            if let Some(token) = token {
-                println!("Token: {token}");
-            } else {
-                println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            }
-            
-            if let Some(url) = url {
-                println!("URL: {url}");
-            } else {
-                println!("URL: No ANTHROPIC_BASE_URL configured");
-            }
-            
-            if let Some(model) = model {
-                println!("Model: {model}");
-            } else {
-                println!("Model: Not configured (using default)");
-            }
-            
-            if let Some(small_fast_model) = small_fast_model {
-                println!("Small Fast Model: {small_fast_model}");
-            } else {
-                println!("Small Fast Model: Not configured (using default)");
-            }
-
-            println!(
-                "\n{}",
-                format_color(
-                    "No configurations available for selection.",
-                    "yellow",
-                    false
-                )
-            );
-            println!("Use 'add' command to create configurations for interactive selection.");
+            println!("Token: {token}");
+            println!("URL: No ANTHROPIC_BASE_URL configured");
         }
+    } else if let Some(url) = url {
+        println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+        println!("URL: {url}");
+    } else {
+        println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+    }
+
+    // Interactive menu loop
+    loop {
+        println!("\n{}", "Available Actions:".blue().bold());
+        println!("1. Execute claude --dangerously-skip-permissions");
+        println!("2. Switch configuration");
+        println!("3. Execute claude command");
+        println!("4. Exit");
+
+        print!("\nPlease select an option (1-4): ");
+        io::stdout().flush().context("Failed to flush stdout")?;
+
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .context("Failed to read input")?;
+
+        let choice = input.trim();
+
+        match choice {
+            "1" => {
+                println!("\nExecuting: claude --dangerously-skip-permissions");
+                execute_clude_command(true)?;
+                break;
+            }
+            "2" => {
+                if let Some(selected_config) = show_config_selection_menu(&storage)? {
+                    // Switch to selected configuration
+                    let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+                    claude_settings.switch_to_config(&selected_config);
+                    claude_settings.save(custom_dir)?;
+                    println!(
+                        "\nSwitched to configuration '{}' (token: {}, url: {})",
+                        selected_config.alias_name, selected_config.token, selected_config.url
+                    );
+
+                    // Wait and launch Claude
+                    println!("Waiting 0.5 second before launching Claude...");
+                    thread::sleep(Duration::from_millis(500));
+
+                    println!("Launching Claude CLI...");
+                    let mut child = Command::new("claude")
+                        .arg("--dangerously-skip-permissions")
+                        .stdin(Stdio::inherit())
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()
+                        .with_context(
+                            || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+                        )?;
+
+                    let status = child
+                        .wait()
+                        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+                    if !status.success() {
+                        anyhow::bail!("Claude CLI exited with error status: {}", status);
+                    }
+                    break;
+                }
+            }
+            "3" => {
+                print!("\nEnter claude command arguments (or press Enter for default): ");
+                io::stdout().flush().context("Failed to flush stdout")?;
+
+                let mut args_input = String::new();
+                io::stdin()
+                    .read_line(&mut args_input)
+                    .context("Failed to read input")?;
+
+                let args = args_input.trim();
+                if args.is_empty() {
+                    println!("\nExecuting: claude");
+                    execute_clude_command(false)?;
+                } else {
+                    println!("\nExecuting: claude {args}");
+                    execute_clude_with_args(args)?;
+                }
+                break;
+            }
+            "4" => {
+                println!("Exiting...");
+                break;
+            }
+            _ => {
+                println!("Invalid option. Please select 1-4.");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Show configuration selection menu
+///
+/// # Arguments
+/// * `storage` - Reference to configuration storage
+///
+/// # Returns
+/// Option<Configuration> - Selected configuration or None if cancelled
+fn show_config_selection_menu(storage: &ConfigStorage) -> Result<Option<Configuration>> {
+    if storage.configurations.is_empty() {
+        println!("No configurations available. Use 'add' command to create configurations first.");
+        return Ok(None);
+    }
+
+    println!("\n{}", "Available Configurations:".blue().bold());
+
+    let mut configs: Vec<&Configuration> = storage.configurations.values().collect();
+    configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
+
+    for (index, config) in configs.iter().enumerate() {
+        let mut config_info = format!("token: {}, url: {}", config.token, config.url);
+        if let Some(model) = &config.model {
+            config_info.push_str(&format!(", model: {model}"));
+        }
+        if let Some(small_fast_model) = &config.small_fast_model {
+            config_info.push_str(&format!(", small_fast_model: {small_fast_model}"));
+        }
+        println!("{}. {} ({})", index + 1, config.alias_name, config_info);
+    }
+
+    println!(
+        "{}. Reset to default (remove API config)",
+        configs.len() + 1
+    );
+    println!("{}. Cancel", configs.len() + 2);
+
+    print!(
+        "\nPlease select a configuration (1-{}): ",
+        configs.len() + 2
+    );
+    io::stdout().flush().context("Failed to flush stdout")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("Failed to read input")?;
+
+    let choice = input.trim();
+
+    match choice.parse::<usize>() {
+        Ok(num) => {
+            if num >= 1 && num <= configs.len() {
+                Ok(Some(configs[num - 1].clone()))
+            } else if num == configs.len() + 1 {
+                // Reset to default
+                let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+                let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+                claude_settings.remove_anthropic_env();
+                claude_settings.save(custom_dir)?;
+                println!("Reset to default configuration (removed API config)");
+                Ok(None)
+            } else if num == configs.len() + 2 {
+                Ok(None)
+            } else {
+                println!("Invalid selection.");
+                Ok(None)
+            }
+        }
+        Err(_) => {
+            println!("Invalid input. Please enter a number.");
+            Ok(None)
+        }
+    }
+}
+
+/// Execute claude command with or without --dangerously-skip-permissions
+///
+/// # Arguments
+/// * `skip_permissions` - Whether to add --dangerously-skip-permissions flag
+fn execute_clude_command(skip_permissions: bool) -> Result<()> {
+    let mut command = Command::new("claude");
+    if skip_permissions {
+        command.arg("--dangerously-skip-permissions");
+    }
+
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let mut child = command.spawn().with_context(
+        || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+    )?;
+
+    let status = child
+        .wait()
+        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+    if !status.success() {
+        anyhow::bail!("Claude CLI exited with error status: {}", status);
+    }
+
+    Ok(())
+}
+
+/// Execute claude command with custom arguments
+///
+/// # Arguments
+/// * `args` - Command line arguments to pass to claude
+fn execute_clude_with_args(args: &str) -> Result<()> {
+    let args_vec: Vec<&str> = args.split_whitespace().collect();
+
+    let mut command = Command::new("claude");
+    command.args(args_vec);
+
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let mut child = command.spawn().with_context(
+        || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+    )?;
+
+    let status = child
+        .wait()
+        .with_context(|| "Failed to wait for Claude CLI process")?;
+
+    if !status.success() {
+        anyhow::bail!("Claude CLI exited with error status: {}", status);
     }
 
     Ok(())
@@ -1358,7 +1038,7 @@ pub fn handle_switch_command(alias_name: &str) -> Result<()> {
     println!("Waiting 0.5 second before launching Claude...");
     println!(
         "Executing: claude {}",
-        format_color("--dangerously-skip-permissions", "red", false)
+        "--dangerously-skip-permissions".red()
     );
     thread::sleep(Duration::from_millis(500));
 
@@ -1458,11 +1138,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.zshrc'");
             println!(
                 "{}",
-                format_color(
-                    "# Aliases 'cs' and 'ccd' have been added for convenience",
-                    "green",
-                    false
-                )
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
             );
         }
         "bash" => {
@@ -1486,11 +1162,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.bashrc'");
             println!(
                 "{}",
-                format_color(
-                    "# Aliases 'cs' and 'ccd' have been added for convenience",
-                    "green",
-                    false
-                )
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
             );
         }
         "elvish" => {
@@ -1509,11 +1181,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# Elvish completion generated successfully");
             println!(
                 "{}",
-                format_color(
-                    "# Aliases 'cs' and 'ccd' have been added for convenience",
-                    "green",
-                    false
-                )
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
             );
         }
         "powershell" => {
@@ -1532,11 +1200,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# PowerShell completion generated successfully");
             println!(
                 "{}",
-                format_color(
-                    "# Aliases 'cs' and 'ccd' have been added for convenience",
-                    "green",
-                    false
-                )
+                "# Aliases 'cs' and 'ccd' have been added for convenience".green()
             );
         }
         _ => {
@@ -1554,6 +1218,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
 ///
 /// Outputs all stored configuration aliases, one per line
 /// Also includes 'cc' as a special alias for resetting to default
+/// For contexts where user types 'cc-switch use c' or similar, 'current' is prioritized first
 ///
 /// # Errors
 /// Returns error if loading configurations fails
@@ -1563,9 +1228,20 @@ fn list_aliases_for_completion() -> Result<()> {
     // Always include 'cc' for reset functionality
     println!("cc");
 
-    // Output all stored aliases
-    for alias_name in storage.configurations.keys() {
-        println!("{alias_name}");
+    // Prioritize 'current' first if it exists - this ensures when user types 'cc-switch use c'
+    // or 'cs use c', the 'current' configuration appears first in completion
+    if storage.configurations.contains_key("current") {
+        println!("current");
+    }
+
+    // Output all other stored aliases in alphabetical order
+    let mut aliases: Vec<String> = storage.configurations.keys().cloned().collect();
+    aliases.sort();
+
+    for alias_name in aliases {
+        if alias_name != "current" {
+            println!("{alias_name}");
+        }
     }
 
     Ok(())
@@ -1584,8 +1260,13 @@ fn generate_fish_completion(app: &mut clap::Command) {
         &mut std::io::stdout(),
     );
 
-    // Add custom completion for switch subcommand
-    println!("\n# Custom completion for switch subcommand with dynamic aliases");
+    // Add custom completion for use subcommand with dynamic aliases
+    println!("\n# Custom completion for use subcommand with dynamic aliases");
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand use' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
+    );
+    // Also support 'switch' as alias for 'use'
+    println!("# Custom completion for switch subcommand (alias for use)");
     println!(
         "complete -c cc-switch -n '__fish_cc_switch_using_subcommand switch' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
     );
@@ -1603,21 +1284,28 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!(
         "# echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish"
     );
+    println!("\n# IMPORTANT: For cs alias completion to work, you must also:");
+    println!(
+        "# 1. Add the completion script: cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish"
+    );
+    println!("# 2. OR run: eval \"(cc-switch completion fish)\" | source");
 
     // Add completion for the 'cs' alias
     println!("\n# Completion for the 'cs' alias");
     println!("complete -c cs -w cc-switch");
+
+    // Add completion for cs alias subcommands (but NOT configuration aliases at top level)
+    println!("\n# Completion for 'cs' alias subcommands");
+    println!(
+        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current' -d 'Subcommand'"
+    );
 
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
     println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
     println!(
         "{}",
-        format_color(
-            "# Aliases 'cs' and 'ccd' have been added for convenience",
-            "green",
-            false
-        )
+        "# Aliases 'cs' and 'ccd' have been added for convenience".green()
     );
 }
 
@@ -1702,8 +1390,15 @@ pub fn run() -> Result<()> {
                     println!("No configurations stored");
                 } else {
                     println!("Stored configurations:");
-                    for alias_name in storage.configurations.keys() {
-                        println!("  {alias_name}");
+                    for (alias_name, config) in &storage.configurations {
+                        let mut info = format!("token={}, url={}", config.token, config.url);
+                        if let Some(model) = &config.model {
+                            info.push_str(&format!(", model={model}"));
+                        }
+                        if let Some(small_fast_model) = &config.small_fast_model {
+                            info.push_str(&format!(", small_fast_model={small_fast_model}"));
+                        }
+                        println!("  {alias_name}: {info}");
                     }
                 }
                 if let Some(dir) = &storage.claude_settings_dir {
@@ -1723,7 +1418,7 @@ pub fn run() -> Result<()> {
             Commands::Alias { shell } => {
                 generate_aliases(&shell)?;
             }
-            Commands::Switch { alias_name } => {
+            Commands::Use { alias_name } => {
                 handle_switch_command(&alias_name)?;
             }
             Commands::Current => {
