@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod integration_tests {
-    use crate::cmd::main::*;
+    use crate::cmd::config::*;
     use std::fs;
     use tempfile::TempDir;
 

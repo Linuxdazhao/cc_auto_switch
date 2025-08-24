@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::cmd::main::*;
+    use crate::cmd::config::*;
+    use crate::cmd::cli::*;
     use std::fs;
     use tempfile::TempDir;
 

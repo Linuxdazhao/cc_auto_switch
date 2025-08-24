@@ -1,178 +1,211 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为 Claude Code (claude.ai/code) 提供在此代码库中工作的指导。
 
-## Project Overview
+**重要说明：始终使用简体中文和我对话**
 
-`cc-switch` is a Rust CLI tool for managing multiple Claude API configurations and automatically switching between them. The tool allows users to store different API configurations (alias, token, URL) and switch between them by modifying Claude's settings.json file. This is particularly useful for developers who work with multiple Claude API endpoints or need to switch between different accounts.
+## 项目概述
 
-## Development Commands
+`cc-switch` 是一个用于管理多个 Claude API 配置并自动切换的 Rust CLI 工具。该工具允许用户存储不同的 API 配置（别名、令牌、URL），并通过修改 Claude 的 settings.json 文件在它们之间切换。这对于需要使用多个 Claude API 端点或需要在不同账户间切换的开发者特别有用。
 
-### Building and Running
+## 开发命令
+
+### 构建和运行
 ```bash
-# Build the project
+# 构建项目
 cargo build
 
-# Run the project
+# 运行项目
 cargo run
 
-# Build in release mode
+# 发布模式构建
 cargo build --release
 
-# Run with release optimization
+# 发布模式运行
 cargo run --release
 ```
 
-### Testing
+### 测试
 ```bash
-# Run all tests
+# 运行所有测试
 cargo test
 
-# Run tests with output
+# 运行测试并显示输出
 cargo test -- --nocapture
 
-# Run specific test
+# 运行特定测试
 cargo test test_name
 ```
 
-### Code Quality
+### 代码质量
 ```bash
-# Check for compilation errors
+# 检查编译错误
 cargo check
 
-# Format code
+# 格式化代码
 cargo fmt
 
-# Lint code
+# 代码检查
 cargo clippy
 
-# Lint with all warnings
+# 带所有警告的代码检查
 cargo clippy -- -W warnings
 
-# Run security audit
+# 运行安全审计
 cargo audit
 ```
 
-### Pre-commit Hooks
+### 提交前钩子
 ```bash
-# Setup pre-commit hooks (one-time setup)
+# 设置提交前钩子（一次性设置）
 ./scripts/setup-pre-commit.sh
 
-# Run pre-commit hooks manually
+# 手动运行提交前钩子
 pre-commit run --all-files
 
-# Run pre-commit on specific files
+# 对特定文件运行提交前钩子
 pre-commit run --files src/main.rs
 
-# Update pre-commit hooks
+# 更新提交前钩子
 pre-commit autoupdate
 
-# Uninstall pre-commit hooks
+# 卸载提交前钩子
 pre-commit uninstall
 ```
 
-### Version Management & Publishing
+### 版本管理和发布
 
-The project includes automated version management and publishing to crates.io:
+项目包含自动化版本管理和发布到 crates.io 的功能：
 
-**Complete Release Workflow**:
+**完整发布工作流程**：
 ```bash
-# Run complete release workflow (version increment + commit + publish)
+# 运行完整发布工作流程（版本递增 + 提交 + 发布）
 ./scripts/release.sh
 ```
 
-**Manual Version Management**:
+**手动版本管理**：
 ```bash
-# Increment version manually
+# 手动递增版本
 ./scripts/increment-version.sh
 
-# Publish to crates.io manually
+# 手动发布到 crates.io
 ./scripts/publish.sh
 ```
 
-**Version Format**: Uses semantic versioning (x.y.z) where:
-- Major version (x): Breaking changes
-- Minor version (y): New features
-- Patch version (z): Bug fixes and patches
+**版本格式**：使用语义版本控制 (x.y.z)，其中：
+- 主版本 (x)：破坏性更改
+- 次版本 (y)：新功能
+- 修补版本 (z)：错误修复和补丁
 
-**Automated Workflow**:
-1. Make code changes
-2. `./scripts/release.sh` - Handles version increment, commit, and publish
-3. Version is automatically incremented in Cargo.toml
-4. Tests are run automatically
-5. Package is automatically published to crates.io
+**自动化工作流程**：
+1. 进行代码更改
+2. `./scripts/release.sh` - 处理版本递增、提交和发布
+3. Cargo.toml 中的版本自动递增
+4. 测试自动运行
+5. 包自动发布到 crates.io
 
-**Manual Workflow**:
-1. Make code changes
-2. `./scripts/increment-version.sh` - Increment version
-3. `git add . && git commit -m "Your message"`
-4. `cargo test` - Run tests
-5. `./scripts/publish.sh` - Publish to crates.io
+**手动工作流程**：
+1. 进行代码更改
+2. `./scripts/increment-version.sh` - 递增版本
+3. `git add . && git commit -m "您的消息"`
+4. `cargo test` - 运行测试
+5. `./scripts/publish.sh` - 发布到 crates.io
 
-### Dependencies
+### 依赖管理
 ```bash
-# Update dependencies
+# 更新依赖
 cargo update
 
-# Check for outdated dependencies
+# 检查过时的依赖
 cargo outdated
 
-# Add new dependency
+# 添加新依赖
 cargo add dependency_name
 
-# Remove dependency
+# 移除依赖
 cargo remove dependency_name
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 cc_auto_switch/
-├── Cargo.toml              # Project configuration and dependencies
-├── Cargo.lock              # Dependency lock file
+├── Cargo.toml              # 项目配置和依赖
+├── Cargo.lock              # 依赖锁定文件
 ├── src/
-│   ├── main.rs             # Main application entry point (minimal)
+│   ├── main.rs             # 主应用程序入口点（最小化）
 │   └── cmd/
-│       ├── main.rs         # Core CLI logic and data structures
-│       ├── mod.rs          # Module declarations
-│       ├── tests.rs        # Unit tests for core functionality
-│       ├── error_handling_tests.rs  # Error handling edge cases
-│       └── integration_tests.rs      # Integration tests
+│       ├── main.rs         # 核心 CLI 逻辑和编排
+│       ├── mod.rs          # 模块声明
+│       ├── cli.rs          # 命令行接口定义
+│       ├── types.rs        # 核心数据结构和类型
+│       ├── config.rs       # 配置管理逻辑
+│       ├── config_storage.rs # 配置持久化和存储
+│       ├── interactive.rs  # 交互式菜单和终端 UI
+│       ├── completion.rs   # Shell 补全逻辑
+│       ├── shell_completion.rs # Shell 特定补全处理器
+│       ├── utils.rs        # 工具函数
+│       ├── tests.rs        # 核心功能单元测试
+│       ├── error_handling_tests.rs  # 错误处理边界情况
+│       └── integration_tests.rs      # 集成测试
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml          # CI pipeline with cross-platform builds
-│       └── release.yml     # Release workflow for GitHub releases
-└── target/                 # Build output directory (ignored by git)
+│       ├── ci.yml          # CI 管道和跨平台构建
+│       └── release.yml     # GitHub 发布工作流
+└── target/                 # 构建输出目录（git 忽略）
 ```
 
-## Architecture Overview
+## 架构概览
 
-### Core Components
+### 核心组件
 
-**Configuration Management**:
-- `ConfigStorage`: Manages persistence of multiple API configurations in `~/.cc-switch/configurations.json`
-- `Configuration`: Represents a single API config with alias, token, and URL
-- `ClaudeSettings`: Handles Claude's settings.json file for environment variable configuration
+**配置管理** (`config.rs`, `config_storage.rs`, `types.rs`)：
+- `ConfigStorage`：管理多个 API 配置在 `~/.cc-switch/configurations.json` 中的持久化
+- `Configuration`：表示单个 API 配置，包括别名、令牌、URL、模型和 small_fast_model
+- `ClaudeSettings`：处理 Claude 的 settings.json 文件的环境变量配置
+- `AddCommandParams`：用于 add 命令的参数结构，支持交互式模式
 
-**CLI Interface**:
-- `Cli`: Main command parser using clap with subcommands
-- `Commands`: Enum defining available subcommands (add, remove, list, set-default-dir, completion, alias, use, current)
-- `handle_switch_command()`: Core logic for switching between configurations
+**CLI 接口** (`cli.rs`)：
+- `Cli`：使用 clap 的主命令解析器，支持子命令和隐藏补全标志
+- `Commands`：定义可用子命令的枚举 (add, remove, list, set-default-dir, completion, alias, use, current)
+- 丰富的帮助文本，包含示例和 Shell 集成说明
 
-### Key Data Flow
+**交互式终端 UI** (`interactive.rs`)：
+- `handle_current_command()`：带键盘导航的交互式主菜单
+- `handle_interactive_selection()`：实时配置浏览器和预览功能
+- 基于 Crossterm 的终端处理，支持降级到简单菜单
+- 配置切换后自动启动 Claude CLI
 
-1. **Configuration Storage**: Uses JSON serialization to store configurations in `~/.cc-switch/configurations.json`
-2. **Settings Modification**: Reads/writes Claude's settings.json to update `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL`
-3. **Path Resolution**: Supports both absolute and relative paths for custom Claude settings directories
+**Shell 集成** (`completion.rs`, `shell_completion.rs`)：
+- 配置别名的动态补全
+- 支持 fish、zsh、bash、elvish、powershell 的 Shell 特定补全处理器
+- 支持 eval 兼容输出的别名生成系统
+
+### 关键数据流
+
+1. **配置存储**：使用 JSON 序列化在 `~/.cc-switch/configurations.json` 中存储配置
+2. **设置修改**：读取/写入 Claude 的 settings.json 来更新 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`
+3. **路径解析**：支持自定义 Claude 设置目录的绝对和相对路径
 
 ### CLI Usage Patterns
 
 ```bash
-# Add a new configuration
+# Add configurations (multiple formats supported)
 cc-switch add my-config sk-ant-xxx https://api.anthropic.com
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
+cc-switch add my-config -i  # Interactive mode
+cc-switch add my-config --force  # Overwrite existing config
 
-# Switch to a configuration (formerly "switch" command)
+# Switch configurations
 cc-switch use my-config
+cc-switch use -a my-config
+cc-switch use --alias my-config
+cc-switch use  # Interactive mode
+
+# Interactive current configuration menu
+cc-switch current  # Shows current config + interactive menu
 
 # Reset to default (remove API config)
 cc-switch use cc
@@ -180,13 +213,15 @@ cc-switch use cc
 # List all configurations
 cc-switch list
 
+# Manage multiple configurations
+cc-switch remove config1 config2 config3
+
 # Set custom Claude settings directory
 cc-switch set-default-dir /path/to/claude/config
 
-# Generate shell completion
-cc-switch completion fish
-cc-switch completion zsh
-cc-switch completion bash
+# Shell integration
+cc-switch completion fish  # Generate completion scripts
+cc-switch alias fish       # Generate eval-compatible aliases
 ```
 
 ## Shell Completion Setup
@@ -230,6 +265,22 @@ echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+## Interactive Features
+
+### Current Command Interactive Menu
+The `cc-switch current` command provides a sophisticated interactive menu with:
+- **Current Configuration Display**: Shows active API token and URL
+- **Keyboard Navigation**: Arrow keys for menu navigation (with fallback to numbered menu)
+- **Real-time Selection**: Instant preview of configuration details during browsing
+- **Automatic Claude Launch**: Seamlessly launches Claude CLI after configuration switches
+- **Terminal Compatibility**: Crossterm-based terminal handling with graceful fallbacks
+
+### Interactive Selection Mode
+- **Visual Configuration Browser**: Browse all stored configurations with full details
+- **Configuration Preview**: See token, URL, model settings before switching
+- **Reset Option**: Quick reset to default Claude behavior
+- **Smart Fallbacks**: Automatic fallback to simple menus when terminal capabilities are limited
+
 ## Completion Features
 
 The shell completion provides:
@@ -238,6 +289,7 @@ The shell completion provides:
 - **Configuration alias completion**: `cc-switch use <TAB>` shows stored configuration names
 - **Option completion**: `cc-switch -<TAB>` shows available options
 - **Help completion**: Context-aware help for all commands and options
+- **Dynamic alias loading**: Completion system dynamically loads available configuration names
 
 ## Pre-commit Hooks
 
@@ -268,7 +320,7 @@ git commit --no-verify
 - **Rust Version**: 1.88.0 or later
 - **Rust Edition**: 2024 (using nightly-2024-12-01 toolchain in CI)
 - **Cargo Version**: 1.88.0 or later
-- **Dependencies**: anyhow (error handling), clap (CLI parsing with completion), clap_complete (shell completion), serde (JSON), dirs (directory paths), colored (terminal output), tempfile (testing)
+- **Dependencies**: anyhow (error handling), clap (CLI parsing with completion), clap_complete (shell completion), serde (JSON), dirs (directory paths), colored (terminal output), crossterm (terminal UI), tempfile (testing)
 - **Pre-commit**: Python-based pre-commit framework (auto-installed)
 
 ## CI/CD Pipeline
@@ -292,10 +344,18 @@ git commit --no-verify
 
 ## Important Implementation Details
 
-### Command Changes (Previously Implemented)
+### Major Architecture Changes
+- **Modular Structure**: Codebase refactored from single file to multi-module architecture
+- **Interactive Terminal UI**: Full terminal-based interactive menus with keyboard navigation
+- **Enhanced Configuration**: Support for model and small_fast_model environment variables
+- **Real-time Preview**: Interactive selection shows full configuration details before switching
+- **Auto-launching**: Automatic Claude CLI execution after configuration switches
+
+### Command Evolution
 - **"switch" → "use"**: The main command changed from `switch` to `use` for clarity
 - **Backward Compatibility**: The `switch` command is still available as an alias
-- **Completion Logic**: Shell completion prioritizes "current" configuration for c-prefixed commands
+- **Interactive Modes**: Both `use` and `current` commands support interactive selection
+- **Enhanced Add Command**: Support for positional and flag-based arguments with interactive mode
 
 ### Error Handling
 - Uses `anyhow` for comprehensive error handling with context
@@ -308,9 +368,11 @@ git commit --no-verify
 - Validates configuration existence before switching
 
 ### Shell Integration
-- Dynamic completion for configuration aliases
-- Custom fish completion with `--list-aliases` functionality
-- Alias generation for common workflows (`cs`, `ccd`)
+- Dynamic completion for configuration aliases with real-time loading
+- Multi-shell support: fish, zsh, bash, elvish, powershell
+- Alias generation system: `cs='cc-switch'` and `ccd='claude --dangerously-skip-permissions'`
+- Hidden `--list-aliases` flag for programmatic access
+- Eval-compatible alias output for immediate shell integration
 
 ### Cross-Platform Support
 - Uses `dirs` crate for cross-platform directory resolution
@@ -339,17 +401,19 @@ git commit --no-verify
 - **clap_complete**: Shell completion script generation
 - **serde**: JSON serialization/deserialization with derive macros
 - **dirs**: Cross-platform directory resolution (home, config directories)
-- **tempfile**: Temporary file management for testing
 - **colored**: Terminal output formatting and colors
+- **crossterm**: Cross-platform terminal manipulation and events (keyboard navigation, raw mode)
+- **tempfile**: Temporary file management for testing
 
 ## Common Development Tasks
 
 ### Adding New Commands
-1. Add variant to `Commands` enum in `src/cmd/main.rs`
-2. Implement command handler function
-3. Add match arm in `run()` function
-4. Write comprehensive tests
-5. Update documentation in README.md
+1. Add variant to `Commands` enum in `src/cmd/cli.rs`
+2. Implement command handler function in appropriate module (`src/cmd/main.rs` or dedicated module)
+3. Add match arm in `run()` function in `src/cmd/main.rs`
+4. Add completion logic if needed in `src/cmd/completion.rs`
+5. Write comprehensive tests in appropriate test module
+6. Update help text and documentation
 
 ### Modifying Configuration Structure
 1. Update `Configuration` struct
@@ -359,11 +423,11 @@ git commit --no-verify
 5. Test backward compatibility
 
 ### Adding New Shell Support
-1. Add shell variant to `generate_completion()` function
-2. Implement shell-specific completion logic
-3. Add to `generate_aliases()` if supported
-4. Update documentation
-5. Test completion functionality
+1. Add shell variant to `generate_completion()` function in `src/cmd/completion.rs`
+2. Implement shell-specific completion logic in `src/cmd/shell_completion.rs`
+3. Add to `generate_aliases()` function for alias support
+4. Update help text in `src/cmd/cli.rs`
+5. Test completion and alias functionality across platforms
 
 ## Important Notes for Future Development
 
