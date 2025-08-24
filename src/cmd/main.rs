@@ -21,6 +21,8 @@ use std::time::Duration;
 EXAMPLES:
     cc-switch add my-config sk-ant-xxx https://api.anthropic.com
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
+    cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
+    cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
     cc-switch add my-config -i  # Interactive mode
     cc-switch add my-config --force  # Overwrite existing config
     cc-switch switch my-config
@@ -63,7 +65,7 @@ pub struct Cli {
 pub enum Commands {
     /// Add a new Claude API configuration
     ///
-    /// Stores a new configuration with alias, API token, and base URL
+    /// Stores a new configuration with alias, API token, base URL, and optional model settings
     #[command(alias = "a")]
     Add {
         /// Configuration alias name (used to identify this config)
@@ -86,6 +88,21 @@ pub enum Commands {
         )]
         url: Option<String>,
 
+        /// ANTHROPIC_MODEL value (custom model name)
+        #[arg(
+            long = "model",
+            short = 'm',
+            help = "Custom model name (optional)"
+        )]
+        model: Option<String>,
+
+        /// ANTHROPIC_SMALL_FAST_MODEL value (Haiku-class model for background tasks)
+        #[arg(
+            long = "small-fast-model",
+            help = "Haiku-class model for background tasks (optional)"
+        )]
+        small_fast_model: Option<String>,
+
         /// Force overwrite existing configuration
         #[arg(
             long = "force",
@@ -94,11 +111,11 @@ pub enum Commands {
         )]
         force: bool,
 
-        /// Interactive mode for entering token and URL
+        /// Interactive mode for entering configuration values
         #[arg(
             long = "interactive",
             short = 'i',
-            help = "Enter token and URL interactively"
+            help = "Enter configuration values interactively"
         )]
         interactive: bool,
 
@@ -166,17 +183,19 @@ pub enum Commands {
     },
     /// Show current API configuration
     ///
-    /// Displays the current ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from Claude settings
+    /// Displays the current Anthropic environment variables from Claude settings
     #[command(alias = "cur")]
     Current,
 }
 
 /// Represents a Claude API configuration
 ///
-/// Contains the three components needed to configure Claude API access:
+/// Contains the components needed to configure Claude API access:
 /// - alias_name: User-friendly identifier for the configuration
 /// - token: API authentication token
 /// - url: Base URL for the API endpoint
+/// - model: Optional custom model name
+/// - small_fast_model: Optional Haiku-class model for background tasks
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Configuration {
     /// User-friendly alias name for this configuration
@@ -185,6 +204,12 @@ pub struct Configuration {
     pub token: String,
     /// ANTHROPIC_BASE_URL value (API endpoint URL)
     pub url: String,
+    /// ANTHROPIC_MODEL value (custom model name)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// ANTHROPIC_SMALL_FAST_MODEL value (Haiku-class model for background tasks)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub small_fast_model: Option<String>,
 }
 
 /// Storage manager for Claude API configurations
@@ -205,7 +230,7 @@ pub struct ConfigStorage {
 /// Handles environment variables and preserves other settings
 #[derive(Default, Clone)]
 pub struct ClaudeSettings {
-    /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL)
+    /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, ANTHROPIC_SMALL_FAST_MODEL)
     pub env: HashMap<String, String>,
     /// Other settings to preserve when modifying API configuration
     pub other: HashMap<String, serde_json::Value>,
@@ -437,7 +462,7 @@ impl ClaudeSettings {
     /// Ensures env field exists before updating
     ///
     /// # Arguments
-    /// * `config` - Configuration containing token and URL to apply
+    /// * `config` - Configuration containing token, URL, and optional model settings to apply
     pub fn switch_to_config(&mut self, config: &Configuration) {
         // Ensure env field exists
         if self.env.is_empty() {
@@ -448,11 +473,22 @@ impl ClaudeSettings {
             .insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
         self.env
             .insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
+        
+        // Set model configurations if provided
+        if let Some(model) = &config.model {
+            self.env
+                .insert("ANTHROPIC_MODEL".to_string(), model.clone());
+        }
+        
+        if let Some(small_fast_model) = &config.small_fast_model {
+            self.env
+                .insert("ANTHROPIC_SMALL_FAST_MODEL".to_string(), small_fast_model.clone());
+        }
     }
 
     /// Remove Anthropic environment variables
     ///
-    /// Clears ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL from settings
+    /// Clears all Anthropic-related environment variables from settings
     /// Used to reset to default Claude behavior
     pub fn remove_anthropic_env(&mut self) {
         // Ensure env field exists
@@ -462,6 +498,8 @@ impl ClaudeSettings {
 
         self.env.remove("ANTHROPIC_AUTH_TOKEN");
         self.env.remove("ANTHROPIC_BASE_URL");
+        self.env.remove("ANTHROPIC_MODEL");
+        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
     }
 }
 
@@ -493,7 +531,7 @@ fn get_current_shell() -> String {
             return "zsh".to_string();
         }
     }
-    
+
     // Check current process name
     if let Ok(shell) = env::var("0") {
         if shell.contains("fish") {
@@ -504,12 +542,12 @@ fn get_current_shell() -> String {
             return "zsh".to_string();
         }
     }
-    
+
     // Check for fish-specific environment variables
     if env::var("FISH_VERSION").is_ok() {
         return "fish".to_string();
     }
-    
+
     "unknown".to_string()
 }
 
@@ -524,32 +562,32 @@ fn get_current_shell() -> String {
 /// Formatted text with appropriate ANSI escape sequences
 fn format_color(text: &str, color_type: &str, bold: bool) -> String {
     let shell = get_current_shell();
-    
+
     // For testing purposes, check for a special environment variable
     if env::var("CC_SWITCH_TEST_FISH").is_ok() {
         return text.to_string();
     }
-    
+
     // For fish shell, avoid color formatting in interactive display to prevent alignment issues
     if shell == "fish" {
         return text.to_string();
     }
-    
+
     // Use simpler formatting for fish shell to avoid display issues
     let color_code = match color_type {
         "cyan" => "\x1b[96m",
-        "yellow" => "\x1b[93m", 
+        "yellow" => "\x1b[93m",
         "green" => "\x1b[92m",
         "white" => "\x1b[97m",
         "red" => "\x1b[91m",
         _ => "",
     };
-    
+
     let bold_code = if bold { "\x1b[1m" } else { "" };
     let reset_code = "\x1b[0m";
-    
+
     // Other shells handle ANSI codes better
-    format!("{}{}{}{}", bold_code, color_code, text, reset_code)
+    format!("{bold_code}{color_code}{text}{reset_code}")
 }
 
 /// Get the path to the Claude settings file
@@ -594,6 +632,8 @@ fn interactive_config_selection() -> Result<()> {
     // Get current configuration info
     let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
     let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+    let current_model = claude_settings.env.get("ANTHROPIC_MODEL");
+    let current_small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
 
     // Create list of available options
     let mut options = Vec::new();
@@ -619,7 +659,7 @@ fn interactive_config_selection() -> Result<()> {
                 }
             )
         } else if let Some(_url) = current_url {
-            format!("Current: No token")
+            "Current: No token".to_string()
         } else {
             "Current: No configuration".to_string()
         };
@@ -630,16 +670,17 @@ fn interactive_config_selection() -> Result<()> {
     options.push(("cc", "Reset to default".to_string()));
 
     // Add stored configurations - simplified to just show alias
-    for (alias_name, _) in &storage.configurations {
+    for alias_name in storage.configurations.keys() {
         options.push((alias_name.as_str(), alias_name.clone()));
     }
 
     // Calculate maximum description length for alignment
-    let max_desc_length = options.iter()
+    let max_desc_length = options
+        .iter()
         .map(|(_, desc)| desc.len())
         .max()
         .unwrap_or(0);
-    
+
     // Ensure minimum width for better alignment
     let min_width = 40;
     let display_width = std::cmp::max(max_desc_length, min_width);
@@ -651,16 +692,16 @@ fn interactive_config_selection() -> Result<()> {
 
     // Setup terminal for raw mode with better error handling
     if let Err(e) = crossterm::terminal::enable_raw_mode() {
-        eprintln!("Warning: Could not enable terminal raw mode: {}", e);
+        eprintln!("Warning: Could not enable terminal raw mode: {e}");
         eprintln!("Falling back to simple display mode");
         return show_simple_current_display();
     }
-    
+
     if let Err(e) = crossterm::execute!(
         io::stdout(),
         crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
     ) {
-        eprintln!("Warning: Could not clear terminal: {}", e);
+        eprintln!("Warning: Could not clear terminal: {e}");
         // Continue without clearing
     }
 
@@ -678,7 +719,7 @@ fn interactive_config_selection() -> Result<()> {
         // Display header with keyboard instructions
         let shell = get_current_shell();
         let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
-        
+
         if use_fish_mode {
             println!("=== Claude Configuration Selection ===");
             println!("Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel");
@@ -687,12 +728,12 @@ fn interactive_config_selection() -> Result<()> {
 
             // Display options with proper alignment
             for (index, (_key, description)) in options.iter().enumerate() {
-                let padded_desc = format!("{:<width$}", description, width = display_width);
+                let padded_desc = format!("{description:<display_width$}");
                 if index == selected_index {
                     // Highlight selected item with proper spacing
-                    println!("  > {}", padded_desc);
+                    println!("  > {padded_desc}");
                 } else {
-                    println!("    {}", padded_desc);
+                    println!("    {padded_desc}");
                 }
             }
 
@@ -700,25 +741,56 @@ fn interactive_config_selection() -> Result<()> {
             println!("---------------------------------------------------------");
             println!("Selected: {}", &options[selected_index].1);
         } else {
-            println!("{}", format_color("=== Claude Configuration Selection ===", "cyan", true));
-            println!("{}", format_color("Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel", "yellow", true));
-            println!("{}", format_color("---------------------------------------------------------", "cyan", false));
+            println!(
+                "{}",
+                format_color("=== Claude Configuration Selection ===", "cyan", true)
+            );
+            println!(
+                "{}",
+                format_color(
+                    "Use UP/DOWN arrow keys to navigate, Enter to select, Esc to cancel",
+                    "yellow",
+                    true
+                )
+            );
+            println!(
+                "{}",
+                format_color(
+                    "---------------------------------------------------------",
+                    "cyan",
+                    false
+                )
+            );
             println!();
 
             // Display options with proper alignment
             for (index, (_key, description)) in options.iter().enumerate() {
-                let padded_desc = format!("{:<width$}", description, width = display_width);
+                let padded_desc = format!("{description:<display_width$}");
                 if index == selected_index {
                     // Highlight selected item with proper spacing
-                    println!("  {} {}", format_color(">", "green", true), format_color(&padded_desc, "white", true));
+                    println!(
+                        "  {} {}",
+                        format_color(">", "green", true),
+                        format_color(&padded_desc, "white", true)
+                    );
                 } else {
-                    println!("    {}", padded_desc);
+                    println!("    {padded_desc}");
                 }
             }
 
             println!();
-            println!("{}", format_color("---------------------------------------------------------", "cyan", false));
-            println!("Selected: {}", format_color(&options[selected_index].1, "yellow", false));
+            println!(
+                "{}",
+                format_color(
+                    "---------------------------------------------------------",
+                    "cyan",
+                    false
+                )
+            );
+            println!(
+                "Selected: {}",
+                format_color(&options[selected_index].1, "yellow", false)
+            );
         }
 
         // Read keyboard input
@@ -740,7 +812,7 @@ fn interactive_config_selection() -> Result<()> {
                 KeyCode::Esc => {
                     // Restore terminal and exit
                     if let Err(e) = crossterm::terminal::disable_raw_mode() {
-                        eprintln!("Warning: Could not disable terminal raw mode: {}", e);
+                        eprintln!("Warning: Could not disable terminal raw mode: {e}");
                     }
                     if use_fish_mode {
                         println!("\nSelection cancelled.");
@@ -756,7 +828,7 @@ fn interactive_config_selection() -> Result<()> {
 
     // Restore terminal
     if let Err(e) = crossterm::terminal::disable_raw_mode() {
-        eprintln!("Warning: Could not disable terminal raw mode: {}", e);
+        eprintln!("Warning: Could not disable terminal raw mode: {e}");
     }
 
     // Process selection
@@ -780,6 +852,18 @@ fn interactive_config_selection() -> Result<()> {
             } else {
                 println!("URL: No ANTHROPIC_BASE_URL configured");
             }
+
+            if let Some(model) = current_model {
+                println!("Model: {model}");
+            } else {
+                println!("Model: Not configured (using default)");
+            }
+
+            if let Some(small_fast_model) = current_small_fast_model {
+                println!("Small Fast Model: {small_fast_model}");
+            } else {
+                println!("Small Fast Model: Not configured (using default)");
+            }
         } else {
             // Switch to selected configuration
             handle_switch_command(selected_key)?;
@@ -787,7 +871,11 @@ fn interactive_config_selection() -> Result<()> {
     } else {
         println!(
             "\n{}",
-            format_color(&format!("Selected: {}", options[selected_index].1), "green", false)
+            format_color(
+                &format!("Selected: {}", options[selected_index].1),
+                "green",
+                false
+            )
         );
 
         if selected_key == "current" {
@@ -803,6 +891,18 @@ fn interactive_config_selection() -> Result<()> {
                 println!("URL: {url}");
             } else {
                 println!("URL: No ANTHROPIC_BASE_URL configured");
+            }
+
+            if let Some(model) = current_model {
+                println!("Model: {model}");
+            } else {
+                println!("Model: Not configured (using default)");
+            }
+
+            if let Some(small_fast_model) = current_small_fast_model {
+                println!("Small Fast Model: {small_fast_model}");
+            } else {
+                println!("Small Fast Model: Not configured (using default)");
             }
         } else {
             // Switch to selected configuration
@@ -826,38 +926,49 @@ fn show_simple_current_display() -> Result<()> {
 
     let current_token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
     let current_url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+    let current_model = claude_settings.env.get("ANTHROPIC_MODEL");
+    let current_small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
 
     let shell = get_current_shell();
-    
+
     // For testing purposes, check for a special environment variable
     let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || shell == "fish";
-    
+
     // For fish shell, use simple text without color codes
     if use_fish_mode {
         println!("Current Configuration:");
         if let Some(token) = current_token {
-            if let Some(url) = current_url {
-                println!("Token: {}", token);
-                println!("URL:  {}", url);
-            } else {
-                println!("Token: {}", token);
-                println!("URL:  No ANTHROPIC_BASE_URL configured");
-            }
-        } else if let Some(url) = current_url {
-            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            println!("URL:  {}", url);
+            println!("Token: {token}");
         } else {
-            println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+        }
+        
+        if let Some(url) = current_url {
+            println!("URL: {url}");
+        } else {
+            println!("URL: No ANTHROPIC_BASE_URL configured");
+        }
+        
+        if let Some(model) = current_model {
+            println!("Model: {model}");
+        } else {
+            println!("Model: Not configured (using default)");
+        }
+        
+        if let Some(small_fast_model) = current_small_fast_model {
+            println!("Small Fast Model: {small_fast_model}");
+        } else {
+            println!("Small Fast Model: Not configured (using default)");
         }
 
         println!("\nAvailable configurations:");
-        
+
         // Show "cc" option to reset to default
         println!("  cc  - Reset to default");
-        
+
         // Show stored configurations - simplified to just show alias
         for alias_name in storage.configurations.keys() {
-            println!("  {}  - Switch to this configuration", alias_name);
+            println!("  {alias_name}  - Switch to this configuration");
         }
 
         println!("\nUse 'cc-switch <alias>' to switch configuration");
@@ -865,31 +976,50 @@ fn show_simple_current_display() -> Result<()> {
         // Other shells can use color formatting
         println!("{}", format_color("Current Configuration:", "cyan", true));
         if let Some(token) = current_token {
-            if let Some(url) = current_url {
-                println!("Token: {}", token);
-                println!("URL:  {}", url);
-            } else {
-                println!("Token: {}", token);
-                println!("URL:  No ANTHROPIC_BASE_URL configured");
-            }
-        } else if let Some(url) = current_url {
-            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
-            println!("URL:  {}", url);
+            println!("Token: {token}");
         } else {
-            println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+            println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+        }
+        
+        if let Some(url) = current_url {
+            println!("URL: {url}");
+        } else {
+            println!("URL: No ANTHROPIC_BASE_URL configured");
+        }
+        
+        if let Some(model) = current_model {
+            println!("Model: {model}");
+        } else {
+            println!("Model: Not configured (using default)");
+        }
+        
+        if let Some(small_fast_model) = current_small_fast_model {
+            println!("Small Fast Model: {small_fast_model}");
+        } else {
+            println!("Small Fast Model: Not configured (using default)");
         }
 
-        println!("\n{}", format_color("Available configurations:", "yellow", true));
-        
+        println!(
+            "\n{}",
+            format_color("Available configurations:", "yellow", true)
+        );
+
         // Show "cc" option to reset to default
         println!("  cc  - Reset to default");
-        
+
         // Show stored configurations - simplified to just show alias
         for alias_name in storage.configurations.keys() {
-            println!("  {}  - Switch to this configuration", alias_name);
+            println!("  {alias_name}  - Switch to this configuration");
         }
 
-        println!("\n{}", format_color("Use 'cc-switch <alias>' to switch configuration", "green", false));
+        println!(
+            "\n{}",
+            format_color(
+                "Use 'cc-switch <alias>' to switch configuration",
+                "green",
+                false
+            )
+        );
     }
     Ok(())
 }
@@ -915,25 +1045,37 @@ pub fn handle_current_command() -> Result<()> {
 
         let token = claude_settings.env.get("ANTHROPIC_AUTH_TOKEN");
         let url = claude_settings.env.get("ANTHROPIC_BASE_URL");
+        let model = claude_settings.env.get("ANTHROPIC_MODEL");
+        let small_fast_model = claude_settings.env.get("ANTHROPIC_SMALL_FAST_MODEL");
 
         // Check for fish mode
-        let use_fish_mode = env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
-        
+        let use_fish_mode =
+            env::var("CC_SWITCH_TEST_FISH").is_ok() || get_current_shell() == "fish";
+
         if use_fish_mode {
             println!("Current Configuration:");
             if let Some(token) = token {
-                if let Some(url) = url {
-                    println!("Token: {token}");
-                    println!("URL: {url}");
-                } else {
-                    println!("Token: {token}");
-                    println!("URL: No ANTHROPIC_BASE_URL configured");
-                }
-            } else if let Some(url) = url {
+                println!("Token: {token}");
+            } else {
                 println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            }
+            
+            if let Some(url) = url {
                 println!("URL: {url}");
             } else {
-                println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+                println!("URL: No ANTHROPIC_BASE_URL configured");
+            }
+            
+            if let Some(model) = model {
+                println!("Model: {model}");
+            } else {
+                println!("Model: Not configured (using default)");
+            }
+            
+            if let Some(small_fast_model) = small_fast_model {
+                println!("Small Fast Model: {small_fast_model}");
+            } else {
+                println!("Small Fast Model: Not configured (using default)");
             }
 
             println!("\nNo configurations available for selection.");
@@ -941,23 +1083,36 @@ pub fn handle_current_command() -> Result<()> {
         } else {
             println!("{}", format_color("Current Configuration:", "cyan", true));
             if let Some(token) = token {
-                if let Some(url) = url {
-                    println!("Token: {token}");
-                    println!("URL: {url}");
-                } else {
-                    println!("Token: {token}");
-                    println!("URL: No ANTHROPIC_BASE_URL configured");
-                }
-            } else if let Some(url) = url {
+                println!("Token: {token}");
+            } else {
                 println!("Token: No ANTHROPIC_AUTH_TOKEN configured");
+            }
+            
+            if let Some(url) = url {
                 println!("URL: {url}");
             } else {
-                println!("No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL configured");
+                println!("URL: No ANTHROPIC_BASE_URL configured");
+            }
+            
+            if let Some(model) = model {
+                println!("Model: {model}");
+            } else {
+                println!("Model: Not configured (using default)");
+            }
+            
+            if let Some(small_fast_model) = small_fast_model {
+                println!("Small Fast Model: {small_fast_model}");
+            } else {
+                println!("Small Fast Model: Not configured (using default)");
             }
 
             println!(
                 "\n{}",
-                format_color("No configurations available for selection.", "yellow", false)
+                format_color(
+                    "No configurations available for selection.",
+                    "yellow",
+                    false
+                )
             );
             println!("Use 'add' command to create configurations for interactive selection.");
         }
@@ -1025,6 +1180,8 @@ struct AddCommandParams {
     alias_name: String,
     token: Option<String>,
     url: Option<String>,
+    model: Option<String>,
+    small_fast_model: Option<String>,
     force: bool,
     interactive: bool,
     token_arg: Option<String>,
@@ -1093,6 +1250,40 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         final_url
     };
 
+    // Determine model value
+    let final_model = if params.interactive {
+        if params.model.is_some() {
+            eprintln!(
+                "Warning: Model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let model_input = read_input("Enter model name (optional, press enter to skip): ")?;
+        if model_input.is_empty() {
+            None
+        } else {
+            Some(model_input)
+        }
+    } else {
+        params.model
+    };
+
+    // Determine small fast model value
+    let final_small_fast_model = if params.interactive {
+        if params.small_fast_model.is_some() {
+            eprintln!(
+                "Warning: Small fast model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let small_model_input = read_input("Enter small fast model name (optional, press enter to skip): ")?;
+        if small_model_input.is_empty() {
+            None
+        } else {
+            Some(small_model_input)
+        }
+    } else {
+        params.small_fast_model
+    };
+
     // Validate token format (basic check)
     if !final_token.starts_with("sk-ant-") {
         eprintln!(
@@ -1105,6 +1296,8 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         alias_name: params.alias_name.clone(),
         token: final_token,
         url: final_url,
+        model: final_model,
+        small_fast_model: final_small_fast_model,
     };
 
     storage.add_configuration(config);
@@ -1145,10 +1338,14 @@ pub fn handle_switch_command(alias_name: &str) -> Result<()> {
     } else if let Some(config) = storage.get_configuration(alias_name) {
         claude_settings.switch_to_config(config);
         claude_settings.save(custom_dir)?;
-        println!(
-            "Switched to configuration '{}' (token: {}, url: {})",
-            alias_name, config.token, config.url
-        );
+        let mut config_info = format!("token: {}, url: {}", config.token, config.url);
+        if let Some(model) = &config.model {
+            config_info.push_str(&format!(", model: {model}"));
+        }
+        if let Some(small_fast_model) = &config.small_fast_model {
+            config_info.push_str(&format!(", small_fast_model: {small_fast_model}"));
+        }
+        println!("Switched to configuration '{alias_name}' ({config_info})");
         println!("Current URL: {}", config.url);
     } else {
         anyhow::bail!(
@@ -1261,7 +1458,11 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.zshrc'");
             println!(
                 "{}",
-                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
+                format_color(
+                    "# Aliases 'cs' and 'ccd' have been added for convenience",
+                    "green",
+                    false
+                )
             );
         }
         "bash" => {
@@ -1285,7 +1486,11 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("# Then restart your shell or run 'source ~/.bashrc'");
             println!(
                 "{}",
-                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
+                format_color(
+                    "# Aliases 'cs' and 'ccd' have been added for convenience",
+                    "green",
+                    false
+                )
             );
         }
         "elvish" => {
@@ -1304,7 +1509,11 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# Elvish completion generated successfully");
             println!(
                 "{}",
-                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
+                format_color(
+                    "# Aliases 'cs' and 'ccd' have been added for convenience",
+                    "green",
+                    false
+                )
             );
         }
         "powershell" => {
@@ -1323,7 +1532,11 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             println!("\n# PowerShell completion generated successfully");
             println!(
                 "{}",
-                format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
+                format_color(
+                    "# Aliases 'cs' and 'ccd' have been added for convenience",
+                    "green",
+                    false
+                )
             );
         }
         _ => {
@@ -1400,7 +1613,11 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
     println!(
         "{}",
-        format_color("# Aliases 'cs' and 'ccd' have been added for convenience", "green", false)
+        format_color(
+            "# Aliases 'cs' and 'ccd' have been added for convenience",
+            "green",
+            false
+        )
     );
 }
 
@@ -1431,6 +1648,8 @@ pub fn run() -> Result<()> {
                 alias_name,
                 token,
                 url,
+                model,
+                small_fast_model,
                 force,
                 interactive,
                 token_arg,
@@ -1440,6 +1659,8 @@ pub fn run() -> Result<()> {
                     alias_name,
                     token,
                     url,
+                    model,
+                    small_fast_model,
                     force,
                     interactive,
                     token_arg,
@@ -1482,7 +1703,7 @@ pub fn run() -> Result<()> {
                 } else {
                     println!("Stored configurations:");
                     for alias_name in storage.configurations.keys() {
-                        println!("  {}", alias_name);
+                        println!("  {alias_name}");
                     }
                 }
                 if let Some(dir) = &storage.claude_settings_dir {

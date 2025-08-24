@@ -15,6 +15,8 @@ mod tests {
             alias_name: alias.to_string(),
             token: token.to_string(),
             url: url.to_string(),
+            model: None,
+            small_fast_model: None,
         }
     }
 
@@ -34,6 +36,8 @@ mod tests {
         assert_eq!(config.alias_name, "");
         assert_eq!(config.token, "");
         assert_eq!(config.url, "");
+        assert_eq!(config.model, None);
+        assert_eq!(config.small_fast_model, None);
     }
 
     #[test]
@@ -493,6 +497,7 @@ mod tests {
             interactive,
             token_arg,
             url_arg,
+            ..
         }) = cli.command
         {
             assert_eq!(alias_name, "my-config");
@@ -533,6 +538,7 @@ mod tests {
             interactive,
             token_arg,
             url_arg,
+            ..
         }) = cli.command
         {
             assert_eq!(alias_name, "my-config");

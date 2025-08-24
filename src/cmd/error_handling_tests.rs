@@ -10,6 +10,8 @@ mod error_handling_tests {
             alias_name: alias.to_string(),
             token: token.to_string(),
             url: url.to_string(),
+            model: None,
+            small_fast_model: None,
         }
     }
 
