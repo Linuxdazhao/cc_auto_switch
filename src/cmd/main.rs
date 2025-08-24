@@ -1,6 +1,10 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::*;
+use crossterm::{
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+    execute, terminal,
+};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
@@ -25,6 +29,9 @@ EXAMPLES:
     cc-switch add my-config -i  # Interactive mode
     cc-switch add my-config --force  # Overwrite existing config
     cc-switch use my-config
+    cc-switch use -a my-config
+    cc-switch use --alias my-config
+    cc-switch use  # Interactive mode
     cc-switch use cc
     cc-switch list
     cc-switch remove config1 config2 config3
@@ -89,11 +96,7 @@ pub enum Commands {
         url: Option<String>,
 
         /// ANTHROPIC_MODEL value (custom model name)
-        #[arg(
-            long = "model",
-            short = 'm',
-            help = "Custom model name (optional)"
-        )]
+        #[arg(long = "model", short = 'm', help = "Custom model name (optional)")]
         model: Option<String>,
 
         /// ANTHROPIC_SMALL_FAST_MODEL value (Haiku-class model for background tasks)
@@ -181,6 +184,12 @@ pub enum Commands {
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
     },
+    /// Interactively select and use a configuration
+    ///
+    /// Shows an interactive menu to select from available configurations
+    /// When hovering over a configuration, displays its details (token, URL, model)
+    #[command(alias = "select")]
+    Interactive,
     /// Interactive current configuration menu
     ///
     /// Shows current configuration and provides interactive menu for:
@@ -472,20 +481,33 @@ impl ClaudeSettings {
             self.env = HashMap::new();
         }
 
+        // First remove all Anthropic environment variables to ensure clean state
+        self.env.remove("ANTHROPIC_AUTH_TOKEN");
+        self.env.remove("ANTHROPIC_BASE_URL");
+        self.env.remove("ANTHROPIC_MODEL");
+        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
+
+        // Set required environment variables
         self.env
             .insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
         self.env
             .insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
-        
-        // Set model configurations if provided
+
+        // Set model configurations only if provided (don't set empty values)
         if let Some(model) = &config.model {
-            self.env
-                .insert("ANTHROPIC_MODEL".to_string(), model.clone());
+            if !model.is_empty() {
+                self.env
+                    .insert("ANTHROPIC_MODEL".to_string(), model.clone());
+            }
         }
-        
+
         if let Some(small_fast_model) = &config.small_fast_model {
-            self.env
-                .insert("ANTHROPIC_SMALL_FAST_MODEL".to_string(), small_fast_model.clone());
+            if !small_fast_model.is_empty() {
+                self.env.insert(
+                    "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
+                    small_fast_model.clone(),
+                );
+            }
         }
     }
 
@@ -660,6 +682,184 @@ pub fn handle_current_command() -> Result<()> {
             }
             _ => {
                 println!("Invalid option. Please select 1-4.");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle interactive configuration selection with real-time preview
+///
+/// # Arguments
+/// * `storage` - Reference to configuration storage
+/// * `custom_dir` - Optional custom directory for Claude settings
+///
+/// # Errors
+/// Returns error if terminal operations fail or user selection fails
+fn handle_interactive_selection(storage: &ConfigStorage, custom_dir: Option<&str>) -> Result<()> {
+    if storage.configurations.is_empty() {
+        println!("No configurations available. Use 'add' command to create configurations first.");
+        return Ok(());
+    }
+
+    // Setup terminal
+    terminal::enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        terminal::EnterAlternateScreen,
+        terminal::Clear(terminal::ClearType::All)
+    )?;
+
+    let mut configs: Vec<&Configuration> = storage.configurations.values().collect();
+    configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
+
+    let mut selected_index = 0;
+    loop {
+        // Clear screen and redraw
+        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
+
+        // Header
+        println!("{}", "Select Configuration:".green().bold());
+        println!("Use ↑↓ to navigate, Enter to select, Esc to cancel\n");
+
+        // Draw menu
+        for (index, config) in configs.iter().enumerate() {
+            if index == selected_index {
+                print!("> ");
+                println!("{}", config.alias_name.blue().bold());
+
+                // Show details for selected config
+                println!("  Token: {}", config.token);
+                println!("  URL: {}", config.url);
+                if let Some(model) = &config.model {
+                    println!("  Model: {model}");
+                }
+                if let Some(small_fast_model) = &config.small_fast_model {
+                    println!("  Small Fast Model: {small_fast_model}");
+                }
+                println!();
+            } else {
+                print!("  ");
+                println!("{}", config.alias_name);
+            }
+        }
+
+        // Add reset option
+        let reset_index = configs.len();
+        if selected_index == reset_index {
+            print!("> ");
+            println!("{}", "Reset to default".red().bold());
+            println!("  Remove API configuration, use default Claude settings\n");
+        } else {
+            print!("  ");
+            println!("Reset to default\n");
+        }
+
+        // Handle input
+        match event::read()? {
+            Event::Key(KeyEvent {
+                code,
+                kind: KeyEventKind::Press,
+                ..
+            }) => {
+                match code {
+                    KeyCode::Up => {
+                        if selected_index > 0 {
+                            selected_index -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if selected_index < reset_index {
+                            selected_index += 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        break;
+                    }
+                    KeyCode::Esc => {
+                        // Cancel selection
+                        execute!(stdout, terminal::LeaveAlternateScreen)?;
+                        terminal::disable_raw_mode()?;
+                        println!("Cancelled selection");
+                        return Ok(());
+                    }
+                    _ => {}
+                }
+            }
+            Event::Key(_) => {} // Ignore key release events
+            _ => {}
+        }
+    }
+
+    // Restore terminal
+    execute!(stdout, terminal::LeaveAlternateScreen)?;
+    terminal::disable_raw_mode()?;
+
+    // Handle selection - loop was broken by Enter key
+    {
+        if selected_index < configs.len() {
+            // Switch to selected configuration
+            let selected_config = configs[selected_index].clone();
+            let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+            claude_settings.switch_to_config(&selected_config);
+            claude_settings.save(custom_dir)?;
+            println!(
+                "Switched to configuration '{}' (token: {}, url: {})",
+                selected_config.alias_name, selected_config.token, selected_config.url
+            );
+
+            // Wait and launch Claude
+            println!("Waiting 0.5 second before launching Claude...");
+            thread::sleep(Duration::from_millis(500));
+
+            println!("Launching Claude CLI...");
+            let mut child = Command::new("claude")
+                .arg("--dangerously-skip-permissions")
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .with_context(
+                    || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+                )?;
+
+            let status = child
+                .wait()
+                .with_context(|| "Failed to wait for Claude CLI process")?;
+
+            if !status.success() {
+                anyhow::bail!("Claude CLI exited with error status: {}", status);
+            }
+        } else if selected_index == configs.len() {
+            // Reset to default
+            let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+            claude_settings.remove_anthropic_env();
+            claude_settings.save(custom_dir)?;
+            println!("Reset to default configuration (removed API config)");
+
+            // Wait and launch Claude
+            println!("Waiting 0.5 second before launching Claude...");
+            thread::sleep(Duration::from_millis(500));
+
+            println!("Launching Claude CLI...");
+            let mut child = Command::new("claude")
+                .arg("--dangerously-skip-permissions")
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .with_context(
+                    || "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+                )?;
+
+            let status = child
+                .wait()
+                .with_context(|| "Failed to wait for Claude CLI process")?;
+
+            if !status.success() {
+                anyhow::bail!("Claude CLI exited with error status: {}", status);
             }
         }
     }
@@ -933,9 +1133,7 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
     // Determine model value
     let final_model = if params.interactive {
         if params.model.is_some() {
-            eprintln!(
-                "Warning: Model provided via flags will be ignored in interactive mode"
-            );
+            eprintln!("Warning: Model provided via flags will be ignored in interactive mode");
         }
         let model_input = read_input("Enter model name (optional, press enter to skip): ")?;
         if model_input.is_empty() {
@@ -954,7 +1152,8 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
                 "Warning: Small fast model provided via flags will be ignored in interactive mode"
             );
         }
-        let small_model_input = read_input("Enter small fast model name (optional, press enter to skip): ")?;
+        let small_model_input =
+            read_input("Enter small fast model name (optional, press enter to skip): ")?;
         if small_model_input.is_empty() {
             None
         } else {
@@ -994,20 +1193,28 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
 /// Handle configuration switching command
 ///
 /// Processes the switch subcommand to switch Claude API configuration:
+/// - None: Enter interactive selection mode
 /// - "cc": Remove API configuration (reset to default)
 /// - Other alias: Switch to the specified configuration
 ///
 /// After switching, displays the current URL and automatically launches Claude CLI
 ///
 /// # Arguments
-/// * `alias_name` - Name of configuration to switch to, or "cc" to reset
+/// * `alias_name` - Optional name of configuration to switch to, or "cc" to reset
 ///
 /// # Errors
 /// Returns error if configuration is not found or file operations fail
-pub fn handle_switch_command(alias_name: &str) -> Result<()> {
+pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
     let storage = ConfigStorage::load()?;
     let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
     let mut claude_settings = ClaudeSettings::load(custom_dir)?;
+
+    // If no alias provided, enter interactive mode
+    if alias_name.is_none() {
+        return handle_interactive_selection(&storage, custom_dir);
+    }
+
+    let alias_name = alias_name.unwrap();
 
     if alias_name == "cc" {
         // Default operation: remove ANTHROPIC_AUTH_TOKEN and ANTHROPIC_BASE_URL
@@ -1419,7 +1626,12 @@ pub fn run() -> Result<()> {
                 generate_aliases(&shell)?;
             }
             Commands::Use { alias_name } => {
-                handle_switch_command(&alias_name)?;
+                handle_switch_command(Some(&alias_name))?;
+            }
+            Commands::Interactive => {
+                let storage = ConfigStorage::load()?;
+                let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+                handle_interactive_selection(&storage, custom_dir)?;
             }
             Commands::Current => {
                 handle_current_command()?;

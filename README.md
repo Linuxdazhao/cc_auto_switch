@@ -29,6 +29,7 @@ cc-switch comes packed with features that make API configuration management effo
 |---------|-------------|----------|
 | **Multi-Configuration Management** | Store unlimited API configurations using custom aliases | Keep all environments organized |
 | **Instant Switching** | Switch configurations with `cc-switch switch <alias>` | Save time from manual configuration changes |
+| **Interactive Selection Mode** | Visual menu with real-time configuration preview | Browse configurations with full details before switching |
 | **Shell Auto-Completion** | Built-in completion support for fish, zsh, bash, and more | Speed up command entry with auto-completion |
 | **Dynamic Alias Completion** | Auto-complete configuration names for switch/remove commands | Reduce errors and typing effort |
 | **Shell Alias Generation** | Generate eval-compatible aliases for quick access | Streamline workflow with convenient shortcuts |
@@ -86,6 +87,9 @@ Available aliases:
 ```bash
 # Instead of: cc-switch switch my-config
 cs switch my-config
+
+# Interactive mode with aliases
+cs interactive
 
 # Instead of: claude --dangerously-skip-permissions
 ccd
@@ -240,6 +244,27 @@ cc-switch switch my-config
 # Reset to default (remove API configuration)
 cc-switch switch cc
 ```
+
+#### Interactive Mode
+
+Use interactive mode to visually select from available configurations with real-time preview:
+
+```bash
+# Enter interactive selection mode
+cc-switch interactive
+
+# Or use the alias
+cc-switch select
+```
+
+In interactive mode:
+- Use **↑↓** arrow keys to navigate through configurations
+- View detailed information (token, URL, model) when hovering over a configuration
+- Press **Enter** to select and automatically launch Claude
+- Press **Esc** to cancel selection
+- Includes "Reset to default" option to remove API configuration
+
+Interactive mode provides a visual way to browse and select configurations with full details preview before switching.
 
 #### Remove a Configuration
 
