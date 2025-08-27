@@ -260,9 +260,24 @@ fn handle_full_interactive_menu(
         println!("\r{}", "╚═══════════════════════════╝".green().bold());
         println!();
 
+        // Add official option (first)
+        let official_index = 0;
+        if *selected_index == official_index {
+            println!(
+                "\r> {} {}",
+                "●".red().bold(),
+                "official".red().bold()
+            );
+            println!("\r    Use official Claude API (no custom configuration)");
+            println!();
+        } else {
+            println!("\r  {} {}", "○".dimmed(), "official".dimmed());
+        }
+
         // Draw menu with better alignment
         for (index, config) in configs.iter().enumerate() {
-            if index == *selected_index {
+            let actual_index = index + 1; // +1 because official is at index 0
+            if *selected_index == actual_index {
                 println!(
                     "\r> {} {}",
                     "●".blue().bold(),
@@ -289,20 +304,6 @@ fn handle_full_interactive_menu(
             } else {
                 println!("\r  {} {}", "○".dimmed(), config.alias_name.dimmed());
             }
-        }
-
-        // Add reset option
-        let reset_index = configs.len();
-        if *selected_index == reset_index {
-            println!(
-                "\r> {} {}",
-                "●".red().bold(),
-                "Reset to default".red().bold()
-            );
-            println!("\r    Remove API configuration, use default Claude settings");
-            println!();
-        } else {
-            println!("\r  {} {}", "○".dimmed(), "Reset to default".dimmed());
         }
 
         // Add exit option
@@ -363,10 +364,15 @@ fn handle_simple_interactive_menu(
 ) -> Result<()> {
     println!("\n{}", "Available Configurations:".blue().bold());
 
+    // Add official option (first)
+    println!("1. {}", "official".red());
+    println!("   Use official Claude API (no custom configuration)");
+    println!();
+
     for (index, config) in configs.iter().enumerate() {
         println!(
             "{}. {} ({})",
-            index + 1,
+            index + 2, // +2 because official is at position 1
             config.alias_name.green(),
             format!(
                 "{}...{}",
@@ -385,7 +391,6 @@ fn handle_simple_interactive_menu(
         println!();
     }
 
-    println!("{}. {}", configs.len() + 1, "Reset to default".red());
     println!("{}. {}", configs.len() + 2, "Exit".yellow());
 
     print!("\nSelect configuration (1-{}): ", configs.len() + 2);
@@ -395,13 +400,13 @@ fn handle_simple_interactive_menu(
     io::stdin().read_line(&mut input)?;
 
     match input.trim().parse::<usize>() {
-        Ok(num) if num >= 1 && num <= configs.len() => {
-            handle_selection_action(configs, num - 1)
-        }
-        Ok(num) if num == configs.len() + 1 => {
-            // Reset to default
-            println!("Using default Claude configuration");
+        Ok(1) => {
+            // Official option
+            println!("Using official Claude configuration");
             launch_claude_with_env(EnvironmentConfig::empty())
+        }
+        Ok(num) if num >= 2 && num <= configs.len() + 1 => {
+            handle_selection_action(configs, num - 2) // -2 because official is at position 1
         }
         Ok(num) if num == configs.len() + 2 => {
             println!("Exiting...");
@@ -419,9 +424,14 @@ fn handle_selection_action(
     configs: &[&Configuration],
     selected_index: usize,
 ) -> Result<()> {
-    if selected_index < configs.len() {
+    if selected_index == 0 {
+        // Official option (reset to default)
+        println!("\nUsing official Claude configuration");
+        launch_claude_with_env(EnvironmentConfig::empty())
+    } else if selected_index <= configs.len() {
         // Switch to selected configuration
-        let selected_config = configs[selected_index].clone();
+        let config_index = selected_index - 1; // -1 because official is at index 0
+        let selected_config = configs[config_index].clone();
         let env_config = EnvironmentConfig::from_config(&selected_config);
 
         println!(
@@ -446,10 +456,6 @@ fn handle_selection_action(
         }
 
         launch_claude_with_env(env_config)
-    } else if selected_index == configs.len() {
-        // Reset to default
-        println!("\nUsing default Claude configuration");
-        launch_claude_with_env(EnvironmentConfig::empty())
     } else {
         // Exit
         println!("\nExiting...");
