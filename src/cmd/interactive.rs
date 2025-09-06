@@ -1,4 +1,4 @@
-use crate::cmd::config::{EnvironmentConfig, Configuration, ConfigStorage};
+use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -58,10 +58,7 @@ pub fn handle_current_command() -> Result<()> {
 }
 
 /// Handle main menu with keyboard navigation
-fn handle_main_menu_interactive(
-    stdout: &mut io::Stdout,
-    storage: &ConfigStorage,
-) -> Result<()> {
+fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage) -> Result<()> {
     let menu_items = [
         "Execute claude --dangerously-skip-permissions",
         "Switch configuration",
@@ -122,7 +119,7 @@ fn handle_main_menu_interactive(
                         // Clean up terminal before exit
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
-                        
+
                         println!("\nExiting...");
                         return Ok(());
                     }
@@ -165,10 +162,7 @@ fn handle_main_menu_simple(storage: &ConfigStorage) -> Result<()> {
 }
 
 /// Handle main menu action based on selected index
-fn handle_main_menu_action(
-    selected_index: usize,
-    storage: &ConfigStorage,
-) -> Result<()> {
+fn handle_main_menu_action(selected_index: usize, storage: &ConfigStorage) -> Result<()> {
     match selected_index {
         0 => {
             println!("\nExecuting: claude --dangerously-skip-permissions");
@@ -219,11 +213,7 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
         .is_ok()
         {
             // Full interactive mode with arrow keys
-            let result = handle_full_interactive_menu(
-                &mut stdout,
-                &configs,
-                &mut selected_index,
-            );
+            let result = handle_full_interactive_menu(&mut stdout, &configs, &mut selected_index);
 
             // Always restore terminal
             let _ = execute!(stdout, terminal::LeaveAlternateScreen);
@@ -272,7 +262,12 @@ fn handle_full_interactive_menu(
             println!("\r    Use official Claude API (no custom configuration)");
             println!();
         } else {
-            println!("\r  {} {} {}", "○".dimmed(), "[R]".dimmed(), "official".dimmed());
+            println!(
+                "\r  {} {} {}",
+                "○".dimmed(),
+                "[R]".dimmed(),
+                "official".dimmed()
+            );
         }
 
         // Draw menu with better alignment
@@ -305,18 +300,33 @@ fn handle_full_interactive_menu(
                 }
                 println!();
             } else {
-                println!("\r  {} {} {}", "○".dimmed(), number_label.dimmed(), config.alias_name.dimmed());
+                println!(
+                    "\r  {} {} {}",
+                    "○".dimmed(),
+                    number_label.dimmed(),
+                    config.alias_name.dimmed()
+                );
             }
         }
 
         // Add exit option
         let exit_index = configs.len() + 1;
         if *selected_index == exit_index {
-            println!("\r> {} {} {}", "●".yellow().bold(), "[E]".yellow().bold(), "Exit".yellow().bold());
+            println!(
+                "\r> {} {} {}",
+                "●".yellow().bold(),
+                "[E]".yellow().bold(),
+                "Exit".yellow().bold()
+            );
             println!("\r    Exit without making changes");
             println!();
         } else {
-            println!("\r  {} {} {}", "○".dimmed(), "[E]".dimmed(), "Exit".dimmed());
+            println!(
+                "\r  {} {} {}",
+                "○".dimmed(),
+                "[E]".dimmed(),
+                "Exit".dimmed()
+            );
         }
 
         // Ensure output is flushed
@@ -341,14 +351,14 @@ fn handle_full_interactive_menu(
                     // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
-                    
+
                     return handle_selection_action(configs, *selected_index);
                 }
                 KeyCode::Esc => {
                     // Clean up terminal before exit
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
-                    
+
                     println!("\nSelection cancelled");
                     return Ok(());
                 }
@@ -358,7 +368,7 @@ fn handle_full_interactive_menu(
                         // Clean up terminal before processing selection
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
-                        
+
                         return handle_selection_action(configs, digit);
                     }
                     // Invalid digit - ignore silently
@@ -367,14 +377,14 @@ fn handle_full_interactive_menu(
                     // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
-                    
+
                     return handle_selection_action(configs, 0);
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') => {
-                    // Clean up terminal before processing selection  
+                    // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
-                    
+
                     return handle_selection_action(configs, configs.len() + 1);
                 }
                 _ => {}
@@ -448,10 +458,7 @@ fn handle_simple_interactive_menu(
 }
 
 /// Handle the actual selection and configuration switch
-fn handle_selection_action(
-    configs: &[&Configuration],
-    selected_index: usize,
-) -> Result<()> {
+fn handle_selection_action(configs: &[&Configuration], selected_index: usize) -> Result<()> {
     if selected_index == 0 {
         // Official option (reset to default)
         println!("\nUsing official Claude configuration");
@@ -497,14 +504,14 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
     thread::sleep(Duration::from_millis(500));
 
     println!("Launching Claude CLI...");
-    
+
     // Set environment variables for current process
     for (key, value) in env_config.as_env_tuples() {
         unsafe {
             std::env::set_var(&key, &value);
         }
     }
-    
+
     // On Unix systems, use exec to replace current process
     #[cfg(unix)]
     {
@@ -515,7 +522,7 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
         // exec never returns on success, so if we get here, it failed
         anyhow::bail!("Failed to exec claude: {}", error);
     }
-    
+
     // On non-Unix systems, fallback to spawn and wait
     #[cfg(not(unix))]
     {
@@ -526,7 +533,9 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .context("Failed to launch Claude CLI. Make sure 'claude' command is available in PATH")?;
+            .context(
+                "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+            )?;
 
         let status = child.wait()?;
 
@@ -534,7 +543,7 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
     }
-    
+
     Ok(())
 }
 
@@ -544,7 +553,7 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
 /// * `skip_permissions` - Whether to add --dangerously-skip-permissions flag
 fn execute_claude_command(skip_permissions: bool) -> Result<()> {
     println!("Launching Claude CLI...");
-    
+
     // On Unix systems, use exec to replace current process
     #[cfg(unix)]
     {
@@ -553,12 +562,12 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
         if skip_permissions {
             command.arg("--dangerously-skip-permissions");
         }
-        
+
         let error = command.exec();
         // exec never returns on success, so if we get here, it failed
         anyhow::bail!("Failed to exec claude: {}", error);
     }
-    
+
     // On non-Unix systems, fallback to spawn and wait
     #[cfg(not(unix))]
     {
@@ -574,7 +583,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
             .stderr(Stdio::inherit());
 
         let mut child = command.spawn().context(
-            "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH"
+            "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
         )?;
 
         let status = child
@@ -585,7 +594,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
     }
-    
+
     Ok(())
 }
 
