@@ -352,6 +352,31 @@ fn handle_full_interactive_menu(
                     println!("\nSelection cancelled");
                     return Ok(());
                 }
+                KeyCode::Char(c) if c.is_ascii_digit() => {
+                    let digit = c.to_digit(10).unwrap() as usize;
+                    if digit >= 1 && digit <= configs.len() {
+                        // Clean up terminal before processing selection
+                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                        let _ = terminal::disable_raw_mode();
+                        
+                        return handle_selection_action(configs, digit);
+                    }
+                    // Invalid digit - ignore silently
+                }
+                KeyCode::Char('r') | KeyCode::Char('R') => {
+                    // Clean up terminal before processing selection
+                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                    let _ = terminal::disable_raw_mode();
+                    
+                    return handle_selection_action(configs, 0);
+                }
+                KeyCode::Char('e') | KeyCode::Char('E') => {
+                    // Clean up terminal before processing selection  
+                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                    let _ = terminal::disable_raw_mode();
+                    
+                    return handle_selection_action(configs, configs.len() + 1);
+                }
                 _ => {}
             },
             Event::Key(_) => {} // Ignore key release events
