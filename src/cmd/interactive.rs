@@ -230,27 +230,53 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
     handle_simple_interactive_menu(&configs, storage)
 }
 
-/// Handle full interactive menu with arrow key navigation
+/// Handle full interactive menu with arrow key navigation and pagination
 fn handle_full_interactive_menu(
     stdout: &mut io::Stdout,
     configs: &[&Configuration],
     selected_index: &mut usize,
 ) -> Result<()> {
+    const PAGE_SIZE: usize = 9; // Maximum 9 configs per page
+    
+    // Calculate pagination info
+    let total_pages = if configs.len() <= PAGE_SIZE {
+        1
+    } else {
+        configs.len().div_ceil(PAGE_SIZE)
+    };
+    let mut current_page = 0;
+    
     loop {
+        // Calculate current page config range
+        let start_idx = current_page * PAGE_SIZE;
+        let end_idx = std::cmp::min(start_idx + PAGE_SIZE, configs.len());
+        let page_configs = &configs[start_idx..end_idx];
+        
         // Clear screen and redraw
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
-        // Header with better formatting
+        // Header with pagination info
         println!("\r{}", "╔══ Select Configuration ══╗".green().bold());
-        println!(
-            "\r{}",
-            "║ Use ↑↓ arrows, Enter to select, Esc to cancel".dimmed()
-        );
+        if total_pages > 1 {
+            println!(
+                "\r{}",
+                format!("║ 第 {} 页，共 {} 页", current_page + 1, total_pages).dimmed()
+            );
+            println!(
+                "\r{}",
+                "║ ↑↓: 选择, Enter: 确认, N/PageDown: 下页, P/PageUp: 上页".dimmed()
+            );
+        } else {
+            println!(
+                "\r{}",
+                "║ Use ↑↓ arrows, Enter to select, Esc to cancel".dimmed()
+            );
+        }
         println!("\r{}", "╚═══════════════════════════╝".green().bold());
         println!();
 
-        // Add official option (first)
+        // Add official option (always visible)
         let official_index = 0;
         if *selected_index == official_index {
             println!(
@@ -270,10 +296,13 @@ fn handle_full_interactive_menu(
             );
         }
 
-        // Draw menu with better alignment
-        for (index, config) in configs.iter().enumerate() {
-            let actual_index = index + 1; // +1 because official is at index 0
-            let number_label = format!("[{}]", index + 1);
+        // Draw current page configs with proper numbering
+        for (page_index, config) in page_configs.iter().enumerate() {
+            let actual_config_index = start_idx + page_index;
+            let display_number = page_index + 1; // Numbers 1-9 for current page
+            let actual_index = actual_config_index + 1; // +1 because official is at index 0
+            let number_label = format!("[{display_number}]");
+            
             if *selected_index == actual_index {
                 println!(
                     "\r> {} {} {}",
@@ -309,7 +338,7 @@ fn handle_full_interactive_menu(
             }
         }
 
-        // Add exit option
+        // Add exit option (always visible)
         let exit_index = configs.len() + 1;
         if *selected_index == exit_index {
             println!(
@@ -327,6 +356,15 @@ fn handle_full_interactive_menu(
                 "[E]".dimmed(),
                 "Exit".dimmed()
             );
+        }
+
+        // Show pagination help if needed
+        if total_pages > 1 {
+            println!("\r{}", format!(
+                "Page Navigation: [N]ext, [P]revious (第 {} 页，共 {} 页)",
+                current_page + 1,
+                total_pages
+            ).dimmed());
         }
 
         // Ensure output is flushed
@@ -347,6 +385,22 @@ fn handle_full_interactive_menu(
                         *selected_index += 1;
                     }
                 }
+                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N') => {
+                    if total_pages > 1 && current_page < total_pages - 1 {
+                        current_page += 1;
+                        // Reset selection to first item of new page
+                        let new_page_start_idx = current_page * PAGE_SIZE;
+                        *selected_index = new_page_start_idx + 1; // +1 because official is at index 0
+                    }
+                }
+                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P') => {
+                    if total_pages > 1 && current_page > 0 {
+                        current_page -= 1;
+                        // Reset selection to first item of new page
+                        let new_page_start_idx = current_page * PAGE_SIZE;
+                        *selected_index = new_page_start_idx + 1; // +1 because official is at index 0
+                    }
+                }
                 KeyCode::Enter => {
                     // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
@@ -364,12 +418,16 @@ fn handle_full_interactive_menu(
                 }
                 KeyCode::Char(c) if c.is_ascii_digit() => {
                     let digit = c.to_digit(10).unwrap() as usize;
-                    if digit >= 1 && digit <= configs.len() {
+                    // Map digit to current page config
+                    if digit >= 1 && digit <= page_configs.len() {
+                        let actual_config_index = start_idx + (digit - 1);
+                        let selection_index = actual_config_index + 1; // +1 because official is at index 0
+                        
                         // Clean up terminal before processing selection
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
 
-                        return handle_selection_action(configs, digit);
+                        return handle_selection_action(configs, selection_index);
                     }
                     // Invalid digit - ignore silently
                 }
