@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::cmd::config::*;
     use crate::cmd::cli::*;
+    use crate::cmd::config::*;
     use std::fs;
     use tempfile::TempDir;
 
@@ -186,7 +186,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_environment_config_default() {
         let env_config = EnvironmentConfig::default();
@@ -242,8 +241,14 @@ mod tests {
         let tuples = env_config.as_env_tuples();
 
         assert_eq!(tuples.len(), 2);
-        assert!(tuples.contains(&("ANTHROPIC_AUTH_TOKEN".to_string(), "sk-ant-test".to_string())));
-        assert!(tuples.contains(&("ANTHROPIC_BASE_URL".to_string(), "https://api.test.com".to_string())));
+        assert!(tuples.contains(&(
+            "ANTHROPIC_AUTH_TOKEN".to_string(),
+            "sk-ant-test".to_string()
+        )));
+        assert!(tuples.contains(&(
+            "ANTHROPIC_BASE_URL".to_string(),
+            "https://api.test.com".to_string()
+        )));
     }
 
     #[test]

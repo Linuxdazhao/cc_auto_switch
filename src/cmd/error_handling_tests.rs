@@ -65,12 +65,12 @@ mod error_handling_tests {
 
         // Test removing non-existent configuration
         assert!(!storage.remove_configuration("non-existent"));
-        
+
         // Test getting non-existent configuration
         assert!(storage.get_configuration("non-existent").is_none());
     }
 
-    #[test]  
+    #[test]
     fn test_error_handling_environment_config_edge_cases() {
         // Test with empty model fields
         let mut config = create_test_config("test", "sk-ant-test", "https://api.test.com");
@@ -78,11 +78,15 @@ mod error_handling_tests {
         config.small_fast_model = Some("".to_string());
 
         let env_config = EnvironmentConfig::from_config(&config);
-        
+
         // Empty model fields should not be included in environment variables
         assert_eq!(env_config.env_vars.len(), 2); // Only token and URL
         assert!(!env_config.env_vars.contains_key("ANTHROPIC_MODEL"));
-        assert!(!env_config.env_vars.contains_key("ANTHROPIC_SMALL_FAST_MODEL"));
+        assert!(
+            !env_config
+                .env_vars
+                .contains_key("ANTHROPIC_SMALL_FAST_MODEL")
+        );
     }
 
     #[test]
@@ -90,7 +94,7 @@ mod error_handling_tests {
         let mut storage = ConfigStorage::default();
         let config1 = create_test_config("config1", "sk-ant-test1", "https://api1.test.com");
         let config2 = create_test_config("config2", "sk-ant-test2", "https://api2.test.com");
-        
+
         storage.add_configuration(config1);
         storage.add_configuration(config2);
 
@@ -102,7 +106,7 @@ mod error_handling_tests {
         let json = json_result.unwrap();
         let deserialization_result: Result<ConfigStorage, _> = serde_json::from_str(&json);
         assert!(deserialization_result.is_ok());
-        
+
         let deserialized = deserialization_result.unwrap();
         assert_eq!(deserialized.configurations.len(), 2);
     }

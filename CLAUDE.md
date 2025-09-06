@@ -173,6 +173,9 @@ cc_auto_switch/
 **交互式终端 UI** (`interactive.rs`)：
 - `handle_current_command()`：带键盘导航的交互式主菜单
 - `handle_interactive_selection()`：实时配置浏览器和预览功能
+- **数字键快速选择**：支持按数字键 1-9 直接选择对应配置项
+- **智能分页系统**：配置超过 9 个时自动分页，支持 PageUp/PageDown 或 N/P 键翻页
+- **快捷键支持**：R 键重置为官方配置，E 键退出
 - 基于 Crossterm 的终端处理，支持降级到简单菜单
 - 配置切换后自动启动 Claude CLI
 
@@ -271,6 +274,10 @@ source ~/.bashrc
 The `cc-switch current` command provides a sophisticated interactive menu with:
 - **Current Configuration Display**: Shows active API token and URL
 - **Keyboard Navigation**: Arrow keys for menu navigation (with fallback to numbered menu)
+- **数字键快速选择**: 按数字键 1-9 直接选择对应配置项，无需箭头键导航
+- **智能分页**: 配置超过 9 个时自动分页显示，每页最多 9 个配置
+- **页面导航**: PageUp/PageDown 或 N/P 键快速翻页
+- **快捷操作**: R 键快速重置为官方配置，E 键直接退出
 - **Real-time Selection**: Instant preview of configuration details during browsing
 - **Automatic Claude Launch**: Seamlessly launches Claude CLI after configuration switches
 - **Terminal Compatibility**: Crossterm-based terminal handling with graceful fallbacks
@@ -280,6 +287,25 @@ The `cc-switch current` command provides a sophisticated interactive menu with:
 - **Configuration Preview**: See token, URL, model settings before switching
 - **Reset Option**: Quick reset to default Claude behavior
 - **Smart Fallbacks**: Automatic fallback to simple menus when terminal capabilities are limited
+
+### 键盘快捷键参考
+
+#### 单页模式（≤9个配置）
+- **↑↓**: 上下导航选择
+- **1-9**: 数字键直接选择对应配置
+- **R**: 重置为官方配置
+- **E**: 退出程序
+- **Enter**: 确认当前选择
+- **Esc**: 取消操作
+
+#### 分页模式（>9个配置）
+- **↑↓**: 上下导航选择
+- **1-9**: 数字键直接选择当前页对应配置
+- **N/PageDown**: 下一页
+- **P/PageUp**: 上一页
+- **R**: 重置为官方配置（在任何页面都可用）
+- **E**: 退出程序
+- **Enter**: 确认当前选择
 
 ## Completion Features
 
@@ -382,9 +408,10 @@ git commit --no-verify
 ## Testing Strategy
 
 ### Test Coverage
-- **Unit Tests**: 57 tests covering all core functionality
+- **Unit Tests**: 43 tests covering all core functionality
 - **Integration Tests**: Full workflow testing, error scenarios, edge cases
-- **Error Handling Tests**: Comprehensive error condition testing
+- **Error Handling Tests**: Comprehensive error condition testing including boundary cases
+- **Interactive Feature Tests**: 数字键快速选择、分页逻辑、边界条件测试
 - **Cross-Platform Tests**: Path resolution, file operations on different platforms
 
 ### Test Categories
@@ -393,6 +420,10 @@ git commit --no-verify
 3. **CLI Parsing**: Command structure, argument validation, help generation
 4. **Error Handling**: Invalid inputs, file operations, edge cases
 5. **Integration**: End-to-end workflows, shell integration
+6. **Interactive Features**: 
+   - 分页计算和导航逻辑测试
+   - 数字键映射和边界条件测试
+   - 空配置列表和异常情况处理测试
 
 ## Key Dependencies and Their Roles
 

@@ -47,7 +47,6 @@ pub struct EnvironmentConfig {
     pub env_vars: HashMap<String, String>,
 }
 
-
 impl ConfigStorage {
     /// Load configurations from disk
     ///
@@ -144,38 +143,44 @@ impl EnvironmentConfig {
     /// EnvironmentConfig with the appropriate environment variables set
     pub fn from_config(config: &Configuration) -> Self {
         let mut env_vars = HashMap::new();
-        
+
         // Set required environment variables
         env_vars.insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
         env_vars.insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
-        
+
         // Set model configurations only if provided
         if let Some(model) = &config.model {
             if !model.is_empty() {
                 env_vars.insert("ANTHROPIC_MODEL".to_string(), model.clone());
             }
         }
-        
+
         if let Some(small_fast_model) = &config.small_fast_model {
             if !small_fast_model.is_empty() {
-                env_vars.insert("ANTHROPIC_SMALL_FAST_MODEL".to_string(), small_fast_model.clone());
+                env_vars.insert(
+                    "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
+                    small_fast_model.clone(),
+                );
             }
         }
-        
+
         EnvironmentConfig { env_vars }
     }
-    
+
     /// Create an empty environment configuration (for reset)
     pub fn empty() -> Self {
         EnvironmentConfig {
             env_vars: HashMap::new(),
         }
     }
-    
+
     /// Get environment variables as a Vec of (key, value) tuples
     /// for use with Command::envs()
     pub fn as_env_tuples(&self) -> Vec<(String, String)> {
-        self.env_vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+        self.env_vars
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 }
 

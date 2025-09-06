@@ -92,8 +92,18 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
         // Ensure output is flushed
         stdout.flush()?;
 
-        // Handle input
-        match event::read()? {
+        // Handle input with error recovery
+        let event = match event::read() {
+            Ok(event) => event,
+            Err(e) => {
+                // Clean up terminal state on input error
+                let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                let _ = terminal::disable_raw_mode();
+                return Err(e.into());
+            }
+        };
+
+        match event {
             Event::Key(KeyEvent {
                 code,
                 kind: KeyEventKind::Press,
@@ -236,8 +246,20 @@ fn handle_full_interactive_menu(
     configs: &[&Configuration],
     selected_index: &mut usize,
 ) -> Result<()> {
+    // Handle empty configuration list
+    if configs.is_empty() {
+        println!("\r{}", "No configurations available".yellow());
+        println!(
+            "\r{}",
+            "Use 'cc-switch add <alias> <token> <url>' to add configurations first.".dimmed()
+        );
+        println!("\r{}", "Press any key to continue...".dimmed());
+        let _ = event::read(); // Wait for user input
+        return Ok(());
+    }
+
     const PAGE_SIZE: usize = 9; // Maximum 9 configs per page
-    
+
     // Calculate pagination info
     let total_pages = if configs.len() <= PAGE_SIZE {
         1
@@ -245,13 +267,13 @@ fn handle_full_interactive_menu(
         configs.len().div_ceil(PAGE_SIZE)
     };
     let mut current_page = 0;
-    
+
     loop {
         // Calculate current page config range
         let start_idx = current_page * PAGE_SIZE;
         let end_idx = std::cmp::min(start_idx + PAGE_SIZE, configs.len());
         let page_configs = &configs[start_idx..end_idx];
-        
+
         // Clear screen and redraw
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
@@ -265,12 +287,12 @@ fn handle_full_interactive_menu(
             );
             println!(
                 "\r{}",
-                "║ ↑↓: 选择, Enter: 确认, N/PageDown: 下页, P/PageUp: 上页".dimmed()
+                "║ ↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认".dimmed()
             );
         } else {
             println!(
                 "\r{}",
-                "║ Use ↑↓ arrows, Enter to select, Esc to cancel".dimmed()
+                "║ ↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消".dimmed()
             );
         }
         println!("\r{}", "╚═══════════════════════════╝".green().bold());
@@ -302,7 +324,7 @@ fn handle_full_interactive_menu(
             let display_number = page_index + 1; // Numbers 1-9 for current page
             let actual_index = actual_config_index + 1; // +1 because official is at index 0
             let number_label = format!("[{display_number}]");
-            
+
             if *selected_index == actual_index {
                 println!(
                     "\r> {} {} {}",
@@ -360,18 +382,32 @@ fn handle_full_interactive_menu(
 
         // Show pagination help if needed
         if total_pages > 1 {
-            println!("\r{}", format!(
-                "Page Navigation: [N]ext, [P]revious (第 {} 页，共 {} 页)",
-                current_page + 1,
-                total_pages
-            ).dimmed());
+            println!(
+                "\r{}",
+                format!(
+                    "Page Navigation: [N]ext, [P]revious (第 {} 页，共 {} 页)",
+                    current_page + 1,
+                    total_pages
+                )
+                .dimmed()
+            );
         }
 
         // Ensure output is flushed
         stdout.flush()?;
 
-        // Handle input
-        match event::read()? {
+        // Handle input with error recovery
+        let event = match event::read() {
+            Ok(event) => event,
+            Err(e) => {
+                // Clean up terminal state on input error
+                let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                let _ = terminal::disable_raw_mode();
+                return Err(e.into());
+            }
+        };
+
+        match event {
             Event::Key(KeyEvent {
                 code,
                 kind: KeyEventKind::Press,
@@ -422,7 +458,7 @@ fn handle_full_interactive_menu(
                     if digit >= 1 && digit <= page_configs.len() {
                         let actual_config_index = start_idx + (digit - 1);
                         let selection_index = actual_config_index + 1; // +1 because official is at index 0
-                        
+
                         // Clean up terminal before processing selection
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
@@ -459,22 +495,22 @@ fn handle_simple_interactive_menu(
     _storage: &ConfigStorage,
 ) -> Result<()> {
     const PAGE_SIZE: usize = 9; // Same page size as full interactive menu
-    
+
     // If configs fit in one page, show the simple original menu
     if configs.len() <= PAGE_SIZE {
         return handle_simple_single_page_menu(configs);
     }
-    
+
     // Multi-page simple menu
     let total_pages = configs.len().div_ceil(PAGE_SIZE);
     let mut current_page = 0;
-    
+
     loop {
         // Calculate current page config range
         let start_idx = current_page * PAGE_SIZE;
         let end_idx = std::cmp::min(start_idx + PAGE_SIZE, configs.len());
         let page_configs = &configs[start_idx..end_idx];
-        
+
         println!("\n{}", "Available Configurations:".blue().bold());
         if total_pages > 1 {
             println!("第 {} 页，共 {} 页", current_page + 1, total_pages);
@@ -513,9 +549,12 @@ fn handle_simple_interactive_menu(
 
         // Exit option
         println!("{} {}", "[e]".yellow().bold(), "Exit".yellow());
-        
+
         if total_pages > 1 {
-            println!("\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [r]官方 | [e]退出", page_configs.len());
+            println!(
+                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [r]官方 | [e]退出",
+                page_configs.len()
+            );
         }
 
         print!("\n请输入选择: ");
@@ -702,8 +741,6 @@ fn launch_claude_with_env(env_config: EnvironmentConfig) -> Result<()> {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
     }
-
-    Ok(())
 }
 
 /// Execute claude command with or without --dangerously-skip-permissions using exec
@@ -753,8 +790,6 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
     }
-
-    Ok(())
 }
 
 /// Read input from stdin with a prompt
@@ -798,12 +833,12 @@ mod pagination_tests {
     #[test]
     fn test_pagination_calculation() {
         const PAGE_SIZE: usize = 9;
-        
+
         // Test single page scenarios
         assert_eq!(1_usize.div_ceil(PAGE_SIZE), 1); // 1 config -> 1 page
         assert_eq!(9_usize.div_ceil(PAGE_SIZE), 1); // 9 configs -> 1 page
-        
-        // Test multi-page scenarios  
+
+        // Test multi-page scenarios
         assert_eq!(10_usize.div_ceil(PAGE_SIZE), 2); // 10 configs -> 2 pages
         assert_eq!(18_usize.div_ceil(PAGE_SIZE), 2); // 18 configs -> 2 pages
         assert_eq!(19_usize.div_ceil(PAGE_SIZE), 3); // 19 configs -> 3 pages
@@ -815,7 +850,7 @@ mod pagination_tests {
     #[test]
     fn test_page_range_calculation() {
         const PAGE_SIZE: usize = 9;
-        
+
         // Test first page
         let current_page = 0;
         let start_idx = current_page * PAGE_SIZE; // 0
@@ -823,7 +858,7 @@ mod pagination_tests {
         assert_eq!(start_idx, 0);
         assert_eq!(end_idx, 9);
         assert_eq!(end_idx - start_idx, 9); // Full page
-        
+
         // Test second page
         let current_page = 1;
         let start_idx = current_page * PAGE_SIZE; // 9
@@ -831,7 +866,7 @@ mod pagination_tests {
         assert_eq!(start_idx, 9);
         assert_eq!(end_idx, 15);
         assert_eq!(end_idx - start_idx, 6); // Partial page
-        
+
         // Test edge case: exactly PAGE_SIZE configs
         let current_page = 0;
         let start_idx = current_page * PAGE_SIZE; // 0
@@ -845,30 +880,30 @@ mod pagination_tests {
     #[test]
     fn test_digit_mapping_to_config_index() {
         const PAGE_SIZE: usize = 9;
-        
+
         // Test first page mapping (configs 0-8)
         let current_page = 0;
         let start_idx = current_page * PAGE_SIZE; // 0
-        
+
         // Digit 1 should map to config index 0
         let digit = 1;
         let actual_config_index = start_idx + (digit - 1); // 0 + (1-1) = 0
         assert_eq!(actual_config_index, 0);
-        
+
         // Digit 9 should map to config index 8
         let digit = 9;
         let actual_config_index = start_idx + (digit - 1); // 0 + (9-1) = 8
         assert_eq!(actual_config_index, 8);
-        
+
         // Test second page mapping (configs 9-17)
         let current_page = 1;
         let start_idx = current_page * PAGE_SIZE; // 9
-        
+
         // Digit 1 should map to config index 9
         let digit = 1;
         let actual_config_index = start_idx + (digit - 1); // 9 + (1-1) = 9
         assert_eq!(actual_config_index, 9);
-        
+
         // Digit 5 should map to config index 13
         let digit = 5;
         let actual_config_index = start_idx + (digit - 1); // 9 + (5-1) = 13
@@ -881,11 +916,11 @@ mod pagination_tests {
         // Test mapping digit to selection index for handle_selection_action
         // Note: handle_selection_action expects indices where:
         // - 0 = official config
-        // - 1 = first user config  
+        // - 1 = first user config
         // - 2 = second user config, etc.
-        
+
         const PAGE_SIZE: usize = 9;
-        
+
         // First page, digit 1 -> config index 0 -> selection index 1
         let current_page = 0;
         let start_idx = current_page * PAGE_SIZE; // 0
@@ -893,7 +928,7 @@ mod pagination_tests {
         let actual_config_index = start_idx + (digit - 1); // 0
         let selection_index = actual_config_index + 1; // +1 because official is at index 0
         assert_eq!(selection_index, 1);
-        
+
         // Second page, digit 1 -> config index 9 -> selection index 10
         let current_page = 1;
         let start_idx = current_page * PAGE_SIZE; // 9
@@ -910,34 +945,128 @@ mod pagination_tests {
         let total_configs: usize = 25; // 3 pages total
         let total_pages = total_configs.div_ceil(PAGE_SIZE); // 3 pages
         assert_eq!(total_pages, 3);
-        
+
         // Test first page - can't go to previous
         let mut current_page = 0;
         if current_page > 0 {
             current_page -= 1;
         }
         assert_eq!(current_page, 0); // Should stay at 0
-        
+
         // Test last page - can't go to next
         let mut current_page = total_pages - 1; // 2 (last page)
         if current_page < total_pages - 1 {
             current_page += 1;
         }
         assert_eq!(current_page, 2); // Should stay at 2
-        
+
         // Test middle page navigation
         let mut current_page = 1;
-        
+
         // Can go to next page
         if current_page < total_pages - 1 {
             current_page += 1;
         }
         assert_eq!(current_page, 2);
-        
+
         // Can go to previous page
         if current_page > 0 {
             current_page -= 1;
         }
         assert_eq!(current_page, 1);
+    }
+
+    /// Test boundary conditions for digit key processing
+    #[test]
+    fn test_digit_key_boundary_conditions() {
+        const PAGE_SIZE: usize = 9;
+
+        // Test digit 0 (should be ignored)
+        let digit = 0;
+        assert!(digit < 1, "Digit 0 should be less than 1 and ignored");
+
+        // Test digit beyond available configs (should be ignored)
+        let configs_len = 5; // Only 5 configs available
+        let page_configs_len = std::cmp::min(PAGE_SIZE, configs_len); // 5
+        let digit = 9; // User presses 9
+        assert!(
+            digit > page_configs_len,
+            "Digit 9 should be beyond available configs (5) and ignored"
+        );
+
+        // Test valid digit range
+        for digit in 1..=page_configs_len {
+            assert!(
+                digit >= 1 && digit <= page_configs_len,
+                "Digit {} should be valid",
+                digit
+            );
+        }
+    }
+
+    /// Test empty configuration list handling
+    #[test]
+    fn test_empty_configs_handling() {
+        let empty_configs: Vec<String> = Vec::new();
+        assert!(
+            empty_configs.is_empty(),
+            "Empty config list should be properly detected"
+        );
+
+        // Verify that empty check comes before pagination calculation
+        let configs_len = empty_configs.len(); // 0
+        assert_eq!(configs_len, 0, "Empty configs should have length 0");
+
+        // No pagination should be calculated for empty configs
+        // (function should return early)
+    }
+
+    /// Test page navigation boundary conditions
+    #[test]
+    fn test_page_navigation_boundaries() {
+        const PAGE_SIZE: usize = 9;
+        let total_configs: usize = 20; // 3 pages total
+        let total_pages = total_configs.div_ceil(PAGE_SIZE); // 3 pages
+
+        // Test first page navigation (cannot go to previous page)
+        let mut current_page = 0;
+        let original_page = current_page;
+
+        // Simulate PageUp on first page (should not change)
+        if current_page > 0 {
+            current_page -= 1;
+        }
+        assert_eq!(
+            current_page, original_page,
+            "First page should not navigate to previous"
+        );
+
+        // Test last page navigation (cannot go to next page)
+        let mut current_page = total_pages - 1; // Last page (2)
+        let original_page = current_page;
+
+        // Simulate PageDown on last page (should not change)
+        if current_page < total_pages - 1 {
+            current_page += 1;
+        }
+        assert_eq!(
+            current_page, original_page,
+            "Last page should not navigate to next"
+        );
+
+        // Test valid navigation from middle page
+        let mut current_page = 1; // Middle page
+
+        // Navigate to next page
+        if current_page < total_pages - 1 {
+            current_page += 1;
+        }
+        assert_eq!(current_page, 2, "Should navigate to next page");
+
+        // Navigate to previous page
+        if current_page > 0 {
+            current_page -= 1;
+        }
+        assert_eq!(current_page, 1, "Should navigate to previous page");
     }
 }

@@ -1,8 +1,10 @@
 use crate::cmd::cli::{Cli, Commands};
 use crate::cmd::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
-use crate::cmd::config::{validate_alias_name, EnvironmentConfig, Configuration, ConfigStorage};
-use crate::cmd::interactive::{handle_current_command, handle_interactive_selection, read_input, read_sensitive_input};
-use anyhow::{Context, Result};
+use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
+use crate::cmd::interactive::{
+    handle_current_command, handle_interactive_selection, read_input, read_sensitive_input,
+};
+use anyhow::Result;
 use clap::Parser;
 use colored::*;
 use std::process::Command;
@@ -208,7 +210,7 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
 
     // Launch Claude CLI with exec to replace current process
     println!("Launching Claude CLI...");
-    
+
     // On Unix systems, use exec to replace current process
     #[cfg(unix)]
     {
@@ -219,7 +221,7 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         // exec never returns on success, so if we get here, it failed
         anyhow::bail!("Failed to exec claude: {}", error);
     }
-    
+
     // On non-Unix systems, fallback to spawn and wait
     #[cfg(not(unix))]
     {
@@ -230,7 +232,9 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .context("Failed to launch Claude CLI. Make sure 'claude' command is available in PATH")?;
+            .context(
+                "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
+            )?;
 
         // Wait for the Claude process to finish and pass control to it
         let status = child
@@ -241,8 +245,6 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
     }
-    
-    Ok(())
 }
 
 /// Main entry point for the CLI application
