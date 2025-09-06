@@ -264,23 +264,26 @@ fn handle_full_interactive_menu(
         let official_index = 0;
         if *selected_index == official_index {
             println!(
-                "\r> {} {}",
+                "\r> {} {} {}",
                 "●".red().bold(),
+                "[R]".red().bold(),
                 "official".red().bold()
             );
             println!("\r    Use official Claude API (no custom configuration)");
             println!();
         } else {
-            println!("\r  {} {}", "○".dimmed(), "official".dimmed());
+            println!("\r  {} {} {}", "○".dimmed(), "[R]".dimmed(), "official".dimmed());
         }
 
         // Draw menu with better alignment
         for (index, config) in configs.iter().enumerate() {
             let actual_index = index + 1; // +1 because official is at index 0
+            let number_label = format!("[{}]", index + 1);
             if *selected_index == actual_index {
                 println!(
-                    "\r> {} {}",
+                    "\r> {} {} {}",
                     "●".blue().bold(),
+                    number_label.blue().bold(),
                     config.alias_name.blue().bold()
                 );
                 // Show details with better formatting
@@ -302,18 +305,18 @@ fn handle_full_interactive_menu(
                 }
                 println!();
             } else {
-                println!("\r  {} {}", "○".dimmed(), config.alias_name.dimmed());
+                println!("\r  {} {} {}", "○".dimmed(), number_label.dimmed(), config.alias_name.dimmed());
             }
         }
 
         // Add exit option
         let exit_index = configs.len() + 1;
         if *selected_index == exit_index {
-            println!("\r> {} {}", "●".yellow().bold(), "Exit".yellow().bold());
+            println!("\r> {} {} {}", "●".yellow().bold(), "[E]".yellow().bold(), "Exit".yellow().bold());
             println!("\r    Exit without making changes");
             println!();
         } else {
-            println!("\r  {} {}", "○".dimmed(), "Exit".dimmed());
+            println!("\r  {} {} {}", "○".dimmed(), "[E]".dimmed(), "Exit".dimmed());
         }
 
         // Ensure output is flushed
