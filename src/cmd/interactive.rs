@@ -790,3 +790,154 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
         .context("Failed to read input")?;
     Ok(input.trim().to_string())
 }
+
+#[cfg(test)]
+mod pagination_tests {
+
+    /// Test pagination calculation logic
+    #[test]
+    fn test_pagination_calculation() {
+        const PAGE_SIZE: usize = 9;
+        
+        // Test single page scenarios
+        assert_eq!(1_usize.div_ceil(PAGE_SIZE), 1); // 1 config -> 1 page
+        assert_eq!(9_usize.div_ceil(PAGE_SIZE), 1); // 9 configs -> 1 page
+        
+        // Test multi-page scenarios  
+        assert_eq!(10_usize.div_ceil(PAGE_SIZE), 2); // 10 configs -> 2 pages
+        assert_eq!(18_usize.div_ceil(PAGE_SIZE), 2); // 18 configs -> 2 pages
+        assert_eq!(19_usize.div_ceil(PAGE_SIZE), 3); // 19 configs -> 3 pages
+        assert_eq!(27_usize.div_ceil(PAGE_SIZE), 3); // 27 configs -> 3 pages
+        assert_eq!(28_usize.div_ceil(PAGE_SIZE), 4); // 28 configs -> 4 pages
+    }
+
+    /// Test page range calculation
+    #[test]
+    fn test_page_range_calculation() {
+        const PAGE_SIZE: usize = 9;
+        
+        // Test first page
+        let current_page = 0;
+        let start_idx = current_page * PAGE_SIZE; // 0
+        let end_idx = std::cmp::min(start_idx + PAGE_SIZE, 15); // min(9, 15) = 9
+        assert_eq!(start_idx, 0);
+        assert_eq!(end_idx, 9);
+        assert_eq!(end_idx - start_idx, 9); // Full page
+        
+        // Test second page
+        let current_page = 1;
+        let start_idx = current_page * PAGE_SIZE; // 9
+        let end_idx = std::cmp::min(start_idx + PAGE_SIZE, 15); // min(18, 15) = 15
+        assert_eq!(start_idx, 9);
+        assert_eq!(end_idx, 15);
+        assert_eq!(end_idx - start_idx, 6); // Partial page
+        
+        // Test edge case: exactly PAGE_SIZE configs
+        let current_page = 0;
+        let start_idx = current_page * PAGE_SIZE; // 0
+        let end_idx = std::cmp::min(start_idx + PAGE_SIZE, PAGE_SIZE); // min(9, 9) = 9
+        assert_eq!(start_idx, 0);
+        assert_eq!(end_idx, 9);
+        assert_eq!(end_idx - start_idx, 9); // Full page
+    }
+
+    /// Test digit key mapping to config indices
+    #[test]
+    fn test_digit_mapping_to_config_index() {
+        const PAGE_SIZE: usize = 9;
+        
+        // Test first page mapping (configs 0-8)
+        let current_page = 0;
+        let start_idx = current_page * PAGE_SIZE; // 0
+        
+        // Digit 1 should map to config index 0
+        let digit = 1;
+        let actual_config_index = start_idx + (digit - 1); // 0 + (1-1) = 0
+        assert_eq!(actual_config_index, 0);
+        
+        // Digit 9 should map to config index 8
+        let digit = 9;
+        let actual_config_index = start_idx + (digit - 1); // 0 + (9-1) = 8
+        assert_eq!(actual_config_index, 8);
+        
+        // Test second page mapping (configs 9-17)
+        let current_page = 1;
+        let start_idx = current_page * PAGE_SIZE; // 9
+        
+        // Digit 1 should map to config index 9
+        let digit = 1;
+        let actual_config_index = start_idx + (digit - 1); // 9 + (1-1) = 9
+        assert_eq!(actual_config_index, 9);
+        
+        // Digit 5 should map to config index 13
+        let digit = 5;
+        let actual_config_index = start_idx + (digit - 1); // 9 + (5-1) = 13
+        assert_eq!(actual_config_index, 13);
+    }
+
+    /// Test selection index conversion for handle_selection_action
+    #[test]
+    fn test_selection_index_conversion() {
+        // Test mapping digit to selection index for handle_selection_action
+        // Note: handle_selection_action expects indices where:
+        // - 0 = official config
+        // - 1 = first user config  
+        // - 2 = second user config, etc.
+        
+        const PAGE_SIZE: usize = 9;
+        
+        // First page, digit 1 -> config index 0 -> selection index 1
+        let current_page = 0;
+        let start_idx = current_page * PAGE_SIZE; // 0
+        let digit = 1;
+        let actual_config_index = start_idx + (digit - 1); // 0
+        let selection_index = actual_config_index + 1; // +1 because official is at index 0
+        assert_eq!(selection_index, 1);
+        
+        // Second page, digit 1 -> config index 9 -> selection index 10
+        let current_page = 1;
+        let start_idx = current_page * PAGE_SIZE; // 9
+        let digit = 1;
+        let actual_config_index = start_idx + (digit - 1); // 9
+        let selection_index = actual_config_index + 1; // +1 because official is at index 0
+        assert_eq!(selection_index, 10);
+    }
+
+    /// Test page navigation bounds checking
+    #[test]
+    fn test_page_navigation_bounds() {
+        const PAGE_SIZE: usize = 9;
+        let total_configs: usize = 25; // 3 pages total
+        let total_pages = total_configs.div_ceil(PAGE_SIZE); // 3 pages
+        assert_eq!(total_pages, 3);
+        
+        // Test first page - can't go to previous
+        let mut current_page = 0;
+        if current_page > 0 {
+            current_page -= 1;
+        }
+        assert_eq!(current_page, 0); // Should stay at 0
+        
+        // Test last page - can't go to next
+        let mut current_page = total_pages - 1; // 2 (last page)
+        if current_page < total_pages - 1 {
+            current_page += 1;
+        }
+        assert_eq!(current_page, 2); // Should stay at 2
+        
+        // Test middle page navigation
+        let mut current_page = 1;
+        
+        // Can go to next page
+        if current_page < total_pages - 1 {
+            current_page += 1;
+        }
+        assert_eq!(current_page, 2);
+        
+        // Can go to previous page
+        if current_page > 0 {
+            current_page -= 1;
+        }
+        assert_eq!(current_page, 1);
+    }
+}
