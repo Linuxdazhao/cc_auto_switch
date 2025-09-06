@@ -458,6 +458,107 @@ fn handle_simple_interactive_menu(
     configs: &[&Configuration],
     _storage: &ConfigStorage,
 ) -> Result<()> {
+    const PAGE_SIZE: usize = 9; // Same page size as full interactive menu
+    
+    // If configs fit in one page, show the simple original menu
+    if configs.len() <= PAGE_SIZE {
+        return handle_simple_single_page_menu(configs);
+    }
+    
+    // Multi-page simple menu
+    let total_pages = configs.len().div_ceil(PAGE_SIZE);
+    let mut current_page = 0;
+    
+    loop {
+        // Calculate current page config range
+        let start_idx = current_page * PAGE_SIZE;
+        let end_idx = std::cmp::min(start_idx + PAGE_SIZE, configs.len());
+        let page_configs = &configs[start_idx..end_idx];
+        
+        println!("\n{}", "Available Configurations:".blue().bold());
+        if total_pages > 1 {
+            println!("第 {} 页，共 {} 页", current_page + 1, total_pages);
+            println!("使用 'n' 下一页, 'p' 上一页, 'r' 官方配置, 'e' 退出");
+        }
+        println!();
+
+        // Add official option (always available)
+        println!("{} {}", "[r]".red().bold(), "official".red());
+        println!("   Use official Claude API (no custom configuration)");
+        println!();
+
+        // Show current page configs
+        for (page_index, config) in page_configs.iter().enumerate() {
+            let display_number = page_index + 1;
+            println!(
+                "{}. {} ({})",
+                format!("[{display_number}]").green().bold(),
+                config.alias_name.green(),
+                format!(
+                    "{}...{}",
+                    &config.token[..12],
+                    &config.token[config.token.len() - 8..]
+                )
+                .dimmed()
+            );
+            println!("   URL: {}", config.url.cyan());
+            if let Some(model) = &config.model {
+                println!("   Model: {}", model.yellow());
+            }
+            if let Some(small_fast_model) = &config.small_fast_model {
+                println!("   Small Fast Model: {}", small_fast_model.yellow());
+            }
+            println!();
+        }
+
+        // Exit option
+        println!("{} {}", "[e]".yellow().bold(), "Exit".yellow());
+        
+        if total_pages > 1 {
+            println!("\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [r]官方 | [e]退出", page_configs.len());
+        }
+
+        print!("\n请输入选择: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let choice = input.trim().to_lowercase();
+
+        match choice.as_str() {
+            "r" => {
+                // Official option
+                println!("Using official Claude configuration");
+                return launch_claude_with_env(EnvironmentConfig::empty());
+            }
+            "e" => {
+                println!("Exiting...");
+                return Ok(());
+            }
+            "n" if total_pages > 1 && current_page < total_pages - 1 => {
+                current_page += 1;
+                continue;
+            }
+            "p" if total_pages > 1 && current_page > 0 => {
+                current_page -= 1;
+                continue;
+            }
+            digit_str => {
+                if let Ok(digit) = digit_str.parse::<usize>() {
+                    if digit >= 1 && digit <= page_configs.len() {
+                        let actual_config_index = start_idx + (digit - 1);
+                        let selection_index = actual_config_index + 1; // +1 because official is at index 0
+                        return handle_selection_action(configs, selection_index);
+                    }
+                }
+                println!("无效选择，请重新输入");
+            }
+        }
+    }
+}
+
+/// Handle simple single page menu (original behavior for ≤9 configs)
+fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
     println!("\n{}", "Available Configurations:".blue().bold());
 
     // Add official option (first)
