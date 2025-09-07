@@ -12,16 +12,16 @@ use std::thread;
 use std::time::Duration;
 
 /// Parameters for adding a new configuration
-struct AddCommandParams {
-    alias_name: String,
-    token: Option<String>,
-    url: Option<String>,
-    model: Option<String>,
-    small_fast_model: Option<String>,
-    force: bool,
-    interactive: bool,
-    token_arg: Option<String>,
-    url_arg: Option<String>,
+pub struct AddCommandParams {
+    pub alias_name: String,
+    pub token: Option<String>,
+    pub url: Option<String>,
+    pub model: Option<String>,
+    pub small_fast_model: Option<String>,
+    pub force: bool,
+    pub interactive: bool,
+    pub token_arg: Option<String>,
+    pub url_arg: Option<String>,
 }
 
 /// Handle adding a configuration with all the new features

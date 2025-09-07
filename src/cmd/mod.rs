@@ -1,8 +1,11 @@
 pub mod cli;
 pub mod completion;
+pub mod completion_tests;
 pub mod config;
 pub mod error_handling_tests;
 pub mod integration_tests;
 pub mod interactive;
+pub mod interactive_tests;
 pub mod main;
+pub mod main_tests;
 pub mod tests;

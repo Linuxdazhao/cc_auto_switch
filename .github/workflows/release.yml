@@ -19,16 +19,16 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact_name: cc_auto_switch-x86_64-unknown-linux-gnu.tar.gz
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            artifact_name: cc_auto_switch-x86_64-apple-darwin.tar.gz
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            artifact_name: cc_auto_switch-aarch64-apple-darwin.tar.gz
+            artifact_name: cc-switch-x86_64-unknown-linux-gnu.tar.gz
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact_name: cc_auto_switch-aarch64-unknown-linux-gnu.tar.gz
+            artifact_name: cc-switch-aarch64-unknown-linux-gnu.tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: cc-switch-x86_64-apple-darwin.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_name: cc-switch-aarch64-apple-darwin.tar.gz
 
     steps:
     - uses: actions/checkout@v4
@@ -54,6 +54,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-aarch64-linux-gnu
 
+    - name: Set up cross compilation environment
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
     - name: Build for ${{ matrix.target }}
       run: |
         cargo build --release --target ${{ matrix.target }}
@@ -61,9 +66,9 @@ jobs:
     - name: Package artifacts
       run: |
         mkdir -p dist/${{ matrix.target }}
-        cp target/${{ matrix.target }}/release/cc_auto_switch dist/${{ matrix.target }}/cc_auto_switch
+        cp target/${{ matrix.target }}/release/cc-switch dist/${{ matrix.target }}/cc-switch
         cd dist/${{ matrix.target }}
-        tar -czf ../../${{ matrix.artifact_name }} cc_auto_switch
+        tar -czf ../../${{ matrix.artifact_name }} cc-switch
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -106,8 +111,11 @@ jobs:
         echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
         
         for artifact in artifacts/**/*.tar.gz; do
-          filename=$(basename "$artifact")
-          echo "| ${filename%.tar.gz} | $filename |" >> $GITHUB_STEP_SUMMARY
+          if [ -f "$artifact" ]; then
+            filename=$(basename "$artifact")
+            target_name=$(echo "$filename" | sed -E 's/\.tar\.gz$//')
+            echo "| $target_name | $filename |" >> $GITHUB_STEP_SUMMARY
+          fi
         done
 
   publish-to-github-packages:
