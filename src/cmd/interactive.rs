@@ -10,6 +10,30 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
+/// Safely formats a token string for display by truncating it to show only
+/// the first and last few characters, with "..." in between.
+/// Handles tokens of any length gracefully without panicking.
+pub(crate) fn format_token_safely(token: &str) -> String {
+    const PREFIX_LEN: usize = 12;
+    const SUFFIX_LEN: usize = 8;
+    
+    if token.len() <= PREFIX_LEN + SUFFIX_LEN {
+        // If token is short enough, show first half and mask the rest with *
+        if token.len() <= 6 {
+            // Very short token, just show first few chars and mask the rest
+            let visible_chars = (token.len() + 1) / 2;
+            format!("{}***", &token[..visible_chars])
+        } else {
+            // Medium length token, show some chars from start and mask the end
+            let visible_chars = token.len() / 2;
+            format!("{}***", &token[..visible_chars])
+        }
+    } else {
+        // Long token, use the original format: first 12 + "..." + last 8
+        format!("{}...{}", &token[..PREFIX_LEN], &token[token.len() - SUFFIX_LEN..])
+    }
+}
+
 /// Handle interactive current command
 ///
 /// Provides interactive menu for:
@@ -335,12 +359,7 @@ fn handle_full_interactive_menu(
                 // Show details with better formatting
                 println!(
                     "\r    Token: {}",
-                    format!(
-                        "{}...{}",
-                        &config.token[..12],
-                        &config.token[config.token.len() - 8..]
-                    )
-                    .dimmed()
+                    format_token_safely(&config.token).dimmed()
                 );
                 println!("\r    URL: {}", config.url.cyan());
                 if let Some(model) = &config.model {
@@ -610,12 +629,7 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
             "{}. {} ({})",
             index + 2, // +2 because official is at position 1
             config.alias_name.green(),
-            format!(
-                "{}...{}",
-                &config.token[..12],
-                &config.token[config.token.len() - 8..]
-            )
-            .dimmed()
+            format_token_safely(&config.token).dimmed()
         );
         println!("   URL: {}", config.url.cyan());
         if let Some(model) = &config.model {
