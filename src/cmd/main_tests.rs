@@ -4,12 +4,6 @@ mod tests {
     use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
     use crate::cmd::main::*;
     use clap::Parser;
-    use tempfile::TempDir;
-
-    /// Helper function to create a temporary directory for testing
-    fn create_test_temp_dir() -> TempDir {
-        TempDir::new().expect("Failed to create temporary directory")
-    }
 
     /// Helper function to create a test configuration
     fn create_test_config(alias: &str, token: &str, url: &str) -> Configuration {
@@ -39,28 +33,6 @@ mod tests {
         }
     }
 
-    /// Helper to create test storage with configurations
-    fn create_test_storage_with_configs() -> ConfigStorage {
-        let mut storage = ConfigStorage::default();
-        storage.add_configuration(create_test_config(
-            "test1",
-            "sk-ant-test1",
-            "https://api1.test.com",
-        ));
-        storage.add_configuration(create_test_config(
-            "test2",
-            "sk-ant-test2",
-            "https://api2.test.com",
-        ));
-        storage.add_configuration(create_full_test_config(
-            "full-config",
-            "sk-ant-full",
-            "https://full.api.com",
-            Some("claude-3-5-sonnet-20241022"),
-            Some("claude-3-haiku-20240307"),
-        ));
-        storage
-    }
 
     // AddCommandParams Tests
     #[test]

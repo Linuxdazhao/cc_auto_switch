@@ -107,7 +107,9 @@ pub fn pad_text_to_width(text: &str, width: usize, alignment: TextAlignment, pad
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TextAlignment {
     Left,
+    #[allow(dead_code)]
     Right,
+    #[allow(dead_code)]
     Center,
 }
 
@@ -123,17 +125,6 @@ pub fn get_terminal_width() -> usize {
     }
 }
 
-/// Create a horizontal line for borders and separators
-/// 
-/// # Arguments
-/// * `width` - Line width in terminal columns
-/// * `line_char` - Character to use for the line
-/// 
-/// # Returns
-/// String containing the horizontal line
-pub fn create_horizontal_line(width: usize, line_char: char) -> String {
-    line_char.to_string().repeat(width)
-}
 
 /// Format a configuration token for safe display
 /// 
@@ -166,91 +157,8 @@ pub fn format_token_for_display(token: &str) -> String {
     }
 }
 
-/// Calculate optimal box width for content display
-/// 
-/// Determines the best width for content boxes based on terminal size
-/// and content requirements, with reasonable minimum and maximum limits.
-/// 
-/// # Arguments
-/// * `min_width` - Minimum required width
-/// * `max_width` - Maximum allowed width  
-/// * `content_width` - Preferred width based on content
-/// 
-/// # Returns
-/// Optimal box width in terminal columns
-pub fn calculate_optimal_box_width(min_width: usize, max_width: usize, content_width: usize) -> usize {
-    let terminal_width = get_terminal_width();
-    let max_usable_width = if terminal_width > 4 { terminal_width - 4 } else { terminal_width };
-    
-    content_width
-        .max(min_width)
-        .min(max_width)
-        .min(max_usable_width)
-}
 
-/// Create a bordered content line with proper padding
-/// 
-/// # Arguments  
-/// * `content` - The content text to display
-/// * `total_width` - Total width of the bordered line
-/// * `alignment` - Text alignment within the border
-/// 
-/// # Returns
-/// Formatted line with borders and proper padding
-pub fn create_bordered_line(content: &str, total_width: usize, alignment: TextAlignment) -> String {
-    if total_width < 4 {
-        return content.to_string();
-    }
-    
-    let inner_width = total_width - 4; // Account for "║ " and " ║"
-    let padded_content = pad_text_to_width(content, inner_width, alignment, ' ');
-    
-    format!("║ {} ║", padded_content)
-}
 
-/// Layout configuration for displaying configuration items
-#[derive(Debug, Clone)]
-pub struct ConfigDisplayLayout {
-    pub box_width: usize,
-    pub content_width: usize,
-    pub indent: String,
-    pub item_spacing: usize,
-}
-
-impl ConfigDisplayLayout {
-    /// Create a new layout optimized for current terminal
-    /// 
-    /// # Arguments
-    /// * `min_width` - Minimum box width required
-    /// 
-    /// # Returns
-    /// Optimized layout configuration
-    pub fn new(min_width: usize) -> Self {
-        let box_width = calculate_optimal_box_width(min_width, 80, 60);
-        let content_width = if box_width > 4 { box_width - 4 } else { box_width };
-        
-        Self {
-            box_width,
-            content_width,
-            indent: "  ".to_string(),
-            item_spacing: 1,
-        }
-    }
-    
-    /// Create box header with title
-    pub fn create_header(&self, title: &str) -> String {
-        let top_border = format!("╔{}╗", "═".repeat(self.box_width - 2));
-        let title_line = create_bordered_line(title, self.box_width, TextAlignment::Center);
-        let bottom_border = format!("╚{}╝", "═".repeat(self.box_width - 2));
-        
-        format!("{}\n{}\n{}", top_border, title_line, bottom_border)
-    }
-    
-    /// Create instruction line
-    pub fn create_instruction(&self, text: &str) -> String {
-        create_bordered_line(text, self.box_width, TextAlignment::Left)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -323,59 +231,4 @@ mod tests {
         assert_eq!(formatted.len(), 12 + 3 + 8); // prefix + "..." + suffix
     }
 
-    #[test]
-    fn test_calculate_optimal_box_width() {
-        // Normal case
-        assert_eq!(calculate_optimal_box_width(30, 100, 50), 50);
-        
-        // Content width too small
-        assert_eq!(calculate_optimal_box_width(30, 100, 20), 30);
-        
-        // Content width too large
-        assert_eq!(calculate_optimal_box_width(30, 60, 80), 60);
-    }
-
-    #[test]
-    fn test_create_bordered_line() {
-        // Normal case
-        assert_eq!(create_bordered_line("Test", 10, TextAlignment::Left), "║ Test   ║");
-        assert_eq!(create_bordered_line("Test", 10, TextAlignment::Center), "║  Test  ║");
-        assert_eq!(create_bordered_line("Test", 10, TextAlignment::Right), "║   Test ║");
-        
-        // Too narrow (should return content as-is)
-        assert_eq!(create_bordered_line("Test", 3, TextAlignment::Left), "Test");
-        
-        // Chinese characters
-        assert_eq!(create_bordered_line("你好", 10, TextAlignment::Left), "║ 你好   ║");
-    }
-
-    #[test]
-    fn test_config_display_layout() {
-        let layout = ConfigDisplayLayout::new(40);
-        
-        // Should have reasonable dimensions
-        assert!(layout.box_width >= 40);
-        assert_eq!(layout.content_width, layout.box_width - 4);
-        
-        // Test header creation
-        let header = layout.create_header("Test Header");
-        assert!(header.contains("Test Header"));
-        assert!(header.contains("╔"));
-        assert!(header.contains("╗"));
-        assert!(header.contains("╚"));
-        assert!(header.contains("╝"));
-        
-        // Test instruction creation
-        let instruction = layout.create_instruction("Press Enter to continue");
-        assert!(instruction.contains("Press Enter to continue"));
-        assert!(instruction.starts_with("║"));
-        assert!(instruction.ends_with("║"));
-    }
-
-    #[test]
-    fn test_create_horizontal_line() {
-        assert_eq!(create_horizontal_line(5, '='), "=====");
-        assert_eq!(create_horizontal_line(0, '='), "");
-        assert_eq!(create_horizontal_line(3, '─'), "───");
-    }
 }

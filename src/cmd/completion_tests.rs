@@ -1,47 +1,8 @@
 #[cfg(test)]
 mod tests {
     use crate::cmd::completion::*;
-    use crate::cmd::config::Configuration;
-    use std::io::{self, Write};
 
-    /// Helper function to create test configuration
-    fn create_test_config(alias: &str, token: &str, url: &str) -> Configuration {
-        Configuration {
-            alias_name: alias.to_string(),
-            token: token.to_string(),
-            url: url.to_string(),
-            model: None,
-            small_fast_model: None,
-        }
-    }
 
-    /// Helper function to capture stdout output
-    fn capture_stdout<F>(f: F) -> String
-    where
-        F: FnOnce(),
-    {
-        use std::sync::{Arc, Mutex};
-
-        struct TestWriter {
-            buffer: Arc<Mutex<Vec<u8>>>,
-        }
-
-        impl Write for TestWriter {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                self.buffer.lock().unwrap().extend_from_slice(buf);
-                Ok(buf.len())
-            }
-
-            fn flush(&mut self) -> io::Result<()> {
-                Ok(())
-            }
-        }
-
-        // Note: This is a simplified approach since we can't easily redirect stdout in tests
-        // We'll test the functions and verify they don't panic
-        f();
-        String::new() // Return empty string as placeholder
-    }
 
     // generate_aliases Tests
     #[test]
