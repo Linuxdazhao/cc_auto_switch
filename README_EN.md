@@ -44,6 +44,10 @@ The beauty of cc-switch lies in its simplicity. Here are the steps to get up and
 
 1. **Install the tool** (~30 seconds):
    ```bash
+   # Using Homebrew (recommended)
+   brew tap Linuxdazhao/cc-switch && brew install cc-switch
+   
+   # Or using Cargo
    cargo install cc-switch
    ```
 
@@ -195,10 +199,48 @@ The tool is designed with a **zero-configuration** philosophy - it works out of 
 
 ## 🚀 Installation
 
-### From Crates.io (Recommended)
+### Using Homebrew (Recommended)
+
+The easiest way to install cc-switch is using Homebrew:
+
+```bash
+# Add the tap
+brew tap Linuxdazhao/cc-switch
+
+# Install cc-switch
+brew install cc-switch
+```
+
+Update:
+```bash
+brew update && brew upgrade cc-switch
+```
+
+Supported platforms:
+- ✅ macOS Intel (x86_64)
+- ✅ macOS Apple Silicon (ARM64/M1/M2)  
+- ✅ Linux x86_64
+- ✅ Linux ARM64
+
+### From Crates.io
+
+If you have a Rust development environment:
 
 ```bash
 cargo install cc-switch
+```
+
+### Binary Downloads
+
+Download pre-compiled binaries from GitHub Releases:
+
+```bash
+# Download the package for your platform
+wget https://github.com/Linuxdazhao/cc_auto_switch/releases/latest/download/cc-switch-x86_64-apple-darwin.tar.gz
+
+# Extract and install
+tar -xzf cc-switch-x86_64-apple-darwin.tar.gz
+cp cc-switch ~/.local/bin/
 ```
 
 ### From Source
@@ -207,11 +249,6 @@ cargo install cc-switch
 git clone https://github.com/Linuxdazhao/cc_auto_switch.git
 cd cc-switch
 cargo build --release
-```
-
-The binary will be available at `target/release/cc-switch`. You can copy it to your PATH:
-
-```bash
 cp target/release/cc-switch ~/.local/bin/
 ```
 

@@ -46,6 +46,10 @@ cc-switch 的美妙之处在于其简洁性。以下是快速启动和运行的�
 
 1. **安装工具**（约30秒）：
    ```bash
+   # 使用 Homebrew（推荐）
+   brew tap Linuxdazhao/cc-switch && brew install cc-switch
+   
+   # 或使用 Cargo
    cargo install cc-switch
    ```
 
@@ -206,10 +210,48 @@ cc-switch 现在专注于主要的开发平台：
 
 ## 🚀 安装
 
-### 从 Crates.io（推荐）
+### 使用 Homebrew（推荐）
+
+最简单的安装方式是使用 Homebrew：
+
+```bash
+# 添加 tap
+brew tap Linuxdazhao/cc-switch
+
+# 安装 cc-switch
+brew install cc-switch
+```
+
+更新：
+```bash
+brew update && brew upgrade cc-switch
+```
+
+支持平台：
+- ✅ macOS Intel (x86_64)
+- ✅ macOS Apple Silicon (ARM64/M1/M2)  
+- ✅ Linux x86_64
+- ✅ Linux ARM64
+
+### 从 Crates.io
+
+如果您有 Rust 开发环境：
 
 ```bash
 cargo install cc-switch
+```
+
+### 二进制包下载
+
+从 GitHub Releases 下载预编译的二进制包：
+
+```bash
+# 下载适合您平台的包
+wget https://github.com/Linuxdazhao/cc_auto_switch/releases/latest/download/cc-switch-x86_64-apple-darwin.tar.gz
+
+# 解压并安装
+tar -xzf cc-switch-x86_64-apple-darwin.tar.gz
+cp cc-switch ~/.local/bin/
 ```
 
 ### 从源代码
@@ -218,11 +260,6 @@ cargo install cc-switch
 git clone https://github.com/Linuxdazhao/cc_auto_switch.git
 cd cc-switch
 cargo build --release
-```
-
-二进制文件将位于 `target/release/cc-switch`。您可以将其复制到您的 PATH：
-
-```bash
 cp target/release/cc-switch ~/.local/bin/
 ```
 
