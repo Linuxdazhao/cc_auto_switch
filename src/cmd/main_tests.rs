@@ -88,6 +88,7 @@ mod tests {
 
     // handle_switch_command Tests
     #[test]
+    #[ignore] // Skip this test as it requires external command execution
     fn test_handle_switch_command_cc_default() {
         // Test switching to 'cc' (default configuration)
         let result = handle_switch_command(Some("cc"));
