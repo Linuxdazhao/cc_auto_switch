@@ -223,11 +223,13 @@ mod tests {
         let env_config = EnvironmentConfig::from_config(&config);
         let env_tuples = env_config.as_env_tuples();
 
-        assert_eq!(env_tuples.len(), 4);
+        // Empty model fields should not be included in environment variables
+        assert_eq!(env_tuples.len(), 2);
         assert!(env_tuples.contains(&("ANTHROPIC_AUTH_TOKEN".to_string(), "".to_string())));
         assert!(env_tuples.contains(&("ANTHROPIC_BASE_URL".to_string(), "".to_string())));
-        assert!(env_tuples.contains(&("ANTHROPIC_MODEL".to_string(), "".to_string())));
-        assert!(env_tuples.contains(&("ANTHROPIC_SMALL_FAST_MODEL".to_string(), "".to_string())));
+        // Empty model and small_fast_model should not be present
+        assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_MODEL"));
+        assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL"));
     }
 
     #[test]
@@ -258,7 +260,7 @@ mod tests {
 
         assert_eq!(config.alias_name.len(), 1000);
         assert_eq!(config.token.len(), 1007); // "sk-ant-" + 1000
-        assert_eq!(config.url.len(), 1011); // "https://" + 1000 + ".com"
+        assert_eq!(config.url.len(), 1012); // "https://" (8) + 1000 + ".com" (4)
 
         let env_config = EnvironmentConfig::from_config(&config);
         let env_tuples = env_config.as_env_tuples();

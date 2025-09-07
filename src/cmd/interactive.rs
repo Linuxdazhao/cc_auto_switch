@@ -1,5 +1,8 @@
 use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
-use crate::cmd::display_utils::format_token_for_display;
+use crate::cmd::display_utils::{
+    format_token_for_display, text_display_width, pad_text_to_width, TextAlignment,
+    get_terminal_width
+};
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -445,17 +448,11 @@ fn handle_full_interactive_menu(
                     number_label.blue().bold(),
                     config.alias_name.blue().bold()
                 );
-                // Show details with better formatting
-                println!(
-                    "\r    Token: {}",
-                    format_token_for_display(&config.token).dimmed()
-                );
-                println!("\r    URL: {}", config.url.cyan());
-                if let Some(model) = &config.model {
-                    println!("\r    Model: {}", model.yellow());
-                }
-                if let Some(small_fast_model) = &config.small_fast_model {
-                    println!("\r    Small Fast Model: {}", small_fast_model.yellow());
+                
+                // Show details with improved formatting and alignment
+                let details = format_config_details(config, "\r    ", false);
+                for detail_line in details {
+                    println!("{}", detail_line);
                 }
                 println!();
             } else {
@@ -631,22 +628,19 @@ fn handle_simple_interactive_menu(
         println!("   Use official Claude API (no custom configuration)");
         println!();
 
-        // Show current page configs
+        // Show current page configs with improved formatting
         for (page_index, config) in page_configs.iter().enumerate() {
             let display_number = page_index + 1;
             println!(
-                "{}. {} ({})",
+                "{}. {}",
                 format!("[{display_number}]").green().bold(),
-                config.alias_name.green(),
-                format_token_for_display(&config.token)
-                .dimmed()
+                config.alias_name.green()
             );
-            println!("   URL: {}", config.url.cyan());
-            if let Some(model) = &config.model {
-                println!("   Model: {}", model.yellow());
-            }
-            if let Some(small_fast_model) = &config.small_fast_model {
-                println!("   Small Fast Model: {}", small_fast_model.yellow());
+            
+            // Show config details with consistent formatting
+            let details = format_config_details(config, "   ", true);
+            for detail_line in details {
+                println!("{}", detail_line);
             }
             println!();
         }
@@ -711,17 +705,15 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
 
     for (index, config) in configs.iter().enumerate() {
         println!(
-            "{}. {} ({})",
+            "{}. {}",
             index + 2, // +2 because official is at position 1
-            config.alias_name.green(),
-            format_token_for_display(&config.token).dimmed()
+            config.alias_name.green()
         );
-        println!("   URL: {}", config.url.cyan());
-        if let Some(model) = &config.model {
-            println!("   Model: {}", model.yellow());
-        }
-        if let Some(small_fast_model) = &config.small_fast_model {
-            println!("   Small Fast Model: {}", small_fast_model.yellow());
+        
+        // Show config details with consistent formatting
+        let details = format_config_details(config, "   ", true);
+        for detail_line in details {
+            println!("{}", detail_line);
         }
         println!();
     }
@@ -770,17 +762,11 @@ fn handle_selection_action(configs: &[&Configuration], selected_index: usize) ->
             "\nSwitched to configuration '{}'",
             selected_config.alias_name.green().bold()
         );
-        println!(
-            "Token: {}",
-            format_token_for_display(&selected_config.token)
-            .dimmed()
-        );
-        println!("URL: {}", selected_config.url.cyan());
-        if let Some(model) = &selected_config.model {
-            println!("Model: {}", model.yellow());
-        }
-        if let Some(small_fast_model) = &selected_config.small_fast_model {
-            println!("Small Fast Model: {}", small_fast_model.yellow());
+        
+        // Show selected configuration details with consistent formatting
+        let details = format_config_details(&selected_config, "", false);
+        for detail_line in details {
+            println!("{}", detail_line);
         }
 
         launch_claude_with_env(env_config)
@@ -919,6 +905,90 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
         .read_line(&mut input)
         .context("Failed to read input")?;
     Ok(input.trim().to_string())
+}
+
+/// Format configuration details with consistent indentation and alignment
+///
+/// This function provides unified formatting for configuration display across
+/// all interactive menus, ensuring consistent visual presentation.
+///
+/// # Arguments
+/// * `config` - The configuration to format
+/// * `indent` - Base indentation string (e.g., "    " or "   ")
+/// * `compact` - Whether to use compact formatting (single line where possible)
+///
+/// # Returns  
+/// Vector of formatted lines for configuration display
+fn format_config_details(config: &Configuration, indent: &str, compact: bool) -> Vec<String> {
+    let mut lines = Vec::new();
+    
+    // Calculate optimal field width for alignment
+    let terminal_width = get_terminal_width();
+    let available_width = terminal_width.saturating_sub(text_display_width(indent) + 8);
+    
+    // Field labels with consistent width for alignment
+    let token_label = "Token:";
+    let url_label = "URL:";
+    let model_label = "Model:";
+    let small_model_label = "Small Fast Model:";
+    
+    // Find the widest label for alignment
+    let max_label_width = [token_label, url_label, model_label, small_model_label]
+        .iter()
+        .map(|label| text_display_width(label))
+        .max()
+        .unwrap_or(0);
+    
+    // Format token with proper alignment
+    let token_line = if compact && available_width > 50 {
+        format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
+            format_token_for_display(&config.token).dimmed()
+        )
+    } else {
+        format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
+            format_token_for_display(&config.token).dimmed()
+        )
+    };
+    lines.push(token_line);
+    
+    // Format URL with proper alignment
+    let url_line = format!(
+        "{}{} {}",
+        indent,
+        pad_text_to_width(url_label, max_label_width, TextAlignment::Left, ' '),
+        config.url.cyan()
+    );
+    lines.push(url_line);
+    
+    // Format model information if available
+    if let Some(model) = &config.model {
+        let model_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(model_label, max_label_width, TextAlignment::Left, ' '),
+            model.yellow()
+        );
+        lines.push(model_line);
+    }
+    
+    // Format small fast model if available  
+    if let Some(small_fast_model) = &config.small_fast_model {
+        let small_model_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(small_model_label, max_label_width, TextAlignment::Left, ' '),
+            small_fast_model.yellow()
+        );
+        lines.push(small_model_line);
+    }
+    
+    lines
 }
 
 #[cfg(test)]
