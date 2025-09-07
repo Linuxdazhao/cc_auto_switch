@@ -55,7 +55,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: Linuxdazhao/homebrew-cc-switch
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
         path: homebrew-cc-switch
 
     - name: Update formula
