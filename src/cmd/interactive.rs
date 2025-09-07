@@ -10,6 +10,111 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
+/// Border drawing utilities for terminal compatibility
+struct BorderDrawing {
+    /// Check if terminal supports Unicode box drawing characters
+    pub unicode_supported: bool,
+}
+
+impl BorderDrawing {
+    /// Create new border drawing utility
+    fn new() -> Self {
+        let unicode_supported = Self::detect_unicode_support();
+        Self { unicode_supported }
+    }
+
+    /// Detect if terminal supports Unicode characters
+    fn detect_unicode_support() -> bool {
+        // Check environment variables that indicate Unicode support
+        if let Ok(term) = std::env::var("TERM") {
+            // Modern terminals that support Unicode
+            if term.contains("xterm") || term.contains("screen") || term == "tmux-256color" {
+                return true;
+            }
+        }
+        
+        // Check locale settings
+        if let Ok(lang) = std::env::var("LANG") {
+            if lang.contains("UTF-8") || lang.contains("utf8") {
+                return true;
+            }
+        }
+        
+        // Conservative fallback - assume Unicode is supported for better UX
+        // If issues arise, ASCII fallback will be manually triggered
+        true
+    }
+
+    /// Draw top border with title
+    fn draw_top_border(&self, title: &str, width: usize) -> String {
+        if self.unicode_supported {
+            let title_padded = format!(" {} ", title);
+            let title_len = title_padded.chars().count();
+            
+            if title_len >= width - 2 {
+                // Title too long, use simple border
+                format!("╔{}╗", "═".repeat(width - 2))
+            } else {
+                let padding = (width - 2 - title_len) / 2;
+                let extra = (width - 2 - title_len) % 2;
+                format!(
+                    "╔{}{}{}{}╗",
+                    "═".repeat(padding),
+                    title_padded,
+                    "═".repeat(padding + extra),
+                    ""
+                )
+            }
+        } else {
+            // ASCII fallback
+            let title_padded = format!(" {} ", title);
+            let title_len = title_padded.len();
+            
+            if title_len >= width - 2 {
+                format!("+{}+", "-".repeat(width - 2))
+            } else {
+                let padding = (width - 2 - title_len) / 2;
+                let extra = (width - 2 - title_len) % 2;
+                format!(
+                    "+{}{}{}+",
+                    "-".repeat(padding),
+                    title_padded,
+                    "-".repeat(padding + extra)
+                )
+            }
+        }
+    }
+
+    /// Draw middle border line with text
+    fn draw_middle_line(&self, text: &str, width: usize) -> String {
+        if self.unicode_supported {
+            let text_len = text.chars().count();
+            if text_len >= width - 4 {
+                format!("║ {} ║", &text[..width - 4])
+            } else {
+                format!("║ {:<width$} ║", text, width = width - 4)
+            }
+        } else {
+            // ASCII fallback
+            let text_len = text.len();
+            if text_len >= width - 4 {
+                format!("| {} |", &text[..width - 4])
+            } else {
+                format!("| {:<width$} |", text, width = width - 4)
+            }
+        }
+    }
+
+    /// Draw bottom border
+    fn draw_bottom_border(&self, width: usize) -> String {
+        if self.unicode_supported {
+            format!("╚{}╝", "═".repeat(width - 2))
+        } else {
+            format!("+{}+", "-".repeat(width - 2))
+        }
+    }
+}
+
 /// Safely formats a token string for display by truncating it to show only
 /// the first and last few characters, with "..." in between.
 /// Handles tokens of any length gracefully without panicking.
@@ -95,13 +200,16 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
-        // Header
-        println!("\r{}", "╔══ Main Menu ══╗".green().bold());
+        // Header - use BorderDrawing for compatibility
+        let border = BorderDrawing::new();
+        const MAIN_MENU_WIDTH: usize = 55;
+        
+        println!("\r{}", border.draw_top_border("Main Menu", MAIN_MENU_WIDTH).green().bold());
         println!(
             "\r{}",
-            "║ Use ↑↓ arrows, Enter to select, Esc to exit".dimmed()
+            border.draw_middle_line("Use ↑↓ arrows, Enter to select, Esc to exit", MAIN_MENU_WIDTH).dimmed()
         );
-        println!("\r{}", "╚═══════════════╝".green().bold());
+        println!("\r{}", border.draw_bottom_border(MAIN_MENU_WIDTH).green().bold());
         println!();
 
         // Draw menu items
@@ -302,24 +410,27 @@ fn handle_full_interactive_menu(
         execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
-        // Header with pagination info
-        println!("\r{}", "╔══ Select Configuration ══╗".green().bold());
+        // Header with pagination info - use BorderDrawing for compatibility
+        let border = BorderDrawing::new();
+        const CONFIG_MENU_WIDTH: usize = 65;
+        
+        println!("\r{}", border.draw_top_border("Select Configuration", CONFIG_MENU_WIDTH).green().bold());
         if total_pages > 1 {
             println!(
                 "\r{}",
-                format!("║ 第 {} 页，共 {} 页", current_page + 1, total_pages).dimmed()
+                border.draw_middle_line(&format!("第 {} 页，共 {} 页", current_page + 1, total_pages), CONFIG_MENU_WIDTH).dimmed()
             );
             println!(
                 "\r{}",
-                "║ ↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认".dimmed()
+                border.draw_middle_line("↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认", CONFIG_MENU_WIDTH).dimmed()
             );
         } else {
             println!(
                 "\r{}",
-                "║ ↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消".dimmed()
+                border.draw_middle_line("↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消", CONFIG_MENU_WIDTH).dimmed()
             );
         }
-        println!("\r{}", "╚═══════════════════════════╝".green().bold());
+        println!("\r{}", border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold());
         println!();
 
         // Add official option (always visible)
