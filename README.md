@@ -3,10 +3,11 @@
 **[English README](README_EN.md) | 中文文档**
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
-[![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/jingzhao/cc_auto_switch/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/Linuxdazhao/cc_auto_switch/packages)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://github.com/jingzhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/jingzhao/cc_auto_switch/actions)
-[![Release](https://github.com/jingzhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/jingzhao/cc_auto_switch/releases)
+[![Build Status](https://github.com/Linuxdazhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/actions)
+[![Release](https://github.com/Linuxdazhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/releases)
+[![codecov](https://codecov.io/gh/Linuxdazhao/cc_auto_switch/branch/main/graph/badge.svg)](https://codecov.io/gh/Linuxdazhao/cc_auto_switch)
 
 一个强大的命令行工具，用于管理多个 Claude API 配置并通过环境变量在它们之间轻松切换。
 
@@ -214,7 +215,7 @@ cargo install cc-switch
 ### 从源代码
 
 ```bash
-git clone https://github.com/jingzhao/cc_auto_switch.git
+git clone https://github.com/Linuxdazhao/cc_auto_switch.git
 cd cc-switch
 cargo build --release
 ```
@@ -404,9 +405,9 @@ cc-switch completion bash  > ~/.bash_completion.d/cc-switch
 
 ## 📞 支持
 
-- 🐛 **错误报告**：[GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
-- 💡 **功能请求**：[GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
-- 📧 **问题**：[GitHub Discussions](https://github.com/jingzhao/cc_auto_switch/discussions)
+- 🐛 **错误报告**：[GitHub Issues](https://github.com/Linuxdazhao/cc_auto_switch/issues)
+- 💡 **功能请求**：[GitHub Issues](https://github.com/Linuxdazhao/cc_auto_switch/issues)
+- 📧 **问题**：[GitHub Discussions](https://github.com/Linuxdazhao/cc_auto_switch/discussions)
 
 ---
-**由 [jingzhao](https://github.com/jingzhao) 用 ❤️ 制作**
+**由 [Linuxdazhao](https://github.com/Linuxdazhao) 用 ❤️ 制作**

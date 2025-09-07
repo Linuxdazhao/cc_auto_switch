@@ -1,10 +1,11 @@
 # cc-switch
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
-[![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/jingzhao/cc_auto_switch/packages)
+[![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/Linuxdazhao/cc_auto_switch/packages)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://github.com/jingzhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/jingzhao/cc_auto_switch/actions)
-[![Release](https://github.com/jingzhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/jingzhao/cc_auto_switch/releases)
+[![Build Status](https://github.com/Linuxdazhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/actions)
+[![Release](https://github.com/Linuxdazhao/cc_auto_switch/workflows/Release/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/releases)
+[![codecov](https://codecov.io/gh/Linuxdazhao/cc_auto_switch/branch/main/graph/badge.svg)](https://codecov.io/gh/Linuxdazhao/cc_auto_switch)
 
 A powerful command-line tool for managing multiple Claude API configurations and switching between them effortlessly through environment variables.
 
@@ -203,7 +204,7 @@ cargo install cc-switch
 ### From Source
 
 ```bash
-git clone https://github.com/jingzhao/cc_auto_switch.git
+git clone https://github.com/Linuxdazhao/cc_auto_switch.git
 cd cc-switch
 cargo build --release
 ```
@@ -382,12 +383,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
-- 💡 **Feature Requests**: [GitHub Issues](https://github.com/jingzhao/cc_auto_switch/issues)
-- 📧 **Questions**: [GitHub Discussions](https://github.com/jingzhao/cc_auto_switch/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Linuxdazhao/cc_auto_switch/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/Linuxdazhao/cc_auto_switch/issues)
+- 📧 **Questions**: [GitHub Discussions](https://github.com/Linuxdazhao/cc_auto_switch/discussions)
 
 ---
-**Made with ❤️ by [jingzhao](https://github.com/jingzhao)**
+**Made with ❤️ by [Linuxdazhao](https://github.com/Linuxdazhao)**
 
 ---
 *Last updated: September 2025*
