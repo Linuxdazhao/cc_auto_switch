@@ -387,4 +387,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📧 **Questions**: [GitHub Discussions](https://github.com/jingzhao/cc_auto_switch/discussions)
 
 ---
-**Made with ❤️ by [jingzhao](https://github.com/jingzhao)**# Test change for version management
+**Made with ❤️ by [jingzhao](https://github.com/jingzhao)**
