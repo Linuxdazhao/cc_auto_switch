@@ -448,7 +448,7 @@ fn handle_full_interactive_menu(
                 // Show details with better formatting
                 println!(
                     "\r    Token: {}",
-                    format_token_safely(&config.token).dimmed()
+                    format_token_for_display(&config.token).dimmed()
                 );
                 println!("\r    URL: {}", config.url.cyan());
                 if let Some(model) = &config.model {
@@ -638,7 +638,7 @@ fn handle_simple_interactive_menu(
                 "{}. {} ({})",
                 format!("[{display_number}]").green().bold(),
                 config.alias_name.green(),
-                format_token_safely(&config.token)
+                format_token_for_display(&config.token)
                 .dimmed()
             );
             println!("   URL: {}", config.url.cyan());
