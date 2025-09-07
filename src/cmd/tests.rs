@@ -430,4 +430,102 @@ mod tests {
             panic!("Expected Completion command");
         }
     }
+
+    #[test]
+    fn test_format_token_safely_long_token() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with a long token (typical Claude API token)
+        let token = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let formatted = format_token_safely(token);
+        
+        // Should show first 12 chars + "..." + last 8 chars
+        // Last 8 chars of the token are "STUVWXYZ"
+        assert_eq!(formatted, "sk-ant-api03...STUVWXYZ");
+    }
+
+    #[test]
+    fn test_format_token_safely_medium_token() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with medium length token (15 chars)
+        let token = "sk-ant-medium1";
+        let formatted = format_token_safely(token);
+        
+        // Should show first half + "***"
+        assert_eq!(formatted, "sk-ant-***");
+    }
+
+    #[test]
+    fn test_format_token_safely_short_token() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with short token (6 chars)
+        let token = "short1";
+        let formatted = format_token_safely(token);
+        
+        // Should show first few chars + "***"
+        assert_eq!(formatted, "sho***");
+    }
+
+    #[test]
+    fn test_format_token_safely_very_short_token() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with very short token (3 chars)
+        let token = "abc";
+        let formatted = format_token_safely(token);
+        
+        // Should show first 2 chars + "***"
+        assert_eq!(formatted, "ab***");
+    }
+
+    #[test]
+    fn test_format_token_safely_single_char() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with single character token
+        let token = "x";
+        let formatted = format_token_safely(token);
+        
+        // Should show first char + "***"
+        assert_eq!(formatted, "x***");
+    }
+
+    #[test]
+    fn test_format_token_safely_empty_token() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with empty token
+        let token = "";
+        let formatted = format_token_safely(token);
+        
+        // Should show "***" for empty token
+        assert_eq!(formatted, "***");
+    }
+
+    #[test]
+    fn test_format_token_safely_boundary_exactly_20_chars() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with exactly 20 characters (PREFIX_LEN + SUFFIX_LEN)
+        let token = "12345678901234567890";
+        let formatted = format_token_safely(token);
+        
+        // Should show first 10 chars + "***" (medium token behavior)
+        assert_eq!(formatted, "1234567890***");
+    }
+
+    #[test]
+    fn test_format_token_safely_boundary_21_chars() {
+        use crate::cmd::interactive::format_token_safely;
+        
+        // Test with 21 characters (just over PREFIX_LEN + SUFFIX_LEN)
+        let token = "123456789012345678901";
+        let formatted = format_token_safely(token);
+        
+        // Should use long token format: first 12 + "..." + last 8
+        // Last 8 chars of "123456789012345678901" are "45678901"
+        assert_eq!(formatted, "123456789012...45678901");
+    }
 }
