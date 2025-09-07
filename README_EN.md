@@ -388,3 +388,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 **Made with ❤️ by [jingzhao](https://github.com/jingzhao)**
+
+---
+*Last updated: September 2025*
