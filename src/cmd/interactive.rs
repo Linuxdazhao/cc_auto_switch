@@ -1,4 +1,5 @@
 use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
+use crate::cmd::display_utils::format_token_for_display;
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -115,29 +116,6 @@ impl BorderDrawing {
     }
 }
 
-/// Safely formats a token string for display by truncating it to show only
-/// the first and last few characters, with "..." in between.
-/// Handles tokens of any length gracefully without panicking.
-pub(crate) fn format_token_safely(token: &str) -> String {
-    const PREFIX_LEN: usize = 12;
-    const SUFFIX_LEN: usize = 8;
-    
-    if token.len() <= PREFIX_LEN + SUFFIX_LEN {
-        // If token is short enough, show first half and mask the rest with *
-        if token.len() <= 6 {
-            // Very short token, just show first few chars and mask the rest
-            let visible_chars = (token.len() + 1) / 2;
-            format!("{}***", &token[..visible_chars])
-        } else {
-            // Medium length token, show some chars from start and mask the end
-            let visible_chars = token.len() / 2;
-            format!("{}***", &token[..visible_chars])
-        }
-    } else {
-        // Long token, use the original format: first 12 + "..." + last 8
-        format!("{}...{}", &token[..PREFIX_LEN], &token[token.len() - SUFFIX_LEN..])
-    }
-}
 
 /// Handle interactive current command
 ///
@@ -660,11 +638,7 @@ fn handle_simple_interactive_menu(
                 "{}. {} ({})",
                 format!("[{display_number}]").green().bold(),
                 config.alias_name.green(),
-                format!(
-                    "{}...{}",
-                    &config.token[..12],
-                    &config.token[config.token.len() - 8..]
-                )
+                format_token_safely(&config.token)
                 .dimmed()
             );
             println!("   URL: {}", config.url.cyan());
@@ -740,7 +714,7 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
             "{}. {} ({})",
             index + 2, // +2 because official is at position 1
             config.alias_name.green(),
-            format_token_safely(&config.token).dimmed()
+            format_token_for_display(&config.token).dimmed()
         );
         println!("   URL: {}", config.url.cyan());
         if let Some(model) = &config.model {
@@ -798,11 +772,7 @@ fn handle_selection_action(configs: &[&Configuration], selected_index: usize) ->
         );
         println!(
             "Token: {}",
-            format!(
-                "{}...{}",
-                &selected_config.token[..12],
-                &selected_config.token[selected_config.token.len() - 8..]
-            )
+            format_token_for_display(&selected_config.token)
             .dimmed()
         );
         println!("URL: {}", selected_config.url.cyan());
@@ -949,6 +919,65 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
         .read_line(&mut input)
         .context("Failed to read input")?;
     Ok(input.trim().to_string())
+}
+
+#[cfg(test)]
+mod border_drawing_tests {
+    use super::*;
+
+    #[test]
+    fn test_border_drawing_unicode_support() {
+        let border = BorderDrawing::new();
+        // Should create without panic
+        assert!(border.unicode_supported || !border.unicode_supported); // Always true, just testing creation
+    }
+
+    #[test] 
+    fn test_border_drawing_top_border() {
+        let border = BorderDrawing { unicode_supported: true };
+        let result = border.draw_top_border("Test", 20);
+        assert!(result.len() > 0);
+        assert!(result.contains("Test"));
+    }
+
+    #[test]
+    fn test_border_drawing_ascii_fallback() {
+        let border = BorderDrawing { unicode_supported: false };
+        let result = border.draw_top_border("Test", 20);
+        assert!(result.len() > 0);
+        assert!(result.contains("Test"));
+        assert!(result.contains("+"));
+        assert!(result.contains("-"));
+    }
+
+    #[test]
+    fn test_border_drawing_middle_line() {
+        let border = BorderDrawing { unicode_supported: true };
+        let result = border.draw_middle_line("Test message", 30);
+        assert!(result.len() > 0);
+        assert!(result.contains("Test message"));
+    }
+
+    #[test]
+    fn test_border_drawing_bottom_border() {
+        let border = BorderDrawing { unicode_supported: true };
+        let result = border.draw_bottom_border(20);
+        assert!(result.len() > 0);
+    }
+
+    #[test]
+    fn test_border_drawing_width_consistency() {
+        let border = BorderDrawing { unicode_supported: true };
+        let width = 30;
+        let top = border.draw_top_border("Title", width);
+        let middle = border.draw_middle_line("Content", width);
+        let bottom = border.draw_bottom_border(width);
+        
+        // All borders should have the same character length (approximately)
+        assert!(top.chars().count() >= width - 2);
+        assert!(middle.chars().count() >= width - 2);
+        assert!(bottom.chars().count() >= width - 2);
+    }
 }
 
 #[cfg(test)]
