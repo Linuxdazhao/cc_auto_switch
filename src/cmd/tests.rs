@@ -440,8 +440,11 @@ mod tests {
     #[test]
     fn test_get_config_storage_path() {
         let result = get_config_storage_path();
-        assert!(result.is_ok(), "Should be able to determine config storage path");
-        
+        assert!(
+            result.is_ok(),
+            "Should be able to determine config storage path"
+        );
+
         let path = result.unwrap();
         assert!(path.to_string_lossy().contains(".cc-switch"));
         assert!(path.to_string_lossy().contains("configurations.json"));
@@ -451,13 +454,16 @@ mod tests {
     fn test_config_storage_load_create_directory() {
         let temp_dir = create_test_temp_dir();
         let _test_config_path = temp_dir.path().join("configurations.json");
-        
+
         // Test loading when file doesn't exist - should return default
         let storage = ConfigStorage::load();
-        
+
         match storage {
             Ok(s) => {
-                assert!(s.configurations.is_empty(), "Default storage should be empty");
+                assert!(
+                    s.configurations.is_empty(),
+                    "Default storage should be empty"
+                );
             }
             Err(_) => {
                 // May fail due to home directory issues in test environment
@@ -472,19 +478,19 @@ mod tests {
         let mut storage = ConfigStorage::default();
         let config1 = create_test_config("save-test-1", "sk-ant-save-1", "https://save1.test.com");
         let config2 = create_test_config("save-test-2", "sk-ant-save-2", "https://save2.test.com");
-        
+
         storage.add_configuration(config1);
         storage.add_configuration(config2);
-        
+
         // Test in-memory operations work correctly
         assert_eq!(storage.configurations.len(), 2);
         assert!(storage.configurations.contains_key("save-test-1"));
         assert!(storage.configurations.contains_key("save-test-2"));
-        
+
         let retrieved1 = storage.get_configuration("save-test-1").unwrap();
         assert_eq!(retrieved1.token, "sk-ant-save-1");
         assert_eq!(retrieved1.url, "https://save1.test.com");
-        
+
         let retrieved2 = storage.get_configuration("save-test-2").unwrap();
         assert_eq!(retrieved2.token, "sk-ant-save-2");
         assert_eq!(retrieved2.url, "https://save2.test.com");
@@ -493,7 +499,7 @@ mod tests {
     #[test]
     fn test_config_storage_remove_multiple() {
         let mut storage = ConfigStorage::default();
-        
+
         // Add multiple configurations
         for i in 0..5 {
             let config = create_test_config(
@@ -503,18 +509,18 @@ mod tests {
             );
             storage.add_configuration(config);
         }
-        
+
         assert_eq!(storage.configurations.len(), 5);
-        
+
         // Remove some configurations
         assert!(storage.remove_configuration("remove-test-1"));
         assert!(storage.remove_configuration("remove-test-3"));
         assert_eq!(storage.configurations.len(), 3);
-        
+
         // Try to remove non-existent configuration
         assert!(!storage.remove_configuration("non-existent"));
         assert_eq!(storage.configurations.len(), 3);
-        
+
         // Verify remaining configurations
         assert!(storage.configurations.contains_key("remove-test-0"));
         assert!(storage.configurations.contains_key("remove-test-2"));
@@ -525,19 +531,24 @@ mod tests {
 
     #[test]
     fn test_environment_config_empty_model_strings() {
-        let mut config = create_test_config("empty-model-test", "sk-ant-empty", "https://empty.test.com");
+        let mut config =
+            create_test_config("empty-model-test", "sk-ant-empty", "https://empty.test.com");
         config.model = Some("".to_string()); // Empty string, not None
         config.small_fast_model = Some("".to_string()); // Empty string, not None
-        
+
         let env_config = EnvironmentConfig::from_config(&config);
         let env_tuples = env_config.as_env_tuples();
-        
+
         // Empty model strings should not be included in environment variables
         assert_eq!(env_tuples.len(), 2);
         assert!(env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_AUTH_TOKEN"));
         assert!(env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_BASE_URL"));
         assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_MODEL"));
-        assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL"));
+        assert!(
+            !env_tuples
+                .iter()
+                .any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL")
+        );
     }
 
     #[test]
@@ -550,73 +561,149 @@ mod tests {
             model: None,
             small_fast_model: None,
         };
-        
+
         let env_config = EnvironmentConfig::from_config(&config);
         let env_tuples = env_config.as_env_tuples();
-        
+
         assert_eq!(env_tuples.len(), 2);
-        assert!(env_tuples.iter().any(|(k, v)| k == "ANTHROPIC_AUTH_TOKEN" && v == ""));
-        assert!(env_tuples.iter().any(|(k, v)| k == "ANTHROPIC_BASE_URL" && v == ""));
+        assert!(
+            env_tuples
+                .iter()
+                .any(|(k, v)| k == "ANTHROPIC_AUTH_TOKEN" && v == "")
+        );
+        assert!(
+            env_tuples
+                .iter()
+                .any(|(k, v)| k == "ANTHROPIC_BASE_URL" && v == "")
+        );
     }
 
     #[test]
     fn test_environment_config_partial_models() {
         // Test with only main model set
-        let mut config1 = create_test_config("partial-1", "sk-ant-partial-1", "https://partial1.test.com");
+        let mut config1 =
+            create_test_config("partial-1", "sk-ant-partial-1", "https://partial1.test.com");
         config1.model = Some("claude-main-only".to_string());
-        
+
         let env_config1 = EnvironmentConfig::from_config(&config1);
         let env_tuples1 = env_config1.as_env_tuples();
-        
+
         assert_eq!(env_tuples1.len(), 3);
-        assert!(env_tuples1.iter().any(|(k, v)| k == "ANTHROPIC_MODEL" && v == "claude-main-only"));
-        assert!(!env_tuples1.iter().any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL"));
-        
+        assert!(
+            env_tuples1
+                .iter()
+                .any(|(k, v)| k == "ANTHROPIC_MODEL" && v == "claude-main-only")
+        );
+        assert!(
+            !env_tuples1
+                .iter()
+                .any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL")
+        );
+
         // Test with only small fast model set
-        let mut config2 = create_test_config("partial-2", "sk-ant-partial-2", "https://partial2.test.com");
+        let mut config2 =
+            create_test_config("partial-2", "sk-ant-partial-2", "https://partial2.test.com");
         config2.small_fast_model = Some("haiku-only".to_string());
-        
+
         let env_config2 = EnvironmentConfig::from_config(&config2);
         let env_tuples2 = env_config2.as_env_tuples();
-        
+
         assert_eq!(env_tuples2.len(), 3);
         assert!(!env_tuples2.iter().any(|(k, _)| k == "ANTHROPIC_MODEL"));
-        assert!(env_tuples2.iter().any(|(k, v)| k == "ANTHROPIC_SMALL_FAST_MODEL" && v == "haiku-only"));
+        assert!(
+            env_tuples2
+                .iter()
+                .any(|(k, v)| k == "ANTHROPIC_SMALL_FAST_MODEL" && v == "haiku-only")
+        );
     }
 
     #[test]
     fn test_validate_alias_name_edge_cases() {
         // Test with different types of whitespace
-        assert!(validate_alias_name("test\tconfig").is_err(), "Should reject tabs");
-        assert!(validate_alias_name("test\nconfig").is_err(), "Should reject newlines");
-        assert!(validate_alias_name("test\rconfig").is_err(), "Should reject carriage returns");
-        assert!(validate_alias_name("test config with multiple spaces").is_err(), "Should reject multiple spaces");
-        
+        assert!(
+            validate_alias_name("test\tconfig").is_err(),
+            "Should reject tabs"
+        );
+        assert!(
+            validate_alias_name("test\nconfig").is_err(),
+            "Should reject newlines"
+        );
+        assert!(
+            validate_alias_name("test\rconfig").is_err(),
+            "Should reject carriage returns"
+        );
+        assert!(
+            validate_alias_name("test config with multiple spaces").is_err(),
+            "Should reject multiple spaces"
+        );
+
         // Test with valid special characters
-        assert!(validate_alias_name("test-config").is_ok(), "Should accept hyphens");
-        assert!(validate_alias_name("test_config").is_ok(), "Should accept underscores");
-        assert!(validate_alias_name("test.config").is_ok(), "Should accept dots");
-        assert!(validate_alias_name("test123").is_ok(), "Should accept numbers");
-        assert!(validate_alias_name("123test").is_ok(), "Should accept starting with numbers");
-        
+        assert!(
+            validate_alias_name("test-config").is_ok(),
+            "Should accept hyphens"
+        );
+        assert!(
+            validate_alias_name("test_config").is_ok(),
+            "Should accept underscores"
+        );
+        assert!(
+            validate_alias_name("test.config").is_ok(),
+            "Should accept dots"
+        );
+        assert!(
+            validate_alias_name("test123").is_ok(),
+            "Should accept numbers"
+        );
+        assert!(
+            validate_alias_name("123test").is_ok(),
+            "Should accept starting with numbers"
+        );
+
         // Test with very long alias names
         let long_alias = "a".repeat(1000);
-        assert!(validate_alias_name(&long_alias).is_ok(), "Should accept very long alias names");
-        
+        assert!(
+            validate_alias_name(&long_alias).is_ok(),
+            "Should accept very long alias names"
+        );
+
         // Test with unicode characters
-        assert!(validate_alias_name("测试-config").is_ok(), "Should accept unicode characters");
-        assert!(validate_alias_name("αλιας").is_ok(), "Should accept Greek characters");
-        assert!(validate_alias_name("config-🚀").is_ok(), "Should accept emoji characters");
+        assert!(
+            validate_alias_name("测试-config").is_ok(),
+            "Should accept unicode characters"
+        );
+        assert!(
+            validate_alias_name("αλιας").is_ok(),
+            "Should accept Greek characters"
+        );
+        assert!(
+            validate_alias_name("config-🚀").is_ok(),
+            "Should accept emoji characters"
+        );
     }
 
     #[test]
     fn test_validate_alias_name_case_sensitivity() {
         // "cc" is reserved, but other cases should be allowed
-        assert!(validate_alias_name("CC").is_ok(), "Should accept uppercase CC");
-        assert!(validate_alias_name("Cc").is_ok(), "Should accept mixed case Cc");
-        assert!(validate_alias_name("cC").is_ok(), "Should accept mixed case cC");
-        assert!(validate_alias_name("cc-config").is_ok(), "Should accept cc as prefix");
-        assert!(validate_alias_name("config-cc").is_ok(), "Should accept cc as suffix");
+        assert!(
+            validate_alias_name("CC").is_ok(),
+            "Should accept uppercase CC"
+        );
+        assert!(
+            validate_alias_name("Cc").is_ok(),
+            "Should accept mixed case Cc"
+        );
+        assert!(
+            validate_alias_name("cC").is_ok(),
+            "Should accept mixed case cC"
+        );
+        assert!(
+            validate_alias_name("cc-config").is_ok(),
+            "Should accept cc as prefix"
+        );
+        assert!(
+            validate_alias_name("config-cc").is_ok(),
+            "Should accept cc as suffix"
+        );
     }
 
     #[test]
@@ -628,9 +715,9 @@ mod tests {
             model: Some("claude-format-model".to_string()),
             small_fast_model: None,
         };
-        
+
         let json = serde_json::to_string_pretty(&config).expect("Should serialize to pretty JSON");
-        
+
         // Verify JSON structure
         assert!(json.contains("\"alias_name\": \"format-test\""));
         assert!(json.contains("\"token\": \"sk-ant-format-test\""));
@@ -651,10 +738,13 @@ mod tests {
             "unknown_field": "should-be-ignored",
             "another_unknown": 42
         }"#;
-        
+
         let result: Result<Configuration, _> = serde_json::from_str(json_with_extra_fields);
-        assert!(result.is_ok(), "Should successfully deserialize despite extra fields");
-        
+        assert!(
+            result.is_ok(),
+            "Should successfully deserialize despite extra fields"
+        );
+
         let config = result.unwrap();
         assert_eq!(config.alias_name, "extra-fields-test");
         assert_eq!(config.token, "sk-ant-extra");
@@ -671,9 +761,10 @@ mod tests {
             "token": "sk-ant-minimal",
             "url": "https://minimal.test.com"
         }"#;
-        
-        let config: Configuration = serde_json::from_str(minimal_json).expect("Should deserialize minimal JSON");
-        
+
+        let config: Configuration =
+            serde_json::from_str(minimal_json).expect("Should deserialize minimal JSON");
+
         assert_eq!(config.alias_name, "minimal-test");
         assert_eq!(config.token, "sk-ant-minimal");
         assert_eq!(config.url, "https://minimal.test.com");
@@ -690,19 +781,19 @@ mod tests {
             model: Some("claude-order-model".to_string()),
             small_fast_model: Some("haiku-order-model".to_string()),
         };
-        
+
         let env_config = EnvironmentConfig::from_config(&config);
         let env_tuples = env_config.as_env_tuples();
-        
+
         assert_eq!(env_tuples.len(), 4);
-        
+
         // Verify all expected variables are present (order doesn't matter for HashMap)
         let var_names: Vec<String> = env_tuples.iter().map(|(k, _)| k.clone()).collect();
         assert!(var_names.contains(&"ANTHROPIC_AUTH_TOKEN".to_string()));
         assert!(var_names.contains(&"ANTHROPIC_BASE_URL".to_string()));
         assert!(var_names.contains(&"ANTHROPIC_MODEL".to_string()));
         assert!(var_names.contains(&"ANTHROPIC_SMALL_FAST_MODEL".to_string()));
-        
+
         // Verify values are correct
         for (key, value) in env_tuples {
             match key.as_str() {
