@@ -119,11 +119,22 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         params.small_fast_model
     };
 
-    // Validate token format (basic check)
-    if !final_token.starts_with("sk-ant-") {
-        eprintln!(
-            "Warning: Token doesn't start with 'sk-ant-' - please verify it's a valid Claude API token"
-        );
+    // Validate token format with flexible API provider support
+    let is_anthropic_official = final_url.contains("api.anthropic.com");
+    if is_anthropic_official {
+        if !final_token.starts_with("sk-ant-api03-") {
+            eprintln!(
+                "Warning: For official Anthropic API (api.anthropic.com), token should start with 'sk-ant-api03-'"
+            );
+        }
+    } else {
+        // For non-official APIs, provide general guidance
+        if final_token.starts_with("sk-ant-api03-") {
+            eprintln!(
+                "Warning: Using official Claude token format with non-official API endpoint"
+            );
+        }
+        // Don't validate format for third-party APIs as they may use different formats
     }
 
     // Create and add configuration
