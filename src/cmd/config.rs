@@ -149,19 +149,19 @@ impl EnvironmentConfig {
         env_vars.insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
 
         // Set model configurations only if provided
-        if let Some(model) = &config.model {
-            if !model.is_empty() {
-                env_vars.insert("ANTHROPIC_MODEL".to_string(), model.clone());
-            }
+        if let Some(model) = &config.model
+            && !model.is_empty()
+        {
+            env_vars.insert("ANTHROPIC_MODEL".to_string(), model.clone());
         }
 
-        if let Some(small_fast_model) = &config.small_fast_model {
-            if !small_fast_model.is_empty() {
-                env_vars.insert(
-                    "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
-                    small_fast_model.clone(),
-                );
-            }
+        if let Some(small_fast_model) = &config.small_fast_model
+            && !small_fast_model.is_empty()
+        {
+            env_vars.insert(
+                "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
+                small_fast_model.clone(),
+            );
         }
 
         EnvironmentConfig { env_vars }
