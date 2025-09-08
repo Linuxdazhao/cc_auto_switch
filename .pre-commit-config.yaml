@@ -3,15 +3,6 @@
 repos:
   - repo: local
     hooks:
-      # Check if code compiles
-      - id: cargo-check
-        name: cargo check
-        entry: cargo check
-        language: system
-        types: [rust]
-        pass_filenames: false
-        always_run: true
-
       # Format code with rustfmt
       - id: cargo-fmt
         name: cargo fmt
@@ -40,10 +31,10 @@ repos:
         always_run: true
 
       
-      # Security audit
+      # Security audit (install cargo-audit if not present)
       - id: cargo-audit
         name: cargo audit
-        entry: cargo audit
+        entry: bash -c 'if ! command -v cargo-audit &> /dev/null; then echo "📦 Installing cargo-audit..."; cargo install cargo-audit; fi && cargo audit'
         language: system
         types: [rust]
         pass_filenames: false
@@ -53,6 +44,15 @@ repos:
       - id: cargo-doc
         name: cargo doc
         entry: cargo doc --no-deps
+        language: system
+        types: [rust]
+        pass_filenames: false
+        always_run: true
+
+      # Build in release mode (matching CI)
+      - id: cargo-build-release
+        name: cargo build --release
+        entry: bash -c 'echo "🔨 Building in release mode..." && cargo build --release && echo "🧹 Cleaning build artifacts..." && rm -rf target/release'
         language: system
         types: [rust]
         pass_filenames: false

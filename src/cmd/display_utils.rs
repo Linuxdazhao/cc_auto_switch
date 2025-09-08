@@ -1,27 +1,26 @@
 //! Display utilities for consistent styling and layout in terminal interfaces.
-//! 
+//!
 //! This module provides functions for:
 //! - Chinese/English character width calculation
 //! - Text alignment and padding
 //! - Terminal width detection and adaptive layout
 //! - Consistent formatting for configuration display
 
-
 /// Calculate the display width of a string considering Chinese/English character differences.
-/// 
+///
 /// Chinese characters typically take 2 terminal columns while ASCII characters take 1.
 /// This function provides accurate width calculation for mixed Chinese/English text.
-/// 
+///
 /// # Arguments
 /// * `text` - The text to measure
-/// 
+///
 /// # Returns
 /// The display width in terminal columns
-/// 
+///
 /// # Examples
 /// ```
 /// use cc_switch::cmd::display_utils::text_display_width;
-/// 
+///
 /// assert_eq!(text_display_width("Hello"), 5);           // 5 ASCII chars = 5 columns
 /// assert_eq!(text_display_width("你好"), 4);              // 2 Chinese chars = 4 columns  
 /// assert_eq!(text_display_width("Hello你好"), 9);         // 5 ASCII + 2 Chinese = 9 columns
@@ -58,32 +57,37 @@ pub fn text_display_width(text: &str) -> usize {
 }
 
 /// Pad text to a specific display width, handling Chinese/English character differences.
-/// 
+///
 /// # Arguments
 /// * `text` - The text to pad
 /// * `width` - Target display width in terminal columns
 /// * `alignment` - Text alignment (Left, Right, Center)
 /// * `pad_char` - Character to use for padding (default: space)
-/// 
+///
 /// # Returns
 /// Padded text string
-/// 
+///
 /// # Examples
 /// ```
 /// use cc_switch::cmd::display_utils::{pad_text_to_width, TextAlignment};
-/// 
+///
 /// assert_eq!(pad_text_to_width("Hello", 10, TextAlignment::Left, ' '), "Hello     ");
 /// assert_eq!(pad_text_to_width("你好", 10, TextAlignment::Center, ' '), "   你好   ");
 /// ```
-pub fn pad_text_to_width(text: &str, width: usize, alignment: TextAlignment, pad_char: char) -> String {
+pub fn pad_text_to_width(
+    text: &str,
+    width: usize,
+    alignment: TextAlignment,
+    pad_char: char,
+) -> String {
     let text_width = text_display_width(text);
-    
+
     if text_width >= width {
         return text.to_string();
     }
-    
+
     let padding_needed = width - text_width;
-    
+
     match alignment {
         TextAlignment::Left => {
             format!("{}{}", text, pad_char.to_string().repeat(padding_needed))
@@ -94,7 +98,8 @@ pub fn pad_text_to_width(text: &str, width: usize, alignment: TextAlignment, pad
         TextAlignment::Center => {
             let left_pad = padding_needed / 2;
             let right_pad = padding_needed - left_pad;
-            format!("{}{}{}", 
+            format!(
+                "{}{}{}",
                 pad_char.to_string().repeat(left_pad),
                 text,
                 pad_char.to_string().repeat(right_pad)
@@ -114,7 +119,7 @@ pub enum TextAlignment {
 }
 
 /// Detect current terminal width, with fallback to default
-/// 
+///
 /// # Returns
 /// Terminal width in columns, defaults to 80 if detection fails
 pub fn get_terminal_width() -> usize {
@@ -125,26 +130,25 @@ pub fn get_terminal_width() -> usize {
     }
 }
 
-
 /// Format a configuration token for safe display
-/// 
+///
 /// This is a centralized version of the token formatting logic,
 /// ensuring consistent display across the application.
-/// 
+///
 /// # Arguments
 /// * `token` - The API token to format
-/// 
+///
 /// # Returns
 /// Safely formatted token string
 pub fn format_token_for_display(token: &str) -> String {
     const PREFIX_LEN: usize = 12;
     const SUFFIX_LEN: usize = 8;
-    
+
     if token.len() <= PREFIX_LEN + SUFFIX_LEN {
         // If token is short enough, show first half and mask the rest with *
         if token.len() <= 6 {
             // Very short token, just show first few chars and mask the rest
-            let visible_chars = (token.len() + 1) / 2;
+            let visible_chars = token.len().div_ceil(2);
             format!("{}***", &token[..visible_chars])
         } else {
             // Medium length token, show some chars from start and mask the end
@@ -153,12 +157,13 @@ pub fn format_token_for_display(token: &str) -> String {
         }
     } else {
         // Long token, use the original format: first 12 + "..." + last 8
-        format!("{}...{}", &token[..PREFIX_LEN], &token[token.len() - SUFFIX_LEN..])
+        format!(
+            "{}...{}",
+            &token[..PREFIX_LEN],
+            &token[token.len() - SUFFIX_LEN..]
+        )
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -170,21 +175,21 @@ mod tests {
         assert_eq!(text_display_width("Hello"), 5);
         assert_eq!(text_display_width("World"), 5);
         assert_eq!(text_display_width("123"), 3);
-        
+
         // Chinese characters (should be 2 columns each)
         assert_eq!(text_display_width("你好"), 4);
         assert_eq!(text_display_width("测试"), 4);
-        
+
         // Mixed Chinese and English
         assert_eq!(text_display_width("Hello你好"), 9); // 5 + 4
-        assert_eq!(text_display_width("测试123"), 7);   // 4 + 3
-        
+        assert_eq!(text_display_width("测试123"), 7); // 4 + 3
+
         // Empty string
         assert_eq!(text_display_width(""), 0);
-        
+
         // Special characters and punctuation
         assert_eq!(text_display_width("!@#$%"), 5);
-        
+
         // Full-width punctuation (should be 2 columns each)
         assert_eq!(text_display_width("！（）"), 6);
     }
@@ -192,24 +197,48 @@ mod tests {
     #[test]
     fn test_pad_text_to_width() {
         // Left alignment
-        assert_eq!(pad_text_to_width("Hello", 10, TextAlignment::Left, ' '), "Hello     ");
-        
+        assert_eq!(
+            pad_text_to_width("Hello", 10, TextAlignment::Left, ' '),
+            "Hello     "
+        );
+
         // Right alignment
-        assert_eq!(pad_text_to_width("Hello", 10, TextAlignment::Right, ' '), "     Hello");
-        
+        assert_eq!(
+            pad_text_to_width("Hello", 10, TextAlignment::Right, ' '),
+            "     Hello"
+        );
+
         // Center alignment
-        assert_eq!(pad_text_to_width("Hi", 6, TextAlignment::Center, ' '), "  Hi  ");
-        assert_eq!(pad_text_to_width("Hi", 7, TextAlignment::Center, ' '), "  Hi   ");
-        
+        assert_eq!(
+            pad_text_to_width("Hi", 6, TextAlignment::Center, ' '),
+            "  Hi  "
+        );
+        assert_eq!(
+            pad_text_to_width("Hi", 7, TextAlignment::Center, ' '),
+            "  Hi   "
+        );
+
         // Text wider than target width (should return original)
-        assert_eq!(pad_text_to_width("Very long text", 5, TextAlignment::Left, ' '), "Very long text");
-        
+        assert_eq!(
+            pad_text_to_width("Very long text", 5, TextAlignment::Left, ' '),
+            "Very long text"
+        );
+
         // Chinese characters
-        assert_eq!(pad_text_to_width("你好", 8, TextAlignment::Left, ' '), "你好    ");
-        assert_eq!(pad_text_to_width("你好", 8, TextAlignment::Center, ' '), "  你好  ");
-        
+        assert_eq!(
+            pad_text_to_width("你好", 8, TextAlignment::Left, ' '),
+            "你好    "
+        );
+        assert_eq!(
+            pad_text_to_width("你好", 8, TextAlignment::Center, ' '),
+            "  你好  "
+        );
+
         // Different padding characters
-        assert_eq!(pad_text_to_width("test", 8, TextAlignment::Center, '-'), "--test--");
+        assert_eq!(
+            pad_text_to_width("test", 8, TextAlignment::Center, '-'),
+            "--test--"
+        );
     }
 
     #[test]
@@ -218,10 +247,10 @@ mod tests {
         assert_eq!(format_token_for_display("abc"), "ab***");
         // 6 chars: 6/2 = 3 chars visible
         assert_eq!(format_token_for_display("abcdef"), "abc***");
-        
+
         // Medium length token
         assert_eq!(format_token_for_display("abcdefgh"), "abcd***");
-        
+
         // Long token (standard format)
         let long_token = "sk-ant-api03_abcdefghijklmnopqrstuvwxyz1234567890abcdefgh";
         let formatted = format_token_for_display(long_token);
@@ -230,5 +259,4 @@ mod tests {
         assert!(formatted.ends_with("defgh"));
         assert_eq!(formatted.len(), 12 + 3 + 8); // prefix + "..." + suffix
     }
-
 }

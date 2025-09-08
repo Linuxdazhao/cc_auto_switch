@@ -229,7 +229,11 @@ mod tests {
         assert!(env_tuples.contains(&("ANTHROPIC_BASE_URL".to_string(), "".to_string())));
         // Empty model and small_fast_model should not be present
         assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_MODEL"));
-        assert!(!env_tuples.iter().any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL"));
+        assert!(
+            !env_tuples
+                .iter()
+                .any(|(k, _)| k == "ANTHROPIC_SMALL_FAST_MODEL")
+        );
     }
 
     #[test]

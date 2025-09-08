@@ -1,7 +1,7 @@
 use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
 use crate::cmd::display_utils::{
-    format_token_for_display, text_display_width, pad_text_to_width, TextAlignment,
-    get_terminal_width
+    TextAlignment, format_token_for_display, get_terminal_width, pad_text_to_width,
+    text_display_width,
 };
 use anyhow::{Context, Result};
 use colored::*;
@@ -36,14 +36,14 @@ impl BorderDrawing {
                 return true;
             }
         }
-        
+
         // Check locale settings
         if let Ok(lang) = std::env::var("LANG") {
             if lang.contains("UTF-8") || lang.contains("utf8") {
                 return true;
             }
         }
-        
+
         // Conservative fallback - assume Unicode is supported for better UX
         // If issues arise, ASCII fallback will be manually triggered
         true
@@ -52,9 +52,9 @@ impl BorderDrawing {
     /// Draw top border with title
     fn draw_top_border(&self, title: &str, width: usize) -> String {
         if self.unicode_supported {
-            let title_padded = format!(" {} ", title);
+            let title_padded = format!(" {title} ");
             let title_len = title_padded.chars().count();
-            
+
             if title_len >= width - 2 {
                 // Title too long, use simple border
                 format!("╔{}╗", "═".repeat(width - 2))
@@ -71,9 +71,9 @@ impl BorderDrawing {
             }
         } else {
             // ASCII fallback
-            let title_padded = format!(" {} ", title);
+            let title_padded = format!(" {title} ");
             let title_len = title_padded.len();
-            
+
             if title_len >= width - 2 {
                 format!("+{}+", "-".repeat(width - 2))
             } else {
@@ -118,7 +118,6 @@ impl BorderDrawing {
         }
     }
 }
-
 
 /// Handle interactive current command
 ///
@@ -184,13 +183,27 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
         // Header - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
         const MAIN_MENU_WIDTH: usize = 55;
-        
-        println!("\r{}", border.draw_top_border("Main Menu", MAIN_MENU_WIDTH).green().bold());
+
         println!(
             "\r{}",
-            border.draw_middle_line("Use ↑↓ arrows, Enter to select, Esc to exit", MAIN_MENU_WIDTH).dimmed()
+            border
+                .draw_top_border("Main Menu", MAIN_MENU_WIDTH)
+                .green()
+                .bold()
         );
-        println!("\r{}", border.draw_bottom_border(MAIN_MENU_WIDTH).green().bold());
+        println!(
+            "\r{}",
+            border
+                .draw_middle_line(
+                    "Use ↑↓ arrows, Enter to select, Esc to exit",
+                    MAIN_MENU_WIDTH
+                )
+                .dimmed()
+        );
+        println!(
+            "\r{}",
+            border.draw_bottom_border(MAIN_MENU_WIDTH).green().bold()
+        );
         println!();
 
         // Draw menu items
@@ -394,24 +407,48 @@ fn handle_full_interactive_menu(
         // Header with pagination info - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
         const CONFIG_MENU_WIDTH: usize = 65;
-        
-        println!("\r{}", border.draw_top_border("Select Configuration", CONFIG_MENU_WIDTH).green().bold());
+
+        println!(
+            "\r{}",
+            border
+                .draw_top_border("Select Configuration", CONFIG_MENU_WIDTH)
+                .green()
+                .bold()
+        );
         if total_pages > 1 {
             println!(
                 "\r{}",
-                border.draw_middle_line(&format!("第 {} 页，共 {} 页", current_page + 1, total_pages), CONFIG_MENU_WIDTH).dimmed()
+                border
+                    .draw_middle_line(
+                        &format!("第 {} 页，共 {} 页", current_page + 1, total_pages),
+                        CONFIG_MENU_WIDTH
+                    )
+                    .dimmed()
             );
             println!(
                 "\r{}",
-                border.draw_middle_line("↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认", CONFIG_MENU_WIDTH).dimmed()
+                border
+                    .draw_middle_line(
+                        "↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认",
+                        CONFIG_MENU_WIDTH
+                    )
+                    .dimmed()
             );
         } else {
             println!(
                 "\r{}",
-                border.draw_middle_line("↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消", CONFIG_MENU_WIDTH).dimmed()
+                border
+                    .draw_middle_line(
+                        "↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消",
+                        CONFIG_MENU_WIDTH
+                    )
+                    .dimmed()
             );
         }
-        println!("\r{}", border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold());
+        println!(
+            "\r{}",
+            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
+        );
         println!();
 
         // Add official option (always visible)
@@ -448,11 +485,11 @@ fn handle_full_interactive_menu(
                     number_label.blue().bold(),
                     config.alias_name.blue().bold()
                 );
-                
+
                 // Show details with improved formatting and alignment
                 let details = format_config_details(config, "\r    ", false);
                 for detail_line in details {
-                    println!("{}", detail_line);
+                    println!("{detail_line}");
                 }
                 println!();
             } else {
@@ -636,11 +673,11 @@ fn handle_simple_interactive_menu(
                 format!("[{display_number}]").green().bold(),
                 config.alias_name.green()
             );
-            
+
             // Show config details with consistent formatting
             let details = format_config_details(config, "   ", true);
             for detail_line in details {
-                println!("{}", detail_line);
+                println!("{detail_line}");
             }
             println!();
         }
@@ -709,11 +746,11 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
             index + 2, // +2 because official is at position 1
             config.alias_name.green()
         );
-        
+
         // Show config details with consistent formatting
         let details = format_config_details(config, "   ", true);
         for detail_line in details {
-            println!("{}", detail_line);
+            println!("{detail_line}");
         }
         println!();
     }
@@ -762,11 +799,11 @@ fn handle_selection_action(configs: &[&Configuration], selected_index: usize) ->
             "\nSwitched to configuration '{}'",
             selected_config.alias_name.green().bold()
         );
-        
+
         // Show selected configuration details with consistent formatting
         let details = format_config_details(&selected_config, "", false);
         for detail_line in details {
-            println!("{}", detail_line);
+            println!("{detail_line}");
         }
 
         launch_claude_with_env(env_config)
@@ -919,44 +956,35 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
 ///
 /// # Returns  
 /// Vector of formatted lines for configuration display
-fn format_config_details(config: &Configuration, indent: &str, compact: bool) -> Vec<String> {
+fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -> Vec<String> {
     let mut lines = Vec::new();
-    
+
     // Calculate optimal field width for alignment
     let terminal_width = get_terminal_width();
-    let available_width = terminal_width.saturating_sub(text_display_width(indent) + 8);
-    
+    let _available_width = terminal_width.saturating_sub(text_display_width(indent) + 8);
+
     // Field labels with consistent width for alignment
     let token_label = "Token:";
     let url_label = "URL:";
     let model_label = "Model:";
     let small_model_label = "Small Fast Model:";
-    
+
     // Find the widest label for alignment
     let max_label_width = [token_label, url_label, model_label, small_model_label]
         .iter()
         .map(|label| text_display_width(label))
         .max()
         .unwrap_or(0);
-    
+
     // Format token with proper alignment
-    let token_line = if compact && available_width > 50 {
-        format!(
-            "{}{} {}",
-            indent,
-            pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
-            format_token_for_display(&config.token).dimmed()
-        )
-    } else {
-        format!(
-            "{}{} {}",
-            indent,
-            pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
-            format_token_for_display(&config.token).dimmed()
-        )
-    };
+    let token_line = format!(
+        "{}{} {}",
+        indent,
+        pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
+        format_token_for_display(&config.token).dimmed()
+    );
     lines.push(token_line);
-    
+
     // Format URL with proper alignment
     let url_line = format!(
         "{}{} {}",
@@ -965,7 +993,7 @@ fn format_config_details(config: &Configuration, indent: &str, compact: bool) ->
         config.url.cyan()
     );
     lines.push(url_line);
-    
+
     // Format model information if available
     if let Some(model) = &config.model {
         let model_line = format!(
@@ -976,8 +1004,8 @@ fn format_config_details(config: &Configuration, indent: &str, compact: bool) ->
         );
         lines.push(model_line);
     }
-    
-    // Format small fast model if available  
+
+    // Format small fast model if available
     if let Some(small_fast_model) = &config.small_fast_model {
         let small_model_line = format!(
             "{}{} {}",
@@ -987,7 +1015,7 @@ fn format_config_details(config: &Configuration, indent: &str, compact: bool) ->
         );
         lines.push(small_model_line);
     }
-    
+
     lines
 }
 
@@ -1002,9 +1030,11 @@ mod border_drawing_tests {
         assert!(border.unicode_supported || !border.unicode_supported); // Always true, just testing creation
     }
 
-    #[test] 
+    #[test]
     fn test_border_drawing_top_border() {
-        let border = BorderDrawing { unicode_supported: true };
+        let border = BorderDrawing {
+            unicode_supported: true,
+        };
         let result = border.draw_top_border("Test", 20);
         assert!(result.len() > 0);
         assert!(result.contains("Test"));
@@ -1012,7 +1042,9 @@ mod border_drawing_tests {
 
     #[test]
     fn test_border_drawing_ascii_fallback() {
-        let border = BorderDrawing { unicode_supported: false };
+        let border = BorderDrawing {
+            unicode_supported: false,
+        };
         let result = border.draw_top_border("Test", 20);
         assert!(result.len() > 0);
         assert!(result.contains("Test"));
@@ -1022,7 +1054,9 @@ mod border_drawing_tests {
 
     #[test]
     fn test_border_drawing_middle_line() {
-        let border = BorderDrawing { unicode_supported: true };
+        let border = BorderDrawing {
+            unicode_supported: true,
+        };
         let result = border.draw_middle_line("Test message", 30);
         assert!(result.len() > 0);
         assert!(result.contains("Test message"));
@@ -1030,19 +1064,23 @@ mod border_drawing_tests {
 
     #[test]
     fn test_border_drawing_bottom_border() {
-        let border = BorderDrawing { unicode_supported: true };
+        let border = BorderDrawing {
+            unicode_supported: true,
+        };
         let result = border.draw_bottom_border(20);
         assert!(result.len() > 0);
     }
 
     #[test]
     fn test_border_drawing_width_consistency() {
-        let border = BorderDrawing { unicode_supported: true };
+        let border = BorderDrawing {
+            unicode_supported: true,
+        };
         let width = 30;
         let top = border.draw_top_border("Title", width);
         let middle = border.draw_middle_line("Content", width);
         let bottom = border.draw_bottom_border(width);
-        
+
         // All borders should have the same character length (approximately)
         assert!(top.chars().count() >= width - 2);
         assert!(middle.chars().count() >= width - 2);

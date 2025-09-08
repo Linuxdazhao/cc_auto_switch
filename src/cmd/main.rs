@@ -130,9 +130,7 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
     } else {
         // For non-official APIs, provide general guidance
         if final_token.starts_with("sk-ant-api03-") {
-            eprintln!(
-                "Warning: Using official Claude token format with non-official API endpoint"
-            );
+            eprintln!("Warning: Using official Claude token format with non-official API endpoint");
         }
         // Don't validate format for third-party APIs as they may use different formats
     }

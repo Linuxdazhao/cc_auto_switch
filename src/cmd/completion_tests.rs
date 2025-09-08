@@ -2,8 +2,6 @@
 mod tests {
     use crate::cmd::completion::*;
 
-
-
     // generate_aliases Tests
     #[test]
     fn test_generate_aliases_fish() {

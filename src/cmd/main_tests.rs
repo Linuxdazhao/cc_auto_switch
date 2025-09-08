@@ -33,7 +33,6 @@ mod tests {
         }
     }
 
-
     // AddCommandParams Tests
     #[test]
     fn test_add_command_params_creation() {
