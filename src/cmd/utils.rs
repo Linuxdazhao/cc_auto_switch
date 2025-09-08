@@ -89,7 +89,7 @@ pub fn validate_alias_name(alias_name: &str) -> Result<()> {
     if alias_name == "cc" {
         anyhow::bail!("Alias name 'cc' is reserved and cannot be used");
     }
-    if alias_name.contains(' ') {
+    if alias_name.chars().any(|c| c.is_whitespace()) {
         anyhow::bail!("Alias name cannot contain whitespace");
     }
     Ok(())

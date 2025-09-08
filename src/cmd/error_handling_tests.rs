@@ -38,19 +38,15 @@ mod error_handling_tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("whitespace"));
 
-        // Test alias with tabs (note: current implementation only checks for spaces)
+        // Test alias with tabs
         let result = validate_alias_name("test\tconfig");
-        assert!(
-            result.is_ok(),
-            "Current implementation only checks for spaces, not tabs"
-        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("whitespace"));
 
-        // Test alias with newlines (note: current implementation only checks for spaces)
+        // Test alias with newlines
         let result = validate_alias_name("test\nconfig");
-        assert!(
-            result.is_ok(),
-            "Current implementation only checks for spaces, not newlines"
-        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("whitespace"));
     }
 
     #[test]
