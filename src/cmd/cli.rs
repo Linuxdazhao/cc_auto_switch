@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "cc-switch")]
 #[command(about = "A CLI tool for managing Claude API configurations")]
+#[command(version)]
 #[command(
     long_about = "cc-switch helps you manage multiple Claude API configurations and switch between them easily.
 
@@ -167,4 +168,7 @@ pub enum Commands {
     /// 2. Switch configuration (lists available aliases)
     #[command(alias = "cur")]
     Current,
+    /// Print version information
+    #[command(alias = "v")]
+    Version,
 }

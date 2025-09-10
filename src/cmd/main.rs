@@ -361,6 +361,9 @@ pub fn run() -> Result<()> {
             Commands::Current => {
                 handle_current_command()?;
             }
+            Commands::Version => {
+                println!("{}", env!("CARGO_PKG_VERSION"));
+            }
         }
     } else {
         // No command provided, show interactive configuration selection
