@@ -42,6 +42,7 @@ pub struct ConfigStorage {
 /// Manages the Claude settings.json file to control Claude's API configuration
 /// Handles environment variables and preserves other settings
 #[derive(Default, Clone)]
+#[allow(dead_code)]
 pub struct ClaudeSettings {
     /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, ANTHROPIC_SMALL_FAST_MODEL)
     pub env: HashMap<String, String>,
