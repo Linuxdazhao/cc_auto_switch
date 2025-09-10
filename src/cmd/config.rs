@@ -1,42 +1,9 @@
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
 
-/// Represents a Claude API configuration
-///
-/// Contains the components needed to configure Claude API access:
-/// - alias_name: User-friendly identifier for the configuration
-/// - token: API authentication token
-/// - url: Base URL for the API endpoint
-/// - model: Optional custom model name
-/// - small_fast_model: Optional Haiku-class model for background tasks
-#[derive(Serialize, Deserialize, Default, Clone)]
-pub struct Configuration {
-    /// User-friendly alias name for this configuration
-    pub alias_name: String,
-    /// ANTHROPIC_AUTH_TOKEN value (API authentication token)
-    pub token: String,
-    /// ANTHROPIC_BASE_URL value (API endpoint URL)
-    pub url: String,
-    /// ANTHROPIC_MODEL value (custom model name)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    /// ANTHROPIC_SMALL_FAST_MODEL value (Haiku-class model for background tasks)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub small_fast_model: Option<String>,
-}
-
-/// Storage manager for Claude API configurations
-///
-/// Handles persistence and retrieval of multiple API configurations
-/// stored in `~/.cc_auto_switch/configurations.json`
-#[derive(Serialize, Deserialize, Default)]
-pub struct ConfigStorage {
-    /// Map of alias names to configuration objects
-    pub configurations: HashMap<String, Configuration>,
-}
+// Re-export types for backward compatibility
+pub use crate::cmd::types::{ConfigStorage, Configuration};
 
 /// Environment variable manager for API configuration
 ///
@@ -45,92 +12,6 @@ pub struct ConfigStorage {
 pub struct EnvironmentConfig {
     /// Environment variables to be set
     pub env_vars: HashMap<String, String>,
-}
-
-impl ConfigStorage {
-    /// Load configurations from disk
-    ///
-    /// Reads the JSON file from `~/.cc_auto_switch/configurations.json`
-    /// Returns default empty storage if file doesn't exist
-    ///
-    /// # Errors
-    /// Returns error if file exists but cannot be read or parsed
-    pub fn load() -> Result<Self> {
-        let path = get_config_storage_path()?;
-
-        if !path.exists() {
-            return Ok(ConfigStorage::default());
-        }
-
-        let content = fs::read_to_string(&path).with_context(|| {
-            format!(
-                "Failed to read configuration storage from {}",
-                path.display()
-            )
-        })?;
-
-        let storage: ConfigStorage = serde_json::from_str(&content)
-            .with_context(|| "Failed to parse configuration storage JSON")?;
-
-        Ok(storage)
-    }
-
-    /// Save configurations to disk
-    ///
-    /// Writes the current state to `~/.cc_auto_switch/configurations.json`
-    /// Creates the directory structure if it doesn't exist
-    ///
-    /// # Errors
-    /// Returns error if directory cannot be created or file cannot be written
-    pub fn save(&self) -> Result<()> {
-        let path = get_config_storage_path()?;
-
-        // Create directory if it doesn't exist
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
-        }
-
-        let json = serde_json::to_string_pretty(self)
-            .with_context(|| "Failed to serialize configuration storage")?;
-
-        fs::write(&path, json).with_context(|| format!("Failed to write to {}", path.display()))?;
-
-        Ok(())
-    }
-
-    /// Add a new configuration to storage
-    ///
-    /// # Arguments
-    /// * `config` - Configuration object to add
-    ///
-    /// Overwrites existing configuration with same alias
-    pub fn add_configuration(&mut self, config: Configuration) {
-        self.configurations
-            .insert(config.alias_name.clone(), config);
-    }
-
-    /// Remove a configuration by alias name
-    ///
-    /// # Arguments
-    /// * `alias_name` - Name of configuration to remove
-    ///
-    /// # Returns
-    /// `true` if configuration was found and removed, `false` if not found
-    pub fn remove_configuration(&mut self, alias_name: &str) -> bool {
-        self.configurations.remove(alias_name).is_some()
-    }
-
-    /// Get a configuration by alias name
-    ///
-    /// # Arguments
-    /// * `alias_name` - Name of configuration to retrieve
-    ///
-    /// # Returns
-    /// `Some(&Configuration)` if found, `None` if not found
-    pub fn get_configuration(&self, alias_name: &str) -> Option<&Configuration> {
-        self.configurations.get(alias_name)
-    }
 }
 
 impl EnvironmentConfig {

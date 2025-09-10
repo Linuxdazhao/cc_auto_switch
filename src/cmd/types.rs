@@ -96,6 +96,7 @@ impl<'de> Deserialize<'de> for ClaudeSettings {
 }
 
 /// Parameters for adding a new configuration
+#[allow(dead_code)]
 pub struct AddCommandParams {
     pub alias_name: String,
     pub token: Option<String>,

@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use std::fs;
 
+use crate::cmd::config::get_config_storage_path;
 use crate::cmd::types::{ConfigStorage, Configuration};
-use crate::cmd::utils::get_config_storage_path;
 
 impl ConfigStorage {
     /// Load configurations from disk
@@ -93,6 +93,7 @@ impl ConfigStorage {
     ///
     /// # Arguments
     /// * `directory` - Directory path for Claude settings
+    #[allow(dead_code)]
     pub fn set_claude_settings_dir(&mut self, directory: String) {
         self.claude_settings_dir = Some(directory);
     }
@@ -101,7 +102,45 @@ impl ConfigStorage {
     ///
     /// # Returns
     /// `Some(&String)` if custom directory is set, `None` if using default
+    #[allow(dead_code)]
     pub fn get_claude_settings_dir(&self) -> Option<&String> {
         self.claude_settings_dir.as_ref()
+    }
+
+    /// Update an existing configuration
+    ///
+    /// This method handles updating a configuration, including potential alias renaming.
+    /// If the new configuration has a different alias name than the old one, it removes
+    /// the old entry and creates a new one.
+    ///
+    /// # Arguments
+    /// * `old_alias` - Current alias name of the configuration to update
+    /// * `new_config` - Updated configuration object
+    ///
+    /// # Returns
+    /// `Ok(())` if update succeeds, `Err` if the old configuration doesn't exist
+    ///
+    /// # Errors
+    /// Returns error if the configuration with `old_alias` doesn't exist
+    pub fn update_configuration(
+        &mut self,
+        old_alias: &str,
+        new_config: Configuration,
+    ) -> Result<()> {
+        // Check if the old configuration exists
+        if !self.configurations.contains_key(old_alias) {
+            return Err(anyhow::anyhow!("Configuration '{}' not found", old_alias));
+        }
+
+        // If alias changed, remove the old entry
+        if old_alias != new_config.alias_name {
+            self.configurations.remove(old_alias);
+        }
+
+        // Insert the updated configuration (this will overwrite if alias hasn't changed)
+        self.configurations
+            .insert(new_config.alias_name.clone(), new_config);
+
+        Ok(())
     }
 }

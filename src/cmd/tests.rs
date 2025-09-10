@@ -908,3 +908,147 @@ mod tests {
         assert_eq!(formatted, "123456789012...45678901");
     }
 }
+
+#[cfg(test)]
+mod config_edit_tests {
+    use super::*;
+    use crate::cmd::types::{ConfigStorage, Configuration};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn create_test_storage_dir() -> (TempDir, ConfigStorage) {
+        let temp_dir = TempDir::new().unwrap();
+        let mut storage = ConfigStorage::default();
+
+        // Add a test configuration
+        let config = Configuration {
+            alias_name: "test-config".to_string(),
+            token: "sk-test-123".to_string(),
+            url: "https://api.test.com".to_string(),
+            model: Some("test-model".to_string()),
+            small_fast_model: Some("test-fast-model".to_string()),
+        };
+        storage.add_configuration(config);
+
+        (temp_dir, storage)
+    }
+
+    #[test]
+    fn test_update_configuration_same_alias() {
+        let (_temp_dir, mut storage) = create_test_storage_dir();
+
+        // Update the configuration with same alias
+        let updated_config = Configuration {
+            alias_name: "test-config".to_string(),
+            token: "sk-updated-456".to_string(),
+            url: "https://api.updated.com".to_string(),
+            model: Some("updated-model".to_string()),
+            small_fast_model: None,
+        };
+
+        let result = storage.update_configuration("test-config", updated_config);
+        assert!(result.is_ok());
+
+        // Verify the configuration was updated
+        let config = storage.get_configuration("test-config").unwrap();
+        assert_eq!(config.token, "sk-updated-456");
+        assert_eq!(config.url, "https://api.updated.com");
+        assert_eq!(config.model, Some("updated-model".to_string()));
+        assert_eq!(config.small_fast_model, None);
+    }
+
+    #[test]
+    fn test_update_configuration_rename_alias() {
+        let (_temp_dir, mut storage) = create_test_storage_dir();
+
+        // Rename the configuration
+        let renamed_config = Configuration {
+            alias_name: "renamed-config".to_string(),
+            token: "sk-test-123".to_string(),
+            url: "https://api.test.com".to_string(),
+            model: Some("test-model".to_string()),
+            small_fast_model: Some("test-fast-model".to_string()),
+        };
+
+        let result = storage.update_configuration("test-config", renamed_config);
+        assert!(result.is_ok());
+
+        // Verify the old alias is gone and new alias exists
+        assert!(storage.get_configuration("test-config").is_none());
+        assert!(storage.get_configuration("renamed-config").is_some());
+
+        let config = storage.get_configuration("renamed-config").unwrap();
+        assert_eq!(config.alias_name, "renamed-config");
+    }
+
+    #[test]
+    fn test_update_configuration_nonexistent() {
+        let (_temp_dir, mut storage) = create_test_storage_dir();
+
+        let new_config = Configuration {
+            alias_name: "new-config".to_string(),
+            token: "sk-new-789".to_string(),
+            url: "https://api.new.com".to_string(),
+            model: None,
+            small_fast_model: None,
+        };
+
+        let result = storage.update_configuration("nonexistent", new_config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_update_configuration_rename_to_existing() {
+        let (_temp_dir, mut storage) = create_test_storage_dir();
+
+        // Add another configuration
+        let config2 = Configuration {
+            alias_name: "config2".to_string(),
+            token: "sk-config2-456".to_string(),
+            url: "https://api.config2.com".to_string(),
+            model: None,
+            small_fast_model: None,
+        };
+        storage.add_configuration(config2);
+
+        // Try to rename test-config to config2 (should succeed and overwrite)
+        let renamed_config = Configuration {
+            alias_name: "config2".to_string(),
+            token: "sk-overwritten".to_string(),
+            url: "https://api.overwritten.com".to_string(),
+            model: None,
+            small_fast_model: None,
+        };
+
+        let result = storage.update_configuration("test-config", renamed_config);
+        assert!(result.is_ok());
+
+        // Verify test-config is gone and config2 is overwritten
+        assert!(storage.get_configuration("test-config").is_none());
+        let config = storage.get_configuration("config2").unwrap();
+        assert_eq!(config.token, "sk-overwritten");
+        assert_eq!(config.url, "https://api.overwritten.com");
+    }
+
+    #[test]
+    fn test_update_configuration_clear_optional_fields() {
+        let (_temp_dir, mut storage) = create_test_storage_dir();
+
+        // Update configuration with cleared optional fields
+        let updated_config = Configuration {
+            alias_name: "test-config".to_string(),
+            token: "sk-test-123".to_string(),
+            url: "https://api.test.com".to_string(),
+            model: None,
+            small_fast_model: None,
+        };
+
+        let result = storage.update_configuration("test-config", updated_config);
+        assert!(result.is_ok());
+
+        let config = storage.get_configuration("test-config").unwrap();
+        assert_eq!(config.model, None);
+        assert_eq!(config.small_fast_model, None);
+    }
+}

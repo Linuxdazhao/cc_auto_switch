@@ -1,8 +1,9 @@
-use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
+use crate::cmd::config::EnvironmentConfig;
 use crate::cmd::display_utils::{
     TextAlignment, format_token_for_display, get_terminal_width, pad_text_to_width,
     text_display_width,
 };
+use crate::cmd::types::{ConfigStorage, Configuration};
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -502,6 +503,17 @@ fn handle_full_interactive_menu(
             }
         }
 
+        // Add edit option for current selection (only show when a config is selected)
+        if *selected_index > 0 && *selected_index <= configs.len() {
+            println!();
+            println!(
+                "\r  {} {} {}",
+                "✎".green(),
+                "[U]".green(),
+                "Edit selected configuration".green()
+            );
+        }
+
         // Add exit option (always visible)
         let exit_index = configs.len() + 1;
         if *selected_index == exit_index {
@@ -615,6 +627,18 @@ fn handle_full_interactive_menu(
                     let _ = terminal::disable_raw_mode();
 
                     return handle_selection_action(configs, 0);
+                }
+                KeyCode::Char('u') | KeyCode::Char('U') => {
+                    // Only allow editing if a config is selected (not official or exit)
+                    if *selected_index > 0 && *selected_index <= configs.len() {
+                        // Clean up terminal before entering edit mode
+                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                        let _ = terminal::disable_raw_mode();
+
+                        let config_index = *selected_index - 1; // -1 because official is at index 0
+                        return handle_config_edit(configs[config_index]);
+                    }
+                    // Invalid selection - ignore silently
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Clean up terminal before processing selection
@@ -1331,4 +1355,237 @@ mod pagination_tests {
         }
         assert_eq!(current_page, 1, "Should navigate to previous page");
     }
+}
+
+/// Handle configuration editing with interactive field selection
+fn handle_config_edit(config: &Configuration) -> Result<()> {
+    println!("\n{}", "配置编辑模式".green().bold());
+    println!("{}", "===================".green());
+    println!("正在编辑配置: {}", config.alias_name.cyan().bold());
+    println!();
+
+    // Create a mutable copy for editing
+    let mut editing_config = config.clone();
+    let original_alias = config.alias_name.clone();
+
+    loop {
+        // Display current field values
+        display_edit_menu(&editing_config);
+
+        // Get user input for field selection
+        print!("\n请选择要编辑的字段 (1-5), 或输入 S 保存, C 取消: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim();
+
+        match input {
+            "1" => edit_field_alias(&mut editing_config)?,
+            "2" => edit_field_token(&mut editing_config)?,
+            "3" => edit_field_url(&mut editing_config)?,
+            "4" => edit_field_model(&mut editing_config)?,
+            "5" => edit_field_small_fast_model(&mut editing_config)?,
+            "s" | "S" => {
+                // Save changes
+                return save_configuration_changes(&original_alias, &editing_config);
+            }
+            "c" | "C" => {
+                println!("\n{}", "编辑已取消".yellow());
+                return Ok(());
+            }
+            _ => {
+                println!("{}", "无效选择，请重试".red());
+            }
+        }
+    }
+}
+
+/// Display the edit menu with current field values
+fn display_edit_menu(config: &Configuration) {
+    println!("\n{}", "当前配置值:".blue().bold());
+    println!("{}", "─────────────────────────".blue());
+
+    println!("1. 别名: {}", config.alias_name.green());
+
+    println!(
+        "2. 令牌: {}",
+        format_token_for_display(&config.token).green()
+    );
+
+    println!("3. URL: {}", config.url.green());
+
+    println!(
+        "4. 模型: {}",
+        config.model.as_deref().unwrap_or("[未设置]").green()
+    );
+
+    println!(
+        "5. 快速模型: {}",
+        config
+            .small_fast_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!("{}", "─────────────────────────".blue());
+    println!(
+        "S. {} | C. {}",
+        "保存更改".green().bold(),
+        "取消编辑".yellow()
+    );
+}
+
+/// Edit alias field
+fn edit_field_alias(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑别名:");
+    println!("当前值: {}", config.alias_name.cyan());
+    print!("新值 (回车保持不变): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        // Validate alias (reuse existing validation logic)
+        if input.contains(char::is_whitespace) {
+            println!("{}", "错误: 别名不能包含空白字符".red());
+            return Ok(());
+        }
+        if input == "cc" {
+            println!("{}", "错误: 'cc' 是保留名称".red());
+            return Ok(());
+        }
+
+        config.alias_name = input.to_string();
+        println!("别名已更新为: {}", input.green());
+    }
+    Ok(())
+}
+
+/// Edit token field
+fn edit_field_token(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑令牌:");
+    println!("当前值: {}", format_token_for_display(&config.token).cyan());
+    print!("新值 (回车保持不变): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        config.token = input.to_string();
+        println!("{}", "令牌已更新".green());
+    }
+    Ok(())
+}
+
+/// Edit URL field
+fn edit_field_url(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑 URL:");
+    println!("当前值: {}", config.url.cyan());
+    print!("新值 (回车保持不变): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        config.url = input.to_string();
+        println!("URL 已更新为: {}", input.green());
+    }
+    Ok(())
+}
+
+/// Edit model field
+fn edit_field_model(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑模型:");
+    println!(
+        "当前值: {}",
+        config.model.as_deref().unwrap_or("[未设置]").cyan()
+    );
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            config.model = None;
+            println!("{}", "模型已清除".green());
+        } else {
+            config.model = Some(input.to_string());
+            println!("模型已更新为: {}", input.green());
+        }
+    }
+    Ok(())
+}
+
+/// Edit small_fast_model field  
+fn edit_field_small_fast_model(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑快速模型:");
+    println!(
+        "当前值: {}",
+        config
+            .small_fast_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            config.small_fast_model = None;
+            println!("{}", "快速模型已清除".green());
+        } else {
+            config.small_fast_model = Some(input.to_string());
+            println!("快速模型已更新为: {}", input.green());
+        }
+    }
+    Ok(())
+}
+
+/// Save configuration changes to disk and handle alias conflicts
+fn save_configuration_changes(original_alias: &str, new_config: &Configuration) -> Result<()> {
+    // Load current storage
+    let mut storage = ConfigStorage::load()?;
+
+    // Check for alias conflicts if alias changed
+    if original_alias != new_config.alias_name
+        && storage.get_configuration(&new_config.alias_name).is_some()
+    {
+        println!("\n{}", "别名冲突!".red().bold());
+        println!("配置 '{}' 已存在", new_config.alias_name.yellow());
+        print!("是否覆盖现有配置? (y/N): ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+
+        if input != "y" && input != "yes" {
+            println!("{}", "编辑已取消".yellow());
+            return Ok(());
+        }
+    }
+
+    // Update configuration using the method from config_storage.rs
+    storage.update_configuration(original_alias, new_config.clone())?;
+    storage.save()?;
+
+    println!("\n{}", "配置已成功保存!".green().bold());
+
+    Ok(())
 }
