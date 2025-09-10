@@ -96,7 +96,7 @@ jobs:
           local retry=0
           
           while [ $retry -lt $max_retries ]; do
-            echo "Downloading $filename (attempt $((retry + 1))/$max_retries)"
+            echo "Downloading $filename (attempt $((retry + 1))/$max_retries)" >&2
             
             # Download file with verbose error reporting
             if curl -sSL --fail --max-time 60 \
@@ -106,25 +106,25 @@ jobs:
               # Verify file was downloaded and has content
               if [ -s "${filename}" ]; then
                 local sha=$(sha256sum "${filename}" | cut -d' ' -f1)
-                echo "Successfully calculated SHA256 for $filename: $sha"
+                echo "Successfully calculated SHA256 for $filename: $sha" >&2
                 echo "$sha"
                 rm -f "${filename}"  # Clean up
                 return 0
               else
-                echo "ERROR: Downloaded file is empty: $filename"
+                echo "ERROR: Downloaded file is empty: $filename" >&2
               fi
             else
-              echo "ERROR: Failed to download $filename (HTTP error or timeout)"
+              echo "ERROR: Failed to download $filename (HTTP error or timeout)" >&2
             fi
             
             retry=$((retry + 1))
             if [ $retry -lt $max_retries ]; then
-              echo "Retrying in 10 seconds..."
+              echo "Retrying in 10 seconds..." >&2
               sleep 10
             fi
           done
           
-          echo "ERROR: Failed to download $filename after $max_retries attempts"
+          echo "ERROR: Failed to download $filename after $max_retries attempts" >&2
           return 1
         }
         
