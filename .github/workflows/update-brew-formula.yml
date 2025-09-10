@@ -3,6 +3,12 @@ name: Update Homebrew Formula
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., 0.0.28)'
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,7 +31,11 @@ jobs:
     - name: Extract version from tag
       id: version
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Wait for release assets with verification
