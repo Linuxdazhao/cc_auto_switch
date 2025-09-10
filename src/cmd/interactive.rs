@@ -39,10 +39,10 @@ impl BorderDrawing {
         }
 
         // Check locale settings
-        if let Ok(lang) = std::env::var("LANG") {
-            if lang.contains("UTF-8") || lang.contains("utf8") {
-                return true;
-            }
+        if let Ok(lang) = std::env::var("LANG")
+            && (lang.contains("UTF-8") || lang.contains("utf8"))
+        {
+            return true;
         }
 
         // Conservative fallback - assume Unicode is supported for better UX
@@ -54,7 +54,7 @@ impl BorderDrawing {
     fn draw_top_border(&self, title: &str, width: usize) -> String {
         if self.unicode_supported {
             let title_padded = format!(" {title} ");
-            let title_len = title_padded.chars().count();
+            let title_len = text_display_width(&title_padded);
 
             if title_len >= width - 2 {
                 // Title too long, use simple border
@@ -93,19 +93,25 @@ impl BorderDrawing {
     /// Draw middle border line with text
     fn draw_middle_line(&self, text: &str, width: usize) -> String {
         if self.unicode_supported {
-            let text_len = text.chars().count();
-            if text_len >= width - 4 {
-                format!("║ {} ║", &text[..width - 4])
+            let text_len = text_display_width(text);
+            let available_width = width - 4;
+            if text_len >= available_width {
+                format!("║ {} ║", &text[..available_width])
             } else {
-                format!("║ {:<width$} ║", text, width = width - 4)
+                let padded_text =
+                    pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
+                format!("║ {} ║", padded_text)
             }
         } else {
             // ASCII fallback
-            let text_len = text.len();
-            if text_len >= width - 4 {
-                format!("| {} |", &text[..width - 4])
+            let text_len = text_display_width(text);
+            let available_width = width - 4;
+            if text_len >= available_width {
+                format!("| {} |", &text[..available_width])
             } else {
-                format!("| {:<width$} |", text, width = width - 4)
+                let padded_text =
+                    pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
+                format!("| {} |", padded_text)
             }
         }
     }
@@ -742,12 +748,13 @@ fn handle_simple_interactive_menu(
                 continue;
             }
             digit_str => {
-                if let Ok(digit) = digit_str.parse::<usize>() {
-                    if digit >= 1 && digit <= page_configs.len() {
-                        let actual_config_index = start_idx + (digit - 1);
-                        let selection_index = actual_config_index + 1; // +1 because official is at index 0
-                        return handle_selection_action(configs, selection_index);
-                    }
+                if let Ok(digit) = digit_str.parse::<usize>()
+                    && digit >= 1
+                    && digit <= page_configs.len()
+                {
+                    let actual_config_index = start_idx + (digit - 1);
+                    let selection_index = actual_config_index + 1; // +1 because official is at index 0
+                    return handle_selection_action(configs, selection_index);
                 }
                 println!("无效选择，请重新输入");
             }
