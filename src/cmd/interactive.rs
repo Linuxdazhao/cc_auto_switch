@@ -100,7 +100,7 @@ impl BorderDrawing {
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
-                format!("║ {} ║", padded_text)
+                format!("║ {padded_text} ║")
             }
         } else {
             // ASCII fallback
@@ -111,7 +111,7 @@ impl BorderDrawing {
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
-                format!("| {} |", padded_text)
+                format!("| {padded_text} |")
             }
         }
     }
@@ -202,7 +202,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             "\r{}",
             border
                 .draw_middle_line(
-                    "Use ↑↓ arrows, Enter to select, Esc to exit",
+                    "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
                 .dimmed()
@@ -436,7 +436,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，N/P翻页，R-官方，E-退出，Enter确认",
+                        "↑↓导航，1-9快选，U-编辑，N/P翻页，R-官方，E-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -446,7 +446,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，R-官方，E-退出，Enter确认，Esc取消",
+                        "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -507,17 +507,6 @@ fn handle_full_interactive_menu(
                     config.alias_name.dimmed()
                 );
             }
-        }
-
-        // Add edit option for current selection (only show when a config is selected)
-        if *selected_index > 0 && *selected_index <= configs.len() {
-            println!();
-            println!(
-                "\r  {} {} {}",
-                "✎".green(),
-                "[U]".green(),
-                "Edit selected configuration".green()
-            );
         }
 
         // Add exit option (always visible)
@@ -717,7 +706,7 @@ fn handle_simple_interactive_menu(
 
         if total_pages > 1 {
             println!(
-                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [r]官方 | [e]退出",
+                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [u]编辑 | [r]官方 | [e]退出",
                 page_configs.len()
             );
         }
