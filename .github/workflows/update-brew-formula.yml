@@ -42,7 +42,7 @@ jobs:
       run: |
         echo "Waiting for release assets to be available..."
         VERSION="${{ steps.version.outputs.version }}"
-        BASE_URL="https://github.com/jingzhao/cc_auto_switch/releases/download/v${VERSION}"
+        BASE_URL="https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v${VERSION}"
         
         # Define all files to check
         FILES=(
@@ -87,7 +87,7 @@ jobs:
       id: checksums
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        BASE_URL="https://github.com/jingzhao/cc_auto_switch/releases/download/v${VERSION}"
+        BASE_URL="https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v${VERSION}"
         
         # Function to download and calculate checksum with retry
         calculate_sha() {
@@ -160,7 +160,7 @@ jobs:
     - name: Checkout tap repository
       uses: actions/checkout@v4
       with:
-        repository: jingzhao/homebrew-cc-switch
+        repository: Linuxdazhao/homebrew-cc-switch
         token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
         path: homebrew-cc-switch
 
@@ -178,24 +178,24 @@ jobs:
         cat > Formula/cc-switch.rb << 'EOF'
 class CcSwitch < Formula
   desc "A CLI tool for managing multiple Claude API configurations and automatically switching between them"
-  homepage "https://github.com/jingzhao/cc_auto_switch"
+  homepage "https://github.com/Linuxdazhao/cc_auto_switch"
   version "${VERSION}"
   license "MIT"
 
   if OS.mac?
     if Hardware::CPU.arm?
-      url "https://github.com/jingzhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-apple-darwin.tar.gz"
+      url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-apple-darwin.tar.gz"
       sha256 "${{ steps.checksums.outputs.mac_arm_sha }}"
     else
-      url "https://github.com/jingzhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-apple-darwin.tar.gz"
+      url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-apple-darwin.tar.gz"
       sha256 "${{ steps.checksums.outputs.mac_intel_sha }}"
     end
   elsif OS.linux?
     if Hardware::CPU.arm?
-      url "https://github.com/jingzhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-unknown-linux-gnu.tar.gz"
       sha256 "${{ steps.checksums.outputs.linux_arm_sha }}"
     else
-      url "https://github.com/jingzhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-unknown-linux-gnu.tar.gz"
+      url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-unknown-linux-gnu.tar.gz"
       sha256 "${{ steps.checksums.outputs.linux_intel_sha }}"
     end
   end
@@ -232,7 +232,7 @@ class CcSwitch < Formula
          # For bash
          cc-switch completion bash > ~/.bash_completion.d/cc-switch
       
-      For more information, visit: https://github.com/jingzhao/cc_auto_switch
+      For more information, visit: https://github.com/Linuxdazhao/cc_auto_switch
     EOS
   end
 end
