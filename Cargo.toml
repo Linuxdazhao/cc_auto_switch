@@ -1,12 +1,12 @@
 [package]
 name = "cc-switch"
-version = "0.0.30"
+version = "0.0.31"
 edition = "2024"
 description = "A CLI tool for managing multiple Claude API configurations and automatically switching between them"
 license = "MIT"
-repository = "https://github.com/jingzhao/cc_auto_switch"
-homepage = "https://github.com/jingzhao/cc_auto_switch"
-documentation = "https://github.com/jingzhao/cc_auto_switch"
+repository = "https://github.com/Linuxdazhao/cc_auto_switch"
+homepage = "https://github.com/Linuxdazhao/cc_auto_switch"
+documentation = "https://github.com/Linuxdazhao/cc_auto_switch"
 keywords = ["claude", "api", "configuration", "cli"]
 categories = ["command-line-utilities"]
 
