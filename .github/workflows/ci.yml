@@ -24,7 +24,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2024-12-01
+          toolchain: nightly
           components: rustfmt, clippy
 
       - name: Cache cargo registry
@@ -69,7 +69,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2024-12-01
+          toolchain: nightly
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
 
@@ -101,7 +101,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2024-12-01
+          toolchain: nightly
           components: rustfmt, clippy
 
       - name: Install cargo-audit
@@ -120,7 +120,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2024-12-01
+          toolchain: nightly
           components: rustfmt, clippy
 
       - name: Install cargo-tarpaulin
