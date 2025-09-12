@@ -22,7 +22,7 @@
 
 该工具采用清晰的模块化架构，有效分离关注点：
 
-应用程序遵循简单而强大的设计模式，主入口点将任务委托给处理所有 CLI 操作的命令模块。`ConfigStorage` 管理配置的持久化，而 `EnvironmentConfig` 处理与环境变量的集成，通过为每个命令执行设置特定的环境变量来确保配置隔离。
+应用程序遵循简单而强大的设计模式，主入口点将任务委托给处理所有 CLI 操作的命令模块。`ConfigStorage` 管理多个 API 配置在 `~/.cc-switch/configurations.json` 中的持久化，而 `EnvironmentConfig` 处理与环境变量的集成，通过为每个命令执行设置特定的环境变量来确保配置隔离。`InteractiveMenu` 提供交互式配置选择和编辑功能，支持实时预览和数字键快速选择。
 
 ## 🎯 核心功能
 
@@ -33,6 +33,7 @@ cc-switch 功能丰富，让 API 配置管理变得轻松：
 | **多配置管理** | 使用自定义别名存储无限数量的 API 配置 | 保持所有环境井然有序 |
 | **环境变量切换** | 使用 `cc-switch use <别名>` 通过环境变量启动 Claude | 安全隔离，不影响全局设置 |
 | **交互式选择模式** | 带实时配置预览的可视化菜单，支持数字键快速选择 | 切换前浏览配置的完整详情，按数字键1-9直接选择 |
+| **配置编辑功能** | 在交互式菜单中直接编辑现有配置 | 无需重新添加配置，直接修改字段 |
 | **Shell 自动补全** | 内置对 fish、zsh、bash 等的补全支持 | 加速命令输入和自动补全 |
 | **动态别名补全** | 为 use/remove 命令自动补全配置名称 | 减少错误和输入工作量 |
 | **Shell 别名生成** | 生成兼容 eval 的别名以快速访问 | 通过便捷快捷方式简化工作流 |
@@ -55,7 +56,17 @@ cc-switch 的美妙之处在于其简洁性。以下是快速启动和运行的�
 
 2. **添加第一个配置**（约15秒）：
    ```bash
+   # 添加基本配置
    cc-switch add my-project sk-ant-xxx https://api.anthropic.com
+   
+   # 添加配置并指定模型
+   cc-switch add my-project -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
+   
+   # 添加配置并指定快速模型
+   cc-switch add my-project -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
+   
+   # 同时指定两个模型
+   cc-switch add my-project -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022 --small-fast-model claude-3-haiku-20240307
    ```
 
 3. **切换到您的配置**（约5秒）：
@@ -165,6 +176,11 @@ cc-switch add dev sk-ant-dev-xxx https://api.anthropic.com
 cc-switch add staging sk-ant-staging-xxx https://api.anthropic.com
 cc-switch add prod sk-ant-prod-xxx https://api.anthropic.com
 
+# 为不同环境设置不同的模型
+cc-switch add dev -t sk-ant-dev-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
+cc-switch add staging -t sk-ant-staging-xxx -u https://api.anthropic.com -m claude-3-opus-20240229
+cc-switch add prod -t sk-ant-prod-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022 --small-fast-model claude-3-haiku-20240307
+
 # 根据需要在环境间切换（每次都启动新的 Claude 实例）
 cc-switch use dev      # 开发工作
 cc-switch use staging  # 测试  
@@ -177,9 +193,15 @@ cc-switch use cc       # 使用默认设置启动
 对于需要不同 API 凭据处理多个客户的开发者：
 
 ```bash
+# 为不同客户设置不同的配置
 cc-switch add client-a sk-ant-client-a https://api.anthropic.com
 cc-switch add client-b sk-ant-client-b https://api.anthropic.com
 cc-switch add personal sk-ant-personal https://api.anthropic.com
+
+# 为不同客户设置不同的模型
+cc-switch add client-a -t sk-ant-client-a -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
+cc-switch add client-b -t sk-ant-client-b -u https://api.anthropic.com -m claude-3-opus-20240229 --small-fast-model claude-3-haiku-20240307
+cc-switch add personal -t sk-ant-personal -u https://api.anthropic.com -m claude-3-sonnet-20240229
 ```
 
 ### 团队协作
@@ -334,14 +356,15 @@ cc-switch
 - 选项 2：切换配置（带实时预览并启动 Claude）
 - 选项 3：退出
 
-导航：
+在交互菜单中，您还可以：
 - 使用 **↑↓** 箭头键进行菜单导航
 - **数字键快速选择**：按 **1-9** 直接选择对应配置项，无需箭头键导航
 - **智能分页**：配置超过 9 个时自动分页显示，每页最多 9 个配置
 - **页面导航**：**PageUp/PageDown** 或 **N/P** 键快速翻页
-- **快捷操作**：**R** 键快速重置为官方配置，**E** 键直接退出
+- **快捷操作**：**R** 键快速重置为官方配置，**E** 键直接退出，**U** 键编辑当前选中的配置
 - 按 **Enter** 选择
 - 按 **Esc** 退出
+
 
 #### 交互式选择模式
 
@@ -366,11 +389,33 @@ cc-switch use  # 未指定别名时为交互模式
 - 按 **Enter** 选择并使用该配置启动 Claude
 - 按 **R** 键快速重置为官方配置（在任何页面都可用）
 - 按 **E** 键直接退出程序
+- 按 **U** 键编辑当前选中的配置
 - 按 **Esc** 取消选择
 - 包括"使用默认设置"选项以无自定义配置启动 Claude
 - 如果终端不支持高级功能，智能回退到编号菜单
 
-交互模式提供可视化方式浏览和选择配置，选择后使用指定配置的环境变量自动启动 Claude CLI。
+交互模式提供可视化方式浏览和选择配置，选择后使用指定配置的环境变量自动启动 Claude CLI。在交互模式中，您还可以通过按 **U** 键直接编辑当前选中的配置，支持修改别名、令牌、URL、模型和快速模型等所有字段。
+
+### 键盘快捷键参考
+
+#### 单页模式（≤9个配置）
+- **↑↓**: 上下导航选择
+- **1-9**: 数字键直接选择对应配置
+- **R**: 重置为官方配置
+- **E**: 退出程序
+- **U**: 编辑当前选中的配置
+- **Enter**: 确认当前选择
+- **Esc**: 取消操作
+
+#### 分页模式（>9个配置）
+- **↑↓**: 上下导航选择
+- **1-9**: 数字键直接选择当前页对应配置
+- **N/PageDown**: 下一页
+- **P/PageUp**: 上一页
+- **R**: 重置为官方配置（在任何页面都可用）
+- **E**: 退出程序
+- **U**: 编辑当前选中的配置
+- **Enter**: 确认当前选择
 
 #### 移除配置
 

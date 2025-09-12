@@ -39,10 +39,10 @@ impl BorderDrawing {
         }
 
         // Check locale settings
-        if let Ok(lang) = std::env::var("LANG") {
-            if lang.contains("UTF-8") || lang.contains("utf8") {
-                return true;
-            }
+        if let Ok(lang) = std::env::var("LANG")
+            && (lang.contains("UTF-8") || lang.contains("utf8"))
+        {
+            return true;
         }
 
         // Conservative fallback - assume Unicode is supported for better UX
@@ -737,12 +737,12 @@ fn handle_simple_interactive_menu(
                 continue;
             }
             digit_str => {
-                if let Ok(digit) = digit_str.parse::<usize>() {
-                    if digit >= 1 && digit <= page_configs.len() {
-                        let actual_config_index = start_idx + (digit - 1);
-                        let selection_index = actual_config_index + 1; // +1 because official is at index 0
-                        return handle_selection_action(configs, selection_index);
-                    }
+                if let Ok(digit) = digit_str.parse::<usize>()
+                    && digit >= 1 && digit <= page_configs.len()
+                {
+                    let actual_config_index = start_idx + (digit - 1);
+                    let selection_index = actual_config_index + 1; // +1 because official is at index 0
+                    return handle_selection_action(configs, selection_index);
                 }
                 println!("无效选择，请重新输入");
             }
