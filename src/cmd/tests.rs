@@ -18,6 +18,7 @@ mod tests {
             url: url.to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         }
     }
 
@@ -564,6 +565,7 @@ mod tests {
             url: "".to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -718,6 +720,7 @@ mod tests {
             url: "https://format.test.com".to_string(),
             model: Some("claude-format-model".to_string()),
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let json = serde_json::to_string_pretty(&config).expect("Should serialize to pretty JSON");
@@ -784,6 +787,7 @@ mod tests {
             url: "https://order.test.com".to_string(),
             model: Some("claude-order-model".to_string()),
             small_fast_model: Some("haiku-order-model".to_string()),
+            max_thinking_tokens: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -927,6 +931,7 @@ mod config_edit_tests {
             url: "https://api.test.com".to_string(),
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
+            max_thinking_tokens: None,
         };
         storage.add_configuration(config);
 
@@ -944,6 +949,7 @@ mod config_edit_tests {
             url: "https://api.updated.com".to_string(),
             model: Some("updated-model".to_string()),
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -968,6 +974,7 @@ mod config_edit_tests {
             url: "https://api.test.com".to_string(),
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
+            max_thinking_tokens: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -991,6 +998,7 @@ mod config_edit_tests {
             url: "https://api.new.com".to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let result = storage.update_configuration("nonexistent", new_config);
@@ -1009,6 +1017,7 @@ mod config_edit_tests {
             url: "https://api.config2.com".to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
         storage.add_configuration(config2);
 
@@ -1019,6 +1028,7 @@ mod config_edit_tests {
             url: "https://api.overwritten.com".to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1042,6 +1052,7 @@ mod config_edit_tests {
             url: "https://api.test.com".to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);

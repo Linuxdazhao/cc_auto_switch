@@ -17,6 +17,7 @@ mod integration_tests {
             url: url.to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         }
     }
 

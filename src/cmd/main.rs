@@ -18,6 +18,7 @@ pub struct AddCommandParams {
     pub url: Option<String>,
     pub model: Option<String>,
     pub small_fast_model: Option<String>,
+    pub max_thinking_tokens: Option<u32>,
     pub force: bool,
     pub interactive: bool,
     pub token_arg: Option<String>,
@@ -142,6 +143,7 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         url: final_url,
         model: final_model,
         small_fast_model: final_small_fast_model,
+        max_thinking_tokens: params.max_thinking_tokens,
     };
 
     storage.add_configuration(config);
@@ -296,6 +298,7 @@ pub fn run() -> Result<()> {
                     url,
                     model,
                     small_fast_model,
+                    max_thinking_tokens: None,
                     force,
                     interactive,
                     token_arg,

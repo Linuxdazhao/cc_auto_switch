@@ -11,6 +11,7 @@ mod tests {
             url: url.to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         }
     }
 
@@ -28,6 +29,7 @@ mod tests {
             url: url.to_string(),
             model: model.map(String::from),
             small_fast_model: small_fast_model.map(String::from),
+            max_thinking_tokens: None,
         }
     }
 
@@ -218,6 +220,7 @@ mod tests {
             url: "".to_string(),
             model: Some("".to_string()),
             small_fast_model: Some("".to_string()),
+            max_thinking_tokens: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);

@@ -23,6 +23,9 @@ pub struct Configuration {
     /// ANTHROPIC_SMALL_FAST_MODEL value (Haiku-class model for background tasks)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub small_fast_model: Option<String>,
+    /// ANTHROPIC_MAX_THINKING_TOKENS value (Maximum thinking tokens limit)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_thinking_tokens: Option<u32>,
 }
 
 /// Storage manager for Claude API configurations
@@ -104,6 +107,7 @@ pub struct AddCommandParams {
     pub url: Option<String>,
     pub model: Option<String>,
     pub small_fast_model: Option<String>,
+    pub max_thinking_tokens: Option<u32>,
     pub force: bool,
     pub interactive: bool,
     pub token_arg: Option<String>,

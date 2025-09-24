@@ -13,6 +13,7 @@ mod tests {
             url: url.to_string(),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
         }
     }
 
@@ -30,6 +31,7 @@ mod tests {
             url: url.to_string(),
             model: model.map(String::from),
             small_fast_model: small_fast_model.map(String::from),
+            max_thinking_tokens: None,
         }
     }
 
@@ -44,6 +46,7 @@ mod tests {
             url: Some("https://api.test.com".to_string()),
             model: None,
             small_fast_model: None,
+            max_thinking_tokens: None,
             force: false,
             interactive: false,
             token_arg: None,
