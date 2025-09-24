@@ -515,7 +515,7 @@ fn handle_full_interactive_menu(
             println!(
                 "\r> {} {} {}",
                 "●".yellow().bold(),
-                "[E]".yellow().bold(),
+                "[Q]".yellow().bold(),
                 "Exit".yellow().bold()
             );
             println!("\r    Exit without making changes");
@@ -524,7 +524,7 @@ fn handle_full_interactive_menu(
             println!(
                 "\r  {} {} {}",
                 "○".dimmed(),
-                "[E]".dimmed(),
+                "[Q]".dimmed(),
                 "Exit".dimmed()
             );
         }
