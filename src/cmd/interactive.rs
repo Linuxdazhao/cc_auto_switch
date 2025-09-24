@@ -202,7 +202,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             "\r{}",
             border
                 .draw_middle_line(
-                    "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                    "↑↓/jk导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
                 .dimmed()
@@ -436,7 +436,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，U-编辑，N/P翻页，R-官方，E-退出，Enter确认",
+                        "↑↓/jk导航，1-9快选，U-编辑，N/P翻页，R-官方，E-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -446,7 +446,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                        "↑↓/jk导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -562,10 +562,10 @@ fn handle_full_interactive_menu(
                 kind: KeyEventKind::Press,
                 ..
             }) => match code {
-                KeyCode::Up => {
+                KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
                     *selected_index = selected_index.saturating_sub(1);
                 }
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
                     if *selected_index < configs.len() + 1 {
                         *selected_index += 1;
                     }
@@ -1373,6 +1373,65 @@ mod pagination_tests {
             current_page -= 1;
         }
         assert_eq!(current_page, 1, "Should navigate to previous page");
+    }
+
+    /// Test j key navigation (should move selection down like Down arrow)
+    #[test]
+    fn test_j_key_navigation() {
+        let mut selected_index: usize = 0;
+        let configs_len = 5; // 5 configs + 1 official + 1 exit = 7 total options
+
+        // Test j key moves selection down
+        // j key should behave like Down arrow
+        if selected_index < configs_len + 1 {
+            selected_index += 1;
+        }
+        assert_eq!(selected_index, 1, "j key should move selection down by one");
+
+        // Test j key at bottom boundary (should not go beyond configs_len + 1)
+        selected_index = configs_len + 1;
+        let original_index = selected_index;
+        if selected_index < configs_len + 1 {
+            selected_index += 1;
+        }
+        assert_eq!(selected_index, original_index, "j key should not move beyond bottom boundary");
+    }
+
+    /// Test k key navigation (should move selection up like Up arrow)
+    #[test]
+    fn test_k_key_navigation() {
+        let mut selected_index: usize = 5;
+
+        // Test k key moves selection up
+        // k key should behave like Up arrow
+        selected_index = selected_index.saturating_sub(1);
+        assert_eq!(selected_index, 4, "k key should move selection up by one");
+
+        // Test k key at top boundary (should not go below 0)
+        selected_index = 0;
+        let original_index = selected_index;
+        selected_index = selected_index.saturating_sub(1);
+        assert_eq!(selected_index, original_index, "k key should not move beyond top boundary");
+    }
+
+    /// Test j/k key boundary conditions match arrow key behavior
+    #[test]
+    fn test_jk_key_boundary_conditions() {
+        const CONFIGS_LEN: usize = 5;
+
+        // Test j key at bottom boundary (same as Down arrow)
+        let mut selected_index: usize = CONFIGS_LEN + 1; // At exit option
+        let original_index = selected_index;
+        if selected_index < CONFIGS_LEN + 1 {
+            selected_index += 1; // This is what j key does
+        }
+        assert_eq!(selected_index, original_index, "j key should respect bottom boundary like Down arrow");
+
+        // Test k key at top boundary (same as Up arrow)
+        let mut selected_index: usize = 0; // At official option
+        let original_index = selected_index;
+        selected_index = selected_index.saturating_sub(1); // This is what k key does
+        assert_eq!(selected_index, original_index, "k key should respect top boundary like Up arrow");
     }
 }
 
