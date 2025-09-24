@@ -144,6 +144,7 @@ mod tests {
                 url,
                 model,
                 small_fast_model,
+                max_thinking_tokens,
             }) => {
                 assert_eq!(alias_name, "my-config");
                 assert_eq!(token_arg, Some("sk-ant-test-token".to_string()));
@@ -186,6 +187,7 @@ mod tests {
                 url_arg,
                 model,
                 small_fast_model,
+                max_thinking_tokens,
             }) => {
                 assert_eq!(alias_name, "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));
@@ -226,6 +228,7 @@ mod tests {
                 url,
                 model,
                 small_fast_model,
+                max_thinking_tokens,
                 ..
             }) => {
                 assert_eq!(alias_name, "model-config");

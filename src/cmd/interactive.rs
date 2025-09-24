@@ -987,13 +987,20 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     let url_label = "URL:";
     let model_label = "Model:";
     let small_model_label = "Small Fast Model:";
+    let max_thinking_tokens_label = "Max Thinking Tokens:";
 
     // Find the widest label for alignment
-    let max_label_width = [token_label, url_label, model_label, small_model_label]
-        .iter()
-        .map(|label| text_display_width(label))
-        .max()
-        .unwrap_or(0);
+    let max_label_width = [
+        token_label,
+        url_label,
+        model_label,
+        small_model_label,
+        max_thinking_tokens_label,
+    ]
+    .iter()
+    .map(|label| text_display_width(label))
+    .max()
+    .unwrap_or(0);
 
     // Format token with proper alignment
     let token_line = format!(
@@ -1033,6 +1040,22 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
             small_fast_model.yellow()
         );
         lines.push(small_model_line);
+    }
+
+    // Format max thinking tokens if available
+    if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+        let tokens_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                max_thinking_tokens_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", max_thinking_tokens).yellow()
+        );
+        lines.push(tokens_line);
     }
 
     lines
@@ -1381,6 +1404,7 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
             "3" => edit_field_url(&mut editing_config)?,
             "4" => edit_field_model(&mut editing_config)?,
             "5" => edit_field_small_fast_model(&mut editing_config)?,
+            "6" => edit_field_max_thinking_tokens(&mut editing_config)?,
             "s" | "S" => {
                 // Save changes
                 return save_configuration_changes(&original_alias, &editing_config);
@@ -1421,6 +1445,15 @@ fn display_edit_menu(config: &Configuration) {
             .small_fast_model
             .as_deref()
             .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "6. 最大思考令牌数: {}",
+        config
+            .max_thinking_tokens
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
             .green()
     );
 
@@ -1522,7 +1555,7 @@ fn edit_field_model(config: &mut Configuration) -> Result<()> {
     Ok(())
 }
 
-/// Edit small_fast_model field  
+/// Edit small_fast_model field
 fn edit_field_small_fast_model(config: &mut Configuration) -> Result<()> {
     println!("\n编辑快速模型:");
     println!(
@@ -1547,6 +1580,38 @@ fn edit_field_small_fast_model(config: &mut Configuration) -> Result<()> {
         } else {
             config.small_fast_model = Some(input.to_string());
             println!("快速模型已更新为: {}", input.green());
+        }
+    }
+    Ok(())
+}
+
+/// Edit max_thinking_tokens field
+fn edit_field_max_thinking_tokens(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑最大思考令牌数:");
+    println!(
+        "当前值: {}",
+        config
+            .max_thinking_tokens
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入 0 清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == "0" {
+            config.max_thinking_tokens = None;
+            println!("{}", "最大思考令牌数已清除".green());
+        } else if let Ok(tokens) = input.parse::<u32>() {
+            config.max_thinking_tokens = Some(tokens);
+            println!("最大思考令牌数已更新为: {}", tokens.to_string().green());
+        } else {
+            println!("{}", "错误: 请输入有效的数字".red());
         }
     }
     Ok(())

@@ -13,6 +13,7 @@ EXAMPLES:
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
+    cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --max-thinking-tokens 8192
     cc-switch add my-config -i  # Interactive mode
     cc-switch add my-config --force  # Overwrite existing config
     cc-switch use my-config
@@ -91,6 +92,13 @@ pub enum Commands {
             help = "Haiku-class model for background tasks (optional)"
         )]
         small_fast_model: Option<String>,
+
+        /// ANTHROPIC_MAX_THINKING_TOKENS value (Maximum thinking tokens limit)
+        #[arg(
+            long = "max-thinking-tokens",
+            help = "Maximum thinking tokens limit (optional)"
+        )]
+        max_thinking_tokens: Option<u32>,
 
         /// Force overwrite existing configuration
         #[arg(

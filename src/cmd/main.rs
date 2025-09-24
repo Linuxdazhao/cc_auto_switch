@@ -120,6 +120,32 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         params.small_fast_model
     };
 
+    // Determine max thinking tokens value
+    let final_max_thinking_tokens = if params.interactive {
+        if params.max_thinking_tokens.is_some() {
+            eprintln!(
+                "Warning: Max thinking tokens provided via flags will be ignored in interactive mode"
+            );
+        }
+        let tokens_input = read_input(
+            "Enter maximum thinking tokens (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if tokens_input.is_empty() {
+            None
+        } else if let Ok(tokens) = tokens_input.parse::<u32>() {
+            if tokens == 0 {
+                None
+            } else {
+                Some(tokens)
+            }
+        } else {
+            eprintln!("Warning: Invalid max thinking tokens value, skipping");
+            None
+        }
+    } else {
+        params.max_thinking_tokens
+    };
+
     // Validate token format with flexible API provider support
     let is_anthropic_official = final_url.contains("api.anthropic.com");
     if is_anthropic_official {
@@ -143,7 +169,7 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         url: final_url,
         model: final_model,
         small_fast_model: final_small_fast_model,
-        max_thinking_tokens: params.max_thinking_tokens,
+        max_thinking_tokens: final_max_thinking_tokens,
     };
 
     storage.add_configuration(config);
@@ -193,6 +219,9 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         }
         if let Some(small_fast_model) = &config.small_fast_model {
             config_info.push_str(&format!(", small_fast_model: {small_fast_model}"));
+        }
+        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+            config_info.push_str(&format!(", max_thinking_tokens: {max_thinking_tokens}"));
         }
         println!("Switched to configuration '{alias_name}' ({config_info})");
         println!("Current URL: {}", config.url);
@@ -287,6 +316,7 @@ pub fn run() -> Result<()> {
                 url,
                 model,
                 small_fast_model,
+                max_thinking_tokens,
                 force,
                 interactive,
                 token_arg,
@@ -298,7 +328,7 @@ pub fn run() -> Result<()> {
                     url,
                     model,
                     small_fast_model,
-                    max_thinking_tokens: None,
+                    max_thinking_tokens,
                     force,
                     interactive,
                     token_arg,
@@ -347,6 +377,9 @@ pub fn run() -> Result<()> {
                         }
                         if let Some(small_fast_model) = &config.small_fast_model {
                             info.push_str(&format!(", small_fast_model={small_fast_model}"));
+                        }
+                        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+                            info.push_str(&format!(", max_thinking_tokens={max_thinking_tokens}"));
                         }
                         println!("  {alias_name}: {info}");
                     }

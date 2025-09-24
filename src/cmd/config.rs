@@ -45,6 +45,14 @@ impl EnvironmentConfig {
             );
         }
 
+        // Set max thinking tokens only if provided
+        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+            env_vars.insert(
+                "ANTHROPIC_MAX_THINKING_TOKENS".to_string(),
+                max_thinking_tokens.to_string(),
+            );
+        }
+
         EnvironmentConfig { env_vars }
     }
 
