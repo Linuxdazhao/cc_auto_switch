@@ -202,7 +202,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             "\r{}",
             border
                 .draw_middle_line(
-                    "↑↓/jk导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                    "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
                 .dimmed()
@@ -436,7 +436,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓/jk导航，1-9快选，U-编辑，N/P翻页，R-官方，E-退出，Enter确认",
+                        "↑↓/jk导航，1-9快选，E-编辑，N/P翻页，R-官方，Q-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -446,7 +446,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓/jk导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                        "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -623,7 +623,7 @@ fn handle_full_interactive_menu(
 
                     return handle_selection_action(configs, 0);
                 }
-                KeyCode::Char('u') | KeyCode::Char('U') => {
+                KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Only allow editing if a config is selected (not official or exit)
                     if *selected_index > 0 && *selected_index <= configs.len() {
                         // Clean up terminal before entering edit mode
@@ -635,7 +635,7 @@ fn handle_full_interactive_menu(
                     }
                     // Invalid selection - ignore silently
                 }
-                KeyCode::Char('e') | KeyCode::Char('E') => {
+                KeyCode::Char('q') | KeyCode::Char('Q') => {
                     // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
@@ -702,11 +702,11 @@ fn handle_simple_interactive_menu(
         }
 
         // Exit option
-        println!("{} {}", "[e]".yellow().bold(), "Exit".yellow());
+        println!("{} {}", "[q]".yellow().bold(), "Exit".yellow());
 
         if total_pages > 1 {
             println!(
-                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [u]编辑 | [r]官方 | [e]退出",
+                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [e]编辑 | [r]官方 | [q]退出",
                 page_configs.len()
             );
         }
@@ -725,6 +725,11 @@ fn handle_simple_interactive_menu(
                 return launch_claude_with_env(EnvironmentConfig::empty());
             }
             "e" => {
+                // Edit functionality for simple menu
+                // In simple menu, we don't have a selected config, so we can't edit
+                println!("编辑功能在交互式菜单中可用");
+            }
+            "q" => {
                 println!("Exiting...");
                 return Ok(());
             }
