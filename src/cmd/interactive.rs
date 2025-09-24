@@ -675,7 +675,7 @@ fn handle_simple_interactive_menu(
         println!("\n{}", "Available Configurations:".blue().bold());
         if total_pages > 1 {
             println!("第 {} 页，共 {} 页", current_page + 1, total_pages);
-            println!("使用 'n' 下一页, 'p' 上一页, 'r' 官方配置, 'e' 退出");
+            println!("使用 'n' 下一页, 'p' 上一页, 'r' 官方配置, 'q' 退出");
         }
         println!();
 
