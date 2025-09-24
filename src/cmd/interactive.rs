@@ -738,7 +738,8 @@ fn handle_simple_interactive_menu(
             }
             digit_str => {
                 if let Ok(digit) = digit_str.parse::<usize>()
-                    && digit >= 1 && digit <= page_configs.len()
+                    && digit >= 1
+                    && digit <= page_configs.len()
                 {
                     let actual_config_index = start_idx + (digit - 1);
                     let selection_index = actual_config_index + 1; // +1 because official is at index 0

@@ -133,11 +133,7 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         if tokens_input.is_empty() {
             None
         } else if let Ok(tokens) = tokens_input.parse::<u32>() {
-            if tokens == 0 {
-                None
-            } else {
-                Some(tokens)
-            }
+            if tokens == 0 { None } else { Some(tokens) }
         } else {
             eprintln!("Warning: Invalid max thinking tokens value, skipping");
             None
