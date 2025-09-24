@@ -229,13 +229,13 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         );
     };
 
-    // Wait 0.5 second
-    println!("Waiting 0.5 second before launching Claude...");
+    // Wait 0.2 second
+    println!("Waiting 0.2 second before launching Claude...");
     println!(
         "Executing: claude {}",
         "--dangerously-skip-permissions".red()
     );
-    thread::sleep(Duration::from_millis(500));
+    thread::sleep(Duration::from_millis(200));
 
     // Set environment variables for current process
     for (key, value) in env_config.as_env_tuples() {
