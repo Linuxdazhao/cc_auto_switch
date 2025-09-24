@@ -1,0 +1,51 @@
+{
+  "name": "cc-switch",
+  "version": "0.0.31",
+  "description": "A CLI tool for managing multiple Claude API configurations and automatically switching between them",
+  "main": "index.js",
+  "bin": {
+    "cc-switch": "./bin/cc-switch"
+  },
+  "scripts": {
+    "install": "node install.js",
+    "postinstall": "node install.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "claude",
+    "api",
+    "configuration",
+    "cli",
+    "switch",
+    "anthropic"
+  ],
+  "author": "Linuxdazhao",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Linuxdazhao/cc_auto_switch.git"
+  },
+  "homepage": "https://github.com/Linuxdazhao/cc_auto_switch",
+  "bugs": {
+    "url": "https://github.com/Linuxdazhao/cc_auto_switch/issues"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "preferGlobal": true,
+  "files": [
+    "bin/",
+    "install.js",
+    "index.js",
+    "README.md"
+  ]
+}

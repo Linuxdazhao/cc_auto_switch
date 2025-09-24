@@ -1,1 +1,13 @@
 /target
+
+# NPM files
+node_modules/
+*.tgz
+cc-switch-*.tgz
+
+# NPM binary directory (will be populated during install)
+bin/cc-switch
+bin/cc-switch.exe
+
+# Temporary files from NPM install
+temp/

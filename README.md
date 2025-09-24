@@ -3,6 +3,7 @@
 **[English README](README_EN.md) | 中文文档**
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
+[![NPM](https://img.shields.io/npm/v/cc-switch.svg)](https://www.npmjs.com/package/cc-switch)
 [![GitHub Packages](https://img.shields.io/badge/GitHub-Packages-green)](https://github.com/Linuxdazhao/cc_auto_switch/packages)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://github.com/Linuxdazhao/cc_auto_switch/workflows/CI/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/actions)
@@ -47,9 +48,12 @@ cc-switch 的美妙之处在于其简洁性。以下是快速启动和运行的�
 
 1. **安装工具**（约30秒）：
    ```bash
+   # 使用 NPM（适合 JavaScript/Node.js 开发者）
+   npm install -g cc-switch
+
    # 使用 Homebrew（推荐）
    brew tap Linuxdazhao/cc-switch && brew install cc-switch
-   
+
    # 或使用 Cargo
    cargo install cc-switch
    ```

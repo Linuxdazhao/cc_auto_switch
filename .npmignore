@@ -1,0 +1,52 @@
+# NPM ignore file for cc-switch
+
+# Rust source and build artifacts
+src/
+target/
+Cargo.toml
+Cargo.lock
+
+# Development and CI files
+.github/
+scripts/
+.pre-commit-config.yaml
+Makefile
+*.sh
+
+# Documentation (keep only README.md)
+CLAUDE.md
+README_EN.md
+HOMEBREW.md
+develop-readme.md
+TEST_COVERAGE_SUMMARY.md
+
+# Test files
+test_*
+*_test.*
+
+# IDE and temporary files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Serena and Claude files
+.serena/
+.claude/
+
+# Distribution files (will be downloaded during install)
+dist/
+*.tar.gz
+
+# Development utilities
+publish.sh
