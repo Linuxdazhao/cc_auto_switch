@@ -35,16 +35,8 @@ jobs:
     - name: Run tests
       run: cargo test
 
-    - name: Configure crates.io registry
-      run: |
-        mkdir -p .cargo
-        cat > .cargo/config.toml << 'EOF'
-        [registries.crates-io]
-        index = "https://github.com/rust-lang/crates.io-index"
-        EOF
-
     - name: Publish to crates.io
       run: |
-        cargo publish --registry crates-io
+        cargo publish --allow-dirty --registry crates-io
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
