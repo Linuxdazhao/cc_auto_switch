@@ -1,6 +1,6 @@
 {
   "name": "cc-switch",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "A CLI tool for managing multiple Claude API configurations and automatically switching between them",
   "main": "index.js",
   "bin": {
