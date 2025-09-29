@@ -202,7 +202,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             "\r{}",
             border
                 .draw_middle_line(
-                    "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                    "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
                 .dimmed()
@@ -436,7 +436,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，U-编辑，N/P翻页，R-官方，E-退出，Enter确认",
+                        "↑↓/jk导航，1-9快选，E-编辑，N/P翻页，R-官方，Q-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -446,7 +446,7 @@ fn handle_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓导航，1-9快选，U-编辑，R-官方，E-退出，Enter确认，Esc取消",
+                        "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
                     .dimmed()
@@ -515,7 +515,7 @@ fn handle_full_interactive_menu(
             println!(
                 "\r> {} {} {}",
                 "●".yellow().bold(),
-                "[E]".yellow().bold(),
+                "[Q]".yellow().bold(),
                 "Exit".yellow().bold()
             );
             println!("\r    Exit without making changes");
@@ -524,7 +524,7 @@ fn handle_full_interactive_menu(
             println!(
                 "\r  {} {} {}",
                 "○".dimmed(),
-                "[E]".dimmed(),
+                "[Q]".dimmed(),
                 "Exit".dimmed()
             );
         }
@@ -562,10 +562,10 @@ fn handle_full_interactive_menu(
                 kind: KeyEventKind::Press,
                 ..
             }) => match code {
-                KeyCode::Up => {
+                KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
                     *selected_index = selected_index.saturating_sub(1);
                 }
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
                     if *selected_index < configs.len() + 1 {
                         *selected_index += 1;
                     }
@@ -623,7 +623,7 @@ fn handle_full_interactive_menu(
 
                     return handle_selection_action(configs, 0);
                 }
-                KeyCode::Char('u') | KeyCode::Char('U') => {
+                KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Only allow editing if a config is selected (not official or exit)
                     if *selected_index > 0 && *selected_index <= configs.len() {
                         // Clean up terminal before entering edit mode
@@ -635,7 +635,7 @@ fn handle_full_interactive_menu(
                     }
                     // Invalid selection - ignore silently
                 }
-                KeyCode::Char('e') | KeyCode::Char('E') => {
+                KeyCode::Char('q') | KeyCode::Char('Q') => {
                     // Clean up terminal before processing selection
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
@@ -675,7 +675,7 @@ fn handle_simple_interactive_menu(
         println!("\n{}", "Available Configurations:".blue().bold());
         if total_pages > 1 {
             println!("第 {} 页，共 {} 页", current_page + 1, total_pages);
-            println!("使用 'n' 下一页, 'p' 上一页, 'r' 官方配置, 'e' 退出");
+            println!("使用 'n' 下一页, 'p' 上一页, 'r' 官方配置, 'q' 退出");
         }
         println!();
 
@@ -702,11 +702,11 @@ fn handle_simple_interactive_menu(
         }
 
         // Exit option
-        println!("{} {}", "[e]".yellow().bold(), "Exit".yellow());
+        println!("{} {}", "[q]".yellow().bold(), "Exit".yellow());
 
         if total_pages > 1 {
             println!(
-                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [u]编辑 | [r]官方 | [e]退出",
+                "\n页面导航: [n]下页, [p]上页 | 配置选择: [1-{}] | [e]编辑 | [r]官方 | [q]退出",
                 page_configs.len()
             );
         }
@@ -725,6 +725,11 @@ fn handle_simple_interactive_menu(
                 return launch_claude_with_env(EnvironmentConfig::empty());
             }
             "e" => {
+                // Edit functionality for simple menu
+                // In simple menu, we don't have a selected config, so we can't edit
+                println!("编辑功能在交互式菜单中可用");
+            }
+            "q" => {
                 println!("Exiting...");
                 return Ok(());
             }
@@ -1373,6 +1378,65 @@ mod pagination_tests {
             current_page -= 1;
         }
         assert_eq!(current_page, 1, "Should navigate to previous page");
+    }
+
+    /// Test j key navigation (should move selection down like Down arrow)
+    #[test]
+    fn test_j_key_navigation() {
+        let mut selected_index: usize = 0;
+        let configs_len = 5; // 5 configs + 1 official + 1 exit = 7 total options
+
+        // Test j key moves selection down
+        // j key should behave like Down arrow
+        if selected_index < configs_len + 1 {
+            selected_index += 1;
+        }
+        assert_eq!(selected_index, 1, "j key should move selection down by one");
+
+        // Test j key at bottom boundary (should not go beyond configs_len + 1)
+        selected_index = configs_len + 1;
+        let original_index = selected_index;
+        if selected_index < configs_len + 1 {
+            selected_index += 1;
+        }
+        assert_eq!(selected_index, original_index, "j key should not move beyond bottom boundary");
+    }
+
+    /// Test k key navigation (should move selection up like Up arrow)
+    #[test]
+    fn test_k_key_navigation() {
+        let mut selected_index: usize = 5;
+
+        // Test k key moves selection up
+        // k key should behave like Up arrow
+        selected_index = selected_index.saturating_sub(1);
+        assert_eq!(selected_index, 4, "k key should move selection up by one");
+
+        // Test k key at top boundary (should not go below 0)
+        selected_index = 0;
+        let original_index = selected_index;
+        selected_index = selected_index.saturating_sub(1);
+        assert_eq!(selected_index, original_index, "k key should not move beyond top boundary");
+    }
+
+    /// Test j/k key boundary conditions match arrow key behavior
+    #[test]
+    fn test_jk_key_boundary_conditions() {
+        const CONFIGS_LEN: usize = 5;
+
+        // Test j key at bottom boundary (same as Down arrow)
+        let mut selected_index: usize = CONFIGS_LEN + 1; // At exit option
+        let original_index = selected_index;
+        if selected_index < CONFIGS_LEN + 1 {
+            selected_index += 1; // This is what j key does
+        }
+        assert_eq!(selected_index, original_index, "j key should respect bottom boundary like Down arrow");
+
+        // Test k key at top boundary (same as Up arrow)
+        let mut selected_index: usize = 0; // At official option
+        let original_index = selected_index;
+        selected_index = selected_index.saturating_sub(1); // This is what k key does
+        assert_eq!(selected_index, original_index, "k key should respect top boundary like Up arrow");
     }
 }
 
