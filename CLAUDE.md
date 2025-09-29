@@ -1,194 +1,206 @@
 # CLAUDE.md
 
-本文件为 Claude Code (claude.ai/code) 提供在此代码库中工作的指导。
+This file provides guidance for Claude Code (claude.ai/code) when working in this codebase.
 
-**重要说明：始终使用简体中文和我对话**
+## Project Overview
 
-## 项目概述
+`cc-switch` is a Rust CLI tool for managing multiple Claude API configurations and automatically switching between them. The tool allows users to store different API configurations (alias, token, URL) and switch between them by modifying Claude's settings.json file. This is particularly useful for developers who need to use multiple Claude API endpoints or switch between different accounts.
 
-`cc-switch` 是一个用于管理多个 Claude API 配置并自动切换的 Rust CLI 工具。该工具允许用户存储不同的 API 配置（别名、令牌、URL），并通过修改 Claude 的 settings.json 文件在它们之间切换。这对于需要使用多个 Claude API 端点或需要在不同账户间切换的开发者特别有用。
+## Development Commands
 
-## 开发命令
+### Build and Run
 
-### 构建和运行
 ```bash
-# 构建项目
+# Build project
 cargo build
 
-# 运行项目
+# Run project
 cargo run
 
-# 发布模式构建
+# Release build
 cargo build --release
 
-# 发布模式运行
+# Release run
 cargo run --release
 ```
 
-### 测试
+### Testing
+
 ```bash
-# 运行所有测试
+# Run all tests
 cargo test
 
-# 运行测试并显示输出
+# Run tests with output
 cargo test -- --nocapture
 
-# 运行特定测试
+# Run specific test
 cargo test test_name
 ```
 
-### 代码质量
+### Code Quality
+
 ```bash
-# 检查编译错误
+# Check compilation errors
 cargo check
 
-# 格式化代码
+# Format code
 cargo fmt
 
-# 代码检查
+# Lint code
 cargo clippy
 
-# 带所有警告的代码检查
+# Lint with all warnings
 cargo clippy -- -W warnings
 
-# 运行安全审计
+# Run security audit
 cargo audit
 ```
 
-### 提交前钩子
+### Pre-commit Hooks
+
 ```bash
-# 设置提交前钩子（一次性设置）
+# One-time setup
 ./scripts/setup-pre-commit.sh
 
-# 手动运行提交前钩子
+# Manual run on all files
 pre-commit run --all-files
 
-# 对特定文件运行提交前钩子
+# Run on specific files
 pre-commit run --files src/main.rs
 
-# 更新提交前钩子
+# Update hooks
 pre-commit autoupdate
 
-# 卸载提交前钩子
+# Uninstall hooks
 pre-commit uninstall
 ```
 
-### 版本管理和发布
+### Version Management and Release
 
-项目包含自动化版本管理和发布到 crates.io 的功能：
+The project includes automated version management and publishing to crates.io:
 
-**完整发布工作流程**：
+**Complete Release Workflow**:
+
 ```bash
-# 运行完整发布工作流程（版本递增 + 提交 + 发布）
+# Run full release workflow (version increment + commit + publish)
 ./scripts/release.sh
 ```
 
-**手动版本管理**：
+**Manual Version Management**:
+
 ```bash
-# 手动递增版本
+# Manually increment version
 ./scripts/increment-version.sh
 
-# 手动发布到 crates.io
+# Manually publish to crates.io
 ./scripts/publish.sh
 ```
 
-**版本格式**：使用语义版本控制 (x.y.z)，其中：
-- 主版本 (x)：破坏性更改
-- 次版本 (y)：新功能
-- 修补版本 (z)：错误修复和补丁
+**Version Format**: Uses semantic versioning (x.y.z) where:
 
-**自动化工作流程**：
-1. 进行代码更改
-2. `./scripts/release.sh` - 处理版本递增、提交和发布
-3. Cargo.toml 中的版本自动递增
-4. 测试自动运行
-5. 包自动发布到 crates.io
+- Major version (x): Breaking changes
+- Minor version (y): New features
+- Patch version (z): Bug fixes and patches
 
-**手动工作流程**：
-1. 进行代码更改
-2. `./scripts/increment-version.sh` - 递增版本
-3. `git add . && git commit -m "您的消息"`
-4. `cargo test` - 运行测试
-5. `./scripts/publish.sh` - 发布到 crates.io
+**Automated Workflow**:
 
-### 依赖管理
+1. Make code changes
+2. `./scripts/release.sh` - Handles version increment, commit, and publish
+3. Version in Cargo.toml is auto-incremented
+4. Tests run automatically
+5. Package is auto-published to crates.io
+
+**Manual Workflow**:
+
+1. Make code changes
+2. `./scripts/increment-version.sh` - Increment version
+3. `git add . && git commit -m "Your message"`
+4. `cargo test` - Run tests
+5. `./scripts/publish.sh` - Publish to crates.io
+
+### Dependency Management
+
 ```bash
-# 更新依赖
+# Update dependencies
 cargo update
 
-# 检查过时的依赖
+# Check outdated dependencies
 cargo outdated
 
-# 添加新依赖
+# Add new dependency
 cargo add dependency_name
 
-# 移除依赖
+# Remove dependency
 cargo remove dependency_name
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 cc_auto_switch/
-├── Cargo.toml              # 项目配置和依赖
-├── Cargo.lock              # 依赖锁定文件
+├── Cargo.toml              # Project configuration and dependencies
+├── Cargo.lock              # Dependency lock file
 ├── src/
-│   ├── main.rs             # 主应用程序入口点（最小化）
+│   ├── main.rs             # Main application entry point (minimal)
 │   └── cmd/
-│       ├── main.rs         # 核心 CLI 逻辑和编排
-│       ├── mod.rs          # 模块声明
-│       ├── cli.rs          # 命令行接口定义
-│       ├── types.rs        # 核心数据结构和类型
-│       ├── config.rs       # 配置管理逻辑
-│       ├── config_storage.rs # 配置持久化和存储
-│       ├── interactive.rs  # 交互式菜单和终端 UI
-│       ├── completion.rs   # Shell 补全逻辑
-│       ├── shell_completion.rs # Shell 特定补全处理器
-│       ├── utils.rs        # 工具函数
-│       ├── tests.rs        # 核心功能单元测试
-│       ├── error_handling_tests.rs  # 错误处理边界情况
-│       └── integration_tests.rs      # 集成测试
+│       ├── main.rs         # Core CLI logic and orchestration
+│       ├── mod.rs          # Module declarations
+│       ├── cli.rs          # Command-line interface definitions
+│       ├── types.rs        # Core data structures and types
+│       ├── config.rs       # Configuration management logic
+│       ├── config_storage.rs # Configuration persistence and storage
+│       ├── interactive.rs  # Interactive menus and terminal UI
+│       ├── completion.rs   # Shell completion logic
+│       ├── shell_completion.rs # Shell-specific completion handlers
+│       ├── utils.rs        # Utility functions
+│       ├── tests.rs        # Core functionality unit tests
+│       ├── error_handling_tests.rs  # Error handling edge cases
+│       └── integration_tests.rs      # Integration tests
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml          # CI 管道和跨平台构建
-│       └── release.yml     # GitHub 发布工作流
-└── target/                 # 构建输出目录（git 忽略）
+│       ├── ci.yml          # CI pipeline and cross-platform builds
+│       └── release.yml     # GitHub release workflow
+└── target/                 # Build output directory (git ignored)
 ```
 
-## 架构概览
+## Architecture Overview
 
-### 核心组件
+### Core Components
 
-**配置管理** (`config.rs`, `config_storage.rs`, `types.rs`)：
-- `ConfigStorage`：管理多个 API 配置在 `~/.cc-switch/configurations.json` 中的持久化
-- `Configuration`：表示单个 API 配置，包括别名、令牌、URL、模型和 small_fast_model
-- `ClaudeSettings`：处理 Claude 的 settings.json 文件的环境变量配置
-- `AddCommandParams`：用于 add 命令的参数结构，支持交互式模式
+**Configuration Management** (`config.rs`, `config_storage.rs`, `types.rs`):
 
-**CLI 接口** (`cli.rs`)：
-- `Cli`：使用 clap 的主命令解析器，支持子命令和隐藏补全标志
-- `Commands`：定义可用子命令的枚举 (add, remove, list, set-default-dir, completion, alias, use, current)
-- 丰富的帮助文本，包含示例和 Shell 集成说明
+- `ConfigStorage`: Manages persistence of multiple API configurations in `~/.cc-switch/configurations.json`
+- `Configuration`: Represents a single API configuration, including alias, token, URL, model, and small_fast_model
+- `ClaudeSettings`: Handles environment variable configuration in Claude's settings.json file
+- `AddCommandParams`: Parameter structure for add command, supports interactive mode
 
-**交互式终端 UI** (`interactive.rs`)：
-- `handle_current_command()`：带键盘导航的交互式主菜单
-- `handle_interactive_selection()`：实时配置浏览器和预览功能
-- **数字键快速选择**：支持按数字键 1-9 直接选择对应配置项
-- **智能分页系统**：配置超过 9 个时自动分页，支持 PageUp/PageDown 或 N/P 键翻页
-- **快捷键支持**：R 键重置为官方配置，E 键退出
-- 基于 Crossterm 的终端处理，支持降级到简单菜单
-- 配置切换后自动启动 Claude CLI
+**CLI Interface** (`cli.rs`):
 
-**Shell 集成** (`completion.rs`, `shell_completion.rs`)：
-- 配置别名的动态补全
-- 支持 fish、zsh、bash、elvish、powershell 的 Shell 特定补全处理器
-- 支持 eval 兼容输出的别名生成系统
+- `Cli`: Main command parser using clap, supports subcommands and hidden completion flags
+- `Commands`: Enum defining available subcommands (add, remove, list, set-default-dir, completion, alias, use, current)
+- Rich help text with examples and Shell integration instructions
 
-### 关键数据流
+**Interactive Terminal UI** (`interactive.rs`):
 
-1. **配置存储**：使用 JSON 序列化在 `~/.cc-switch/configurations.json` 中存储配置
-2. **设置修改**：读取/写入 Claude 的 settings.json 来更新 `ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_BASE_URL`
-3. **路径解析**：支持自定义 Claude 设置目录的绝对和相对路径
+- `handle_current_command()`: Interactive main menu with keyboard navigation
+- `handle_interactive_selection()`: Real-time configuration browser with preview
+- **Number Key Quick Selection**: Press number keys 1-9 to directly select corresponding configurations
+- **Smart Pagination System**: Auto-paginate when >9 configurations, supports PageUp/PageDown or N/P keys
+- **Shortcut Key Support**: R key to reset to official config, E key to exit
+- Crossterm-based terminal handling with graceful degradation to simple menus
+- Auto-launch Claude CLI after configuration switch
+
+**Shell Integration** (`completion.rs`, `shell_completion.rs`):
+
+- Dynamic completion for configuration aliases
+- Shell-specific completion handlers for fish, zsh, bash, elvish, powershell
+- Eval-compatible alias generation system
+
+### Key Data Flow
+
+1. **Configuration Storage**: Uses JSON serialization to store configurations in `~/.cc-switch/configurations.json`
+2. **Settings Modification**: Read/write Claude's settings.json to update `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL`
+3. **Path Resolution**: Supports both absolute and relative paths for custom Claude settings directory
 
 ### CLI Usage Patterns
 
@@ -230,6 +242,7 @@ cc-switch alias fish       # Generate eval-compatible aliases
 ## Shell Completion Setup
 
 ### Fish Shell
+
 ```bash
 # Generate completion script
 cargo run -- completion fish > ~/.config/fish/completions/cc-switch.fish
@@ -239,6 +252,7 @@ source ~/.config/fish/config.fish
 ```
 
 ### Zsh Shell
+
 ```bash
 # Create completions directory if it doesn't exist
 mkdir -p ~/.zsh/completions
@@ -257,6 +271,7 @@ compinit
 ```
 
 ### Bash Shell
+
 ```bash
 # Generate completion script
 cargo run -- completion bash > ~/.bash_completion.d/cc-switch
@@ -271,45 +286,51 @@ source ~/.bashrc
 ## Interactive Features
 
 ### Current Command Interactive Menu
+
 The `cc-switch current` command provides a sophisticated interactive menu with:
+
 - **Current Configuration Display**: Shows active API token and URL
 - **Keyboard Navigation**: Arrow keys for menu navigation (with fallback to numbered menu)
-- **数字键快速选择**: 按数字键 1-9 直接选择对应配置项，无需箭头键导航
-- **智能分页**: 配置超过 9 个时自动分页显示，每页最多 9 个配置
-- **页面导航**: PageUp/PageDown 或 N/P 键快速翻页
-- **快捷操作**: R 键快速重置为官方配置，E 键直接退出
+- **Number Key Quick Selection**: Press number keys 1-9 to directly select corresponding configurations
+- **Smart Pagination**: Auto-paginate when >9 configurations, display up to 9 per page
+- **Page Navigation**: PageUp/PageDown or N/P keys for quick page switching
+- **Quick Actions**: R key to reset to official config, E key to exit
 - **Real-time Selection**: Instant preview of configuration details during browsing
 - **Automatic Claude Launch**: Seamlessly launches Claude CLI after configuration switches
 - **Terminal Compatibility**: Crossterm-based terminal handling with graceful fallbacks
 
 ### Interactive Selection Mode
+
 - **Visual Configuration Browser**: Browse all stored configurations with full details
 - **Configuration Preview**: See token, URL, model settings before switching
 - **Reset Option**: Quick reset to default Claude behavior
 - **Smart Fallbacks**: Automatic fallback to simple menus when terminal capabilities are limited
 
-### 键盘快捷键参考
+### Keyboard Shortcuts Reference
 
-#### 单页模式（≤9个配置）
-- **↑↓**: 上下导航选择
-- **1-9**: 数字键直接选择对应配置
-- **R**: 重置为官方配置
-- **E**: 退出程序
-- **Enter**: 确认当前选择
-- **Esc**: 取消操作
+#### Single Page Mode (≤9 configurations)
 
-#### 分页模式（>9个配置）
-- **↑↓**: 上下导航选择
-- **1-9**: 数字键直接选择当前页对应配置
-- **N/PageDown**: 下一页
-- **P/PageUp**: 上一页
-- **R**: 重置为官方配置（在任何页面都可用）
-- **E**: 退出程序
-- **Enter**: 确认当前选择
+- **↑↓**: Navigate up/down
+- **1-9**: Number keys to directly select configuration
+- **R**: Reset to official configuration
+- **E**: Exit program
+- **Enter**: Confirm current selection
+- **Esc**: Cancel operation
+
+#### Pagination Mode (>9 configurations)
+
+- **↑↓**: Navigate up/down
+- **1-9**: Number keys to directly select configuration on current page
+- **N/PageDown**: Next page
+- **P/PageUp**: Previous page
+- **R**: Reset to official configuration (available on any page)
+- **E**: Exit program
+- **Enter**: Confirm current selection
 
 ## Completion Features
 
 The shell completion provides:
+
 - **Command completion**: `cc-switch <TAB>` shows all subcommands
 - **Subcommand completion**: `cc-switch completion <TAB>` shows available shells
 - **Configuration alias completion**: `cc-switch use <TAB>` shows stored configuration names
@@ -322,6 +343,7 @@ The shell completion provides:
 The project includes pre-commit hooks that run automatically before each commit to ensure code quality:
 
 ### Required Checks (Run on every commit)
+
 - **cargo check**: Verifies code compilation
 - **cargo fmt --check**: Ensures code formatting compliance
 - **cargo clippy -- -D warnings**: Runs linting with warnings as errors
@@ -330,6 +352,7 @@ The project includes pre-commit hooks that run automatically before each commit 
 - **cargo doc --no-deps**: Validates documentation builds
 
 ### Setup Instructions
+
 ```bash
 # One-time setup
 ./scripts/setup-pre-commit.sh
@@ -352,12 +375,14 @@ git commit --no-verify
 ## CI/CD Pipeline
 
 ### CI Workflow (.github/workflows/ci.yml)
+
 - **Multi-platform testing**: Ubuntu, Windows, macOS
 - **Cross-compilation**: Builds for x86_64 and aarch64 architectures
 - **Code quality**: Formatting checks, clippy linting, security audit
 - **Coverage**: Code coverage reporting with codecov
 
 ### Release Workflow (.github/workflows/release.yml)
+
 - **Multi-architecture releases**: Linux, Windows, macOS (Intel and ARM)
 - **Automated packaging**: Creates tar.gz artifacts for each target
 - **GitHub releases**: Automated release creation with changelog
@@ -371,6 +396,7 @@ git commit --no-verify
 ## Important Implementation Details
 
 ### Major Architecture Changes
+
 - **Modular Structure**: Codebase refactored from single file to multi-module architecture
 - **Interactive Terminal UI**: Full terminal-based interactive menus with keyboard navigation
 - **Enhanced Configuration**: Support for model and small_fast_model environment variables
@@ -378,22 +404,26 @@ git commit --no-verify
 - **Auto-launching**: Automatic Claude CLI execution after configuration switches
 
 ### Command Evolution
+
 - **"switch" → "use"**: The main command changed from `switch` to `use` for clarity
 - **Backward Compatibility**: The `switch` command is still available as an alias
 - **Interactive Modes**: Both `use` and `current` commands support interactive selection
 - **Enhanced Add Command**: Support for positional and flag-based arguments with interactive mode
 
 ### Error Handling
+
 - Uses `anyhow` for comprehensive error handling with context
 - All file operations include proper error context for debugging
 - Graceful handling of missing files (creates defaults)
 
 ### Configuration Switching
+
 - The `use cc` command removes API configuration entirely (resets to default)
 - Preserves other settings in Claude's settings.json when modifying API config
 - Validates configuration existence before switching
 
 ### Shell Integration
+
 - Dynamic completion for configuration aliases with real-time loading
 - Multi-shell support: fish, zsh, bash, elvish, powershell
 - Alias generation system: `cs='cc-switch'` and `ccd='claude --dangerously-skip-permissions'`
@@ -401,6 +431,7 @@ git commit --no-verify
 - Eval-compatible alias output for immediate shell integration
 
 ### Cross-Platform Support
+
 - Uses `dirs` crate for cross-platform directory resolution
 - Handles file path differences between Windows, Linux, and macOS
 - CI builds for multiple target architectures
@@ -408,22 +439,24 @@ git commit --no-verify
 ## Testing Strategy
 
 ### Test Coverage
+
 - **Unit Tests**: 43 tests covering all core functionality
 - **Integration Tests**: Full workflow testing, error scenarios, edge cases
 - **Error Handling Tests**: Comprehensive error condition testing including boundary cases
-- **Interactive Feature Tests**: 数字键快速选择、分页逻辑、边界条件测试
+- **Interactive Feature Tests**: Number key quick selection, pagination logic, boundary condition testing
 - **Cross-Platform Tests**: Path resolution, file operations on different platforms
 
 ### Test Categories
+
 1. **Configuration Management**: CRUD operations, validation, serialization
 2. **Settings Management**: JSON handling, environment variable management
 3. **CLI Parsing**: Command structure, argument validation, help generation
 4. **Error Handling**: Invalid inputs, file operations, edge cases
 5. **Integration**: End-to-end workflows, shell integration
-6. **Interactive Features**: 
-   - 分页计算和导航逻辑测试
-   - 数字键映射和边界条件测试
-   - 空配置列表和异常情况处理测试
+6. **Interactive Features**:
+   - Pagination calculation and navigation logic testing
+   - Number key mapping and boundary condition testing
+   - Empty configuration list and exception handling testing
 
 ## Key Dependencies and Their Roles
 
@@ -439,6 +472,7 @@ git commit --no-verify
 ## Common Development Tasks
 
 ### Adding New Commands
+
 1. Add variant to `Commands` enum in `src/cmd/cli.rs`
 2. Implement command handler function in appropriate module (`src/cmd/main.rs` or dedicated module)
 3. Add match arm in `run()` function in `src/cmd/main.rs`
@@ -447,6 +481,7 @@ git commit --no-verify
 6. Update help text and documentation
 
 ### Modifying Configuration Structure
+
 1. Update `Configuration` struct
 2. Update serialization/deserialization logic if needed
 3. Modify storage operations
@@ -454,6 +489,7 @@ git commit --no-verify
 5. Test backward compatibility
 
 ### Adding New Shell Support
+
 1. Add shell variant to `generate_completion()` function in `src/cmd/completion.rs`
 2. Implement shell-specific completion logic in `src/cmd/shell_completion.rs`
 3. Add to `generate_aliases()` function for alias support
@@ -468,3 +504,10 @@ git commit --no-verify
 4. **Security**: Handle API tokens securely, avoid logging sensitive data
 5. **Testing**: Maintain high test coverage (currently 100% with 57 tests)
 6. **Documentation**: Keep README.md and CLAUDE.md synchronized with code changes
+7. **Git Push Validation**: Before pushing to GitHub, ensure all CI/CD workflows pass locally by running:
+   - `cargo test` - All tests must pass
+   - `cargo clippy -- -W warnings` - No clippy warnings
+   - `cargo fmt --check` - Code must be formatted
+   - `cargo audit` - No security vulnerabilities
+   - Verify `.github/workflows/` configuration files are valid and workflow will succeed
+
