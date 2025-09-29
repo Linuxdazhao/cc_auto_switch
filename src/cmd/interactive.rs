@@ -96,7 +96,9 @@ impl BorderDrawing {
             let text_len = text_display_width(text);
             let available_width = width - 4;
             if text_len >= available_width {
-                format!("║ {} ║", &text[..available_width])
+                // Use character-aware truncation instead of byte slicing
+                let truncated: String = text.chars().take(available_width).collect();
+                format!("║ {} ║", truncated)
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
@@ -107,7 +109,9 @@ impl BorderDrawing {
             let text_len = text_display_width(text);
             let available_width = width - 4;
             if text_len >= available_width {
-                format!("| {} |", &text[..available_width])
+                // Use character-aware truncation instead of byte slicing
+                let truncated: String = text.chars().take(available_width).collect();
+                format!("| {} |", truncated)
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
