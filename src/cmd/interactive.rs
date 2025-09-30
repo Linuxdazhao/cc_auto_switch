@@ -458,9 +458,9 @@ fn handle_full_interactive_menu(
 
         // Header with pagination info - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
-        // Width needs to accommodate: ║ (1) + space (1) + text (64) + space (1) + ║ (1) = 68
-        // Text width includes arrows (↑↓) counted as 2 columns each
-        const CONFIG_MENU_WIDTH: usize = 68;
+        // Width needs to accommodate: ║ (1) + space (1) + text (71) + space (1) + ║ (1) = 75
+        // Text width includes arrows (↑↓) and Chinese characters counted as 2 columns each
+        const CONFIG_MENU_WIDTH: usize = 75;
 
         println!(
             "\r{}",
