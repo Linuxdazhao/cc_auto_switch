@@ -235,7 +235,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
 
         // Header - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
-        const MAIN_MENU_WIDTH: usize = 55;
+        const MAIN_MENU_WIDTH: usize = 80;
 
         println!(
             "\r{}",
