@@ -476,7 +476,7 @@ fn handle_full_interactive_menu(
                         &format!("第 {} 页，共 {} 页", current_page + 1, total_pages),
                         CONFIG_MENU_WIDTH
                     )
-                    .yellow()
+                    .green()
             );
             println!(
                 "\r{}",
@@ -485,7 +485,7 @@ fn handle_full_interactive_menu(
                         "↑↓/jk导航，1-9快选，E-编辑，N/P翻页，R-官方，Q-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
-                    .cyan()
+                    .green()
             );
         } else {
             println!(
@@ -495,13 +495,9 @@ fn handle_full_interactive_menu(
                         "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
-                    .cyan()
+                    .green()
             );
         }
-        println!(
-            "\r{}",
-            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
-        );
         println!();
 
         // Add official option (always visible, always red)
@@ -587,6 +583,13 @@ fn handle_full_interactive_menu(
                 .dimmed()
             );
         }
+
+        // Draw bottom border at the end
+        println!();
+        println!(
+            "\r{}",
+            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
+        );
 
         // Ensure output is flushed
         stdout.flush()?;
