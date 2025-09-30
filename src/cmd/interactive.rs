@@ -122,9 +122,10 @@ impl BorderDrawing {
                         }
                     })
                     .collect();
-                let padded_text =
-                    pad_text_to_width(&truncated, available_width, TextAlignment::Left, ' ');
-                format!("║ {padded_text} ║")
+                // Calculate actual display width of truncated text
+                let truncated_width = text_display_width(&truncated);
+                let padding_spaces = available_width - truncated_width;
+                format!("║ {}{} ║", truncated, " ".repeat(padding_spaces))
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
@@ -149,9 +150,10 @@ impl BorderDrawing {
                         }
                     })
                     .collect();
-                let padded_text =
-                    pad_text_to_width(&truncated, available_width, TextAlignment::Left, ' ');
-                format!("| {padded_text} |")
+                // Calculate actual display width of truncated text
+                let truncated_width = text_display_width(&truncated);
+                let padding_spaces = available_width - truncated_width;
+                format!("| {}{} |", truncated, " ".repeat(padding_spaces))
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
