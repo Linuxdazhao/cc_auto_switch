@@ -249,7 +249,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
                     "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
-                .dimmed()
+                .cyan()
         );
         println!(
             "\r{}",
@@ -476,7 +476,7 @@ fn handle_full_interactive_menu(
                         &format!("第 {} 页，共 {} 页", current_page + 1, total_pages),
                         CONFIG_MENU_WIDTH
                     )
-                    .dimmed()
+                    .yellow()
             );
             println!(
                 "\r{}",
@@ -485,7 +485,7 @@ fn handle_full_interactive_menu(
                         "↑↓/jk导航，1-9快选，E-编辑，N/P翻页，R-官方，Q-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
-                    .dimmed()
+                    .cyan()
             );
         } else {
             println!(
@@ -495,7 +495,7 @@ fn handle_full_interactive_menu(
                         "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
-                    .dimmed()
+                    .cyan()
             );
         }
         println!(
