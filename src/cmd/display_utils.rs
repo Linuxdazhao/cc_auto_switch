@@ -33,8 +33,10 @@ pub fn text_display_width(text: &str) -> usize {
             match c as u32 {
                 // ASCII range: 1 column
                 0x00..=0x7F => 1,
-                // Latin extended, symbols: mostly 1 column
+                // Latin extended: 1 column
                 0x80..=0x2FF => 1,
+                // Arrows and symbols that render wide in many terminals: 2 columns
+                0x2190..=0x21FF => 2,
                 // CJK symbols and punctuation: 2 columns
                 0x3000..=0x303F => 2,
                 // Hiragana: 2 columns
@@ -47,8 +49,8 @@ pub fn text_display_width(text: &str) -> usize {
                 0xAC00..=0xD7AF => 2,
                 // CJK Unified Ideographs Extension A: 2 columns
                 0x3400..=0x4DBF => 2,
-                // Full-width ASCII: 2 columns
-                0xFF01..=0xFF5E => 2,
+                // Full-width ASCII and symbols: 2 columns
+                0xFF01..=0xFF60 => 2,
                 // Other characters: assume 1 column (conservative estimate)
                 _ => 1,
             }

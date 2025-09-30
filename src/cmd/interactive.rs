@@ -104,13 +104,14 @@ impl BorderDrawing {
                         let char_width = match c as u32 {
                             0x00..=0x7F => 1,
                             0x80..=0x2FF => 1,
+                            0x2190..=0x21FF => 2,
                             0x3000..=0x303F => 2,
                             0x3040..=0x309F => 2,
                             0x30A0..=0x30FF => 2,
                             0x4E00..=0x9FFF => 2,
                             0xAC00..=0xD7AF => 2,
                             0x3400..=0x4DBF => 2,
-                            0xFF01..=0xFF5E => 2,
+                            0xFF01..=0xFF60 => 2,
                             _ => 1,
                         };
                         if current_width + char_width <= available_width {
@@ -456,8 +457,9 @@ fn handle_full_interactive_menu(
 
         // Header with pagination info - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
-        // Width needs to accommodate: ║ (1) + space (1) + text (62) + space (1) + ║ (1) = 66
-        const CONFIG_MENU_WIDTH: usize = 66;
+        // Width needs to accommodate: ║ (1) + space (1) + text (64) + space (1) + ║ (1) = 68
+        // Text width includes arrows (↑↓) counted as 2 columns each
+        const CONFIG_MENU_WIDTH: usize = 68;
 
         println!(
             "\r{}",
