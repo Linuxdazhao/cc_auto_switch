@@ -15,8 +15,8 @@ const platformMap = {
     'arm64': 'aarch64-apple-darwin'
   },
   'linux': {
-    'x64': 'x86_64-unknown-linux-musl',
-    'arm64': 'aarch64-unknown-linux-musl'
+    'x64': 'x86_64-unknown-linux-gnu',
+    'arm64': 'aarch64-unknown-linux-gnu'
   },
   'win32': {
     'x64': 'x86_64-pc-windows-gnu',
