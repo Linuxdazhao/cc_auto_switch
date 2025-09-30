@@ -240,7 +240,6 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             border
                 .draw_top_border("Main Menu", MAIN_MENU_WIDTH)
                 .green()
-                .bold()
         );
         println!(
             "\r{}",
@@ -249,11 +248,11 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
                     "↑↓/jk导航，1-9快选，E-编辑，R-官方，Q-退出，Enter确认，Esc取消",
                     MAIN_MENU_WIDTH
                 )
-                .cyan()
+                .green()
         );
         println!(
             "\r{}",
-            border.draw_bottom_border(MAIN_MENU_WIDTH).green().bold()
+            border.draw_bottom_border(MAIN_MENU_WIDTH).green()
         );
         println!();
 
@@ -466,7 +465,6 @@ fn handle_full_interactive_menu(
             border
                 .draw_top_border("Select Configuration", CONFIG_MENU_WIDTH)
                 .green()
-                .bold()
         );
         if total_pages > 1 {
             println!(
@@ -500,7 +498,7 @@ fn handle_full_interactive_menu(
         }
         println!(
             "\r{}",
-            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
+            border.draw_bottom_border(CONFIG_MENU_WIDTH).green()
         );
         println!();
 
