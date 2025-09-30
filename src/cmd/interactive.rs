@@ -456,7 +456,7 @@ fn handle_full_interactive_menu(
 
         // Header with pagination info - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
-        const CONFIG_MENU_WIDTH: usize = 65;
+        const CONFIG_MENU_WIDTH: usize = 75;
 
         println!(
             "\r{}",
