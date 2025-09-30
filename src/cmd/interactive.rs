@@ -95,10 +95,35 @@ impl BorderDrawing {
         if self.unicode_supported {
             let text_len = text_display_width(text);
             let available_width = width - 4;
-            if text_len >= available_width {
-                // Use character-aware truncation instead of byte slicing
-                let truncated: String = text.chars().take(available_width).collect();
-                format!("║ {} ║", truncated)
+            if text_len > available_width {
+                // Truncate text to fit within available width, considering display width
+                let mut current_width = 0;
+                let truncated: String = text
+                    .chars()
+                    .take_while(|&c| {
+                        let char_width = match c as u32 {
+                            0x00..=0x7F => 1,
+                            0x80..=0x2FF => 1,
+                            0x3000..=0x303F => 2,
+                            0x3040..=0x309F => 2,
+                            0x30A0..=0x30FF => 2,
+                            0x4E00..=0x9FFF => 2,
+                            0xAC00..=0xD7AF => 2,
+                            0x3400..=0x4DBF => 2,
+                            0xFF01..=0xFF5E => 2,
+                            _ => 1,
+                        };
+                        if current_width + char_width <= available_width {
+                            current_width += char_width;
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .collect();
+                let padded_text =
+                    pad_text_to_width(&truncated, available_width, TextAlignment::Left, ' ');
+                format!("║ {padded_text} ║")
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
@@ -108,10 +133,24 @@ impl BorderDrawing {
             // ASCII fallback
             let text_len = text_display_width(text);
             let available_width = width - 4;
-            if text_len >= available_width {
-                // Use character-aware truncation instead of byte slicing
-                let truncated: String = text.chars().take(available_width).collect();
-                format!("| {} |", truncated)
+            if text_len > available_width {
+                // Truncate text to fit within available width
+                let mut current_width = 0;
+                let truncated: String = text
+                    .chars()
+                    .take_while(|&c| {
+                        let char_width = if (c as u32) <= 0x7F { 1 } else { 2 };
+                        if current_width + char_width <= available_width {
+                            current_width += char_width;
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .collect();
+                let padded_text =
+                    pad_text_to_width(&truncated, available_width, TextAlignment::Left, ' ');
+                format!("| {padded_text} |")
             } else {
                 let padded_text =
                     pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
@@ -462,7 +501,7 @@ fn handle_full_interactive_menu(
         );
         println!();
 
-        // Add official option (always visible)
+        // Add official option (always visible, always red)
         let official_index = 0;
         if *selected_index == official_index {
             println!(
@@ -476,9 +515,9 @@ fn handle_full_interactive_menu(
         } else {
             println!(
                 "\r  {} {} {}",
-                "○".dimmed(),
-                "[R]".dimmed(),
-                "official".dimmed()
+                "○".red(),
+                "[R]".red(),
+                "official".red()
             );
         }
 
