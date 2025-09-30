@@ -498,6 +498,10 @@ fn handle_full_interactive_menu(
                     .green()
             );
         }
+        println!(
+            "\r{}",
+            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
+        );
         println!();
 
         // Add official option (always visible, always red)
@@ -583,13 +587,6 @@ fn handle_full_interactive_menu(
                 .dimmed()
             );
         }
-
-        // Draw bottom border at the end
-        println!();
-        println!(
-            "\r{}",
-            border.draw_bottom_border(CONFIG_MENU_WIDTH).green().bold()
-        );
 
         // Ensure output is flushed
         stdout.flush()?;
