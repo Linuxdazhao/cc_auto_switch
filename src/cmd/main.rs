@@ -5,7 +5,7 @@ use crate::cmd::interactive::{
     handle_current_command, handle_interactive_selection, read_input, read_sensitive_input,
 };
 use crate::cmd::types::AddCommandParams;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;
 use std::process::Command;
@@ -480,24 +480,36 @@ pub fn run() -> Result<()> {
                     println!("Successfully removed {removed_count} configuration(s)");
                 }
             }
-            Commands::List => {
-                if storage.configurations.is_empty() {
-                    println!("No configurations stored");
-                } else {
-                    println!("Stored configurations:");
-                    for (alias_name, config) in &storage.configurations {
-                        let mut info = format!("token={}, url={}", config.token, config.url);
-                        if let Some(model) = &config.model {
-                            info.push_str(&format!(", model={model}"));
+            Commands::List { plain } => {
+                if plain {
+                    // Text output when -p flag is used
+                    if storage.configurations.is_empty() {
+                        println!("No configurations stored");
+                    } else {
+                        println!("Stored configurations:");
+                        for (alias_name, config) in &storage.configurations {
+                            let mut info = format!("token={}, url={}", config.token, config.url);
+                            if let Some(model) = &config.model {
+                                info.push_str(&format!(", model={model}"));
+                            }
+                            if let Some(small_fast_model) = &config.small_fast_model {
+                                info.push_str(&format!(", small_fast_model={small_fast_model}"));
+                            }
+                            if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+                                info.push_str(&format!(
+                                    ", max_thinking_tokens={max_thinking_tokens}"
+                                ));
+                            }
+                            println!("  {alias_name}: {info}");
                         }
-                        if let Some(small_fast_model) = &config.small_fast_model {
-                            info.push_str(&format!(", small_fast_model={small_fast_model}"));
-                        }
-                        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
-                            info.push_str(&format!(", max_thinking_tokens={max_thinking_tokens}"));
-                        }
-                        println!("  {alias_name}: {info}");
                     }
+                } else {
+                    // JSON output (default)
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&storage.configurations)
+                            .map_err(|e| anyhow!("Failed to serialize configurations: {}", e))?
+                    );
                 }
             }
             Commands::Completion { shell } => {

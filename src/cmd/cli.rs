@@ -173,7 +173,11 @@ pub enum Commands {
     ///
     /// Displays all saved configurations with their aliases, tokens, and URLs
     #[command(alias = "l")]
-    List,
+    List {
+        /// Output in plain text format (default is JSON)
+        #[arg(long = "plain", short = 'p')]
+        plain: bool,
+    },
     /// Generate shell completion scripts
     ///
     /// Generates completion scripts for supported shells and adds useful aliases:

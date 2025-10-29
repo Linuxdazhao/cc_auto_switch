@@ -332,7 +332,7 @@ mod tests {
         let cli = Cli::try_parse_from(args).expect("Should parse list command");
 
         match cli.command {
-            Some(Commands::List) => {
+            Some(Commands::List { plain: _ }) => {
                 // Test passes if we get List command
             }
             _ => panic!("Expected List command"),
