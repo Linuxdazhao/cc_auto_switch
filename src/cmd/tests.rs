@@ -320,7 +320,7 @@ mod tests {
             ..
         }) = cli.command
         {
-            assert_eq!(alias_name, "my-config");
+            assert_eq!(alias_name.unwrap(), "my-config");
             assert_eq!(token, None);
             assert_eq!(url, None);
             assert!(!force);
@@ -361,7 +361,7 @@ mod tests {
             ..
         }) = cli.command
         {
-            assert_eq!(alias_name, "my-config");
+            assert_eq!(alias_name.unwrap(), "my-config");
             assert_eq!(token, Some("sk-ant-test".to_string()));
             assert_eq!(url, Some("https://api.test.com".to_string()));
             assert!(force);

@@ -132,4 +132,5 @@ pub struct AddCommandParams {
     pub interactive: bool,
     pub token_arg: Option<String>,
     pub url_arg: Option<String>,
+    pub from_file: Option<String>,
 }

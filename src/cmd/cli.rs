@@ -64,8 +64,11 @@ pub enum Commands {
     #[command(alias = "a")]
     Add {
         /// Configuration alias name (used to identify this config)
-        #[arg(help = "Configuration alias name (cannot be 'cc')")]
-        alias_name: String,
+        #[arg(
+            help = "Configuration alias name (cannot be 'cc')",
+            required_unless_present = "from_file"
+        )]
+        alias_name: Option<String>,
 
         /// ANTHROPIC_AUTH_TOKEN value (your Claude API token)
         #[arg(
@@ -159,6 +162,14 @@ pub enum Commands {
         /// Positional URL argument (for backward compatibility)
         #[arg(help = "API endpoint URL (if not using -u flag)")]
         url_arg: Option<String>,
+
+        /// Import configuration from a JSON file (uses filename as alias)
+        #[arg(
+            long = "from-file",
+            short = 'j',
+            help = "Import configuration from a JSON file (filename becomes alias name)"
+        )]
+        from_file: Option<String>,
     },
     /// Remove one or more configurations by alias name
     ///

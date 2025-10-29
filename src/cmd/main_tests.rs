@@ -66,6 +66,7 @@ mod tests {
             interactive: false,
             token_arg: None,
             url_arg: None,
+            from_file: None,
         };
 
         assert_eq!(params.alias_name, "test");
@@ -165,8 +166,10 @@ mod tests {
                 anthropic_default_sonnet_model,
                 anthropic_default_opus_model,
                 anthropic_default_haiku_model,
+                from_file,
+                ..
             }) => {
-                assert_eq!(alias_name, "my-config");
+                assert_eq!(alias_name.unwrap(), "my-config");
                 assert_eq!(token_arg, Some("sk-ant-test-token".to_string()));
                 assert_eq!(url_arg, Some("https://api.test.com".to_string()));
                 assert!(!force);
@@ -213,8 +216,9 @@ mod tests {
                 anthropic_default_sonnet_model,
                 anthropic_default_opus_model,
                 anthropic_default_haiku_model,
+                from_file,
             }) => {
-                assert_eq!(alias_name, "my-config");
+                assert_eq!(alias_name.unwrap(), "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));
                 assert_eq!(url, Some("https://flag.api.com".to_string()));
                 assert!(force);
@@ -256,7 +260,7 @@ mod tests {
                 max_thinking_tokens,
                 ..
             }) => {
-                assert_eq!(alias_name, "model-config");
+                assert_eq!(alias_name.unwrap(), "model-config");
                 assert_eq!(token, Some("sk-ant-model-token".to_string()));
                 assert_eq!(url, Some("https://model.api.com".to_string()));
                 assert_eq!(model, Some("claude-3-5-sonnet-20241022".to_string()));
@@ -546,7 +550,7 @@ mod tests {
 
         if let Ok(cli) = result {
             if let Some(Commands::Add { alias_name, .. }) = cli.command {
-                assert_eq!(alias_name, "test-config_123");
+                assert_eq!(alias_name.unwrap(), "test-config_123");
             }
         }
     }
@@ -572,7 +576,7 @@ mod tests {
                 ..
             }) = cli.command
             {
-                assert_eq!(alias_name, "测试-config");
+                assert_eq!(alias_name.unwrap(), "测试-config");
                 assert_eq!(token_arg, Some("sk-ant-测试".to_string()));
                 assert_eq!(url_arg, Some("https://αpi.测试.com".to_string()));
             }
@@ -598,7 +602,7 @@ mod tests {
                 ..
             }) = cli.command
             {
-                assert_eq!(alias_name.len(), 1000);
+                assert_eq!(alias_name.unwrap().len(), 1000);
                 assert_eq!(token_arg.as_ref().unwrap().len(), 1007); // "sk-ant-" + 1000
                 assert_eq!(url_arg.as_ref().unwrap().len(), 1011); // "https://" + 1000 + "com"
             }

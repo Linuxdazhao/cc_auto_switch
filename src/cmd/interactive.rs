@@ -56,18 +56,19 @@ impl BorderDrawing {
             let title_padded = format!(" {title} ");
             let title_len = text_display_width(&title_padded);
 
-            if title_len >= width - 2 {
+            if title_len >= width.saturating_sub(2) {
                 // Title too long, use simple border
-                format!("╔{}╗", "═".repeat(width - 2))
+                format!("╔{}╗", "═".repeat(width.saturating_sub(2)))
             } else {
-                let padding = (width - 2 - title_len) / 2;
-                let extra = (width - 2 - title_len) % 2;
+                let inner_width = width.saturating_sub(2); // Total width minus borders
+                let padding_total = inner_width.saturating_sub(title_len);
+                let padding_left = padding_total / 2;
+                let padding_right = padding_total - padding_left;
                 format!(
-                    "╔{}{}{}{}╗",
-                    "═".repeat(padding),
+                    "╔{}{}{}╗",
+                    "═".repeat(padding_left),
                     title_padded,
-                    "═".repeat(padding + extra),
-                    ""
+                    "═".repeat(padding_right)
                 )
             }
         } else {
@@ -75,16 +76,18 @@ impl BorderDrawing {
             let title_padded = format!(" {title} ");
             let title_len = title_padded.len();
 
-            if title_len >= width - 2 {
-                format!("+{}+", "-".repeat(width - 2))
+            if title_len >= width.saturating_sub(2) {
+                format!("+{}+", "-".repeat(width.saturating_sub(2)))
             } else {
-                let padding = (width - 2 - title_len) / 2;
-                let extra = (width - 2 - title_len) % 2;
+                let inner_width = width.saturating_sub(2);
+                let padding_total = inner_width.saturating_sub(title_len);
+                let padding_left = padding_total / 2;
+                let padding_right = padding_total - padding_left;
                 format!(
                     "+{}{}{}+",
-                    "-".repeat(padding),
+                    "-".repeat(padding_left),
                     title_padded,
-                    "-".repeat(padding + extra)
+                    "-".repeat(padding_right)
                 )
             }
         }
@@ -94,7 +97,9 @@ impl BorderDrawing {
     fn draw_middle_line(&self, text: &str, width: usize) -> String {
         if self.unicode_supported {
             let text_len = text_display_width(text);
-            let available_width = width - 4;
+            // Account for borders: "║ " (1+1) + " ║" (1+1) = 4 characters
+            // But we need to account for actual display width of the text
+            let available_width = width.saturating_sub(4);
             if text_len > available_width {
                 // Truncate text to fit within available width, considering display width
                 let mut current_width = 0;
@@ -124,7 +129,7 @@ impl BorderDrawing {
                     .collect();
                 // Calculate actual display width of truncated text
                 let truncated_width = text_display_width(&truncated);
-                let padding_spaces = available_width - truncated_width;
+                let padding_spaces = available_width.saturating_sub(truncated_width);
                 format!("║ {}{} ║", truncated, " ".repeat(padding_spaces))
             } else {
                 let padded_text =
@@ -134,7 +139,7 @@ impl BorderDrawing {
         } else {
             // ASCII fallback
             let text_len = text_display_width(text);
-            let available_width = width - 4;
+            let available_width = width.saturating_sub(4);
             if text_len > available_width {
                 // Truncate text to fit within available width
                 let mut current_width = 0;
@@ -152,7 +157,7 @@ impl BorderDrawing {
                     .collect();
                 // Calculate actual display width of truncated text
                 let truncated_width = text_display_width(&truncated);
-                let padding_spaces = available_width - truncated_width;
+                let padding_spaces = available_width.saturating_sub(truncated_width);
                 format!("| {}{} |", truncated, " ".repeat(padding_spaces))
             } else {
                 let padded_text =
@@ -664,7 +669,29 @@ fn handle_full_interactive_menu(
                         let _ = terminal::disable_raw_mode();
 
                         let config_index = *selected_index - 1; // -1 because official is at index 0
-                        return handle_config_edit(configs[config_index]);
+
+                        // Check if we should return to menu (user pressed 'q' in edit mode)
+                        if let Err(e) = handle_config_edit(configs[config_index]) {
+                            // Check if this is a "return to menu" error
+                            if e.downcast_ref::<EditModeError>()
+                                == Some(&EditModeError::ReturnToMenu)
+                            {
+                                // Re-enter alternate screen and raw mode, then continue the loop
+                                if execute!(
+                                    stdout,
+                                    terminal::EnterAlternateScreen,
+                                    terminal::Clear(terminal::ClearType::All)
+                                )
+                                .is_ok()
+                                    && terminal::enable_raw_mode().is_ok()
+                                {
+                                    // Continue the menu loop
+                                    continue;
+                                }
+                            }
+                            // For other errors, propagate them up
+                            return Err(e);
+                        }
                     }
                     // Invalid selection - ignore silently
                 }
@@ -1575,6 +1602,22 @@ mod pagination_tests {
     }
 }
 
+/// Error type for handling edit mode navigation
+#[derive(Debug, PartialEq)]
+enum EditModeError {
+    ReturnToMenu,
+}
+
+impl std::fmt::Display for EditModeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EditModeError::ReturnToMenu => write!(f, "return_to_menu"),
+        }
+    }
+}
+
+impl std::error::Error for EditModeError {}
+
 /// Handle configuration editing with interactive field selection
 fn handle_config_edit(config: &Configuration) -> Result<()> {
     println!("\n{}", "配置编辑模式".green().bold());
@@ -1591,13 +1634,15 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
         display_edit_menu(&editing_config);
 
         // Get user input for field selection
-        print!("\n请选择要编辑的字段 (1-9, A-B), 或输入 S 保存, C 取消: ");
+        println!("\n{}", "提示: 可使用大小写字母".dimmed());
+        print!("请选择要编辑的字段 (1-9, A-B), 或输入 S 保存, Q 返回上一级菜单: ");
         io::stdout().flush()?;
 
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let input = input.trim();
 
+        // Note: Both lowercase and uppercase are accepted for commands
         match input {
             "1" => edit_field_alias(&mut editing_config)?,
             "2" => edit_field_token(&mut editing_config)?,
@@ -1614,9 +1659,9 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
                 // Save changes
                 return save_configuration_changes(&original_alias, &editing_config);
             }
-            "c" | "C" => {
-                println!("\n{}", "编辑已取消".yellow());
-                return Ok(());
+            "q" | "Q" => {
+                println!("\n{}", "返回上一级菜单".blue());
+                return Err(EditModeError::ReturnToMenu.into());
             }
             _ => {
                 println!("{}", "无效选择，请重试".red());
@@ -1709,9 +1754,9 @@ fn display_edit_menu(config: &Configuration) {
 
     println!("{}", "─────────────────────────".blue());
     println!(
-        "S. {} | C. {}",
+        "S. {} | Q. {}",
         "保存更改".green().bold(),
-        "取消编辑".yellow()
+        "返回上一级菜单".blue()
     );
 }
 

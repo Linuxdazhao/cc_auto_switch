@@ -8,9 +8,129 @@ use crate::cmd::types::AddCommandParams;
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
+
+/// Parse a configuration from a JSON file
+///
+/// # Arguments
+/// * `file_path` - Path to the JSON configuration file
+///
+/// # Returns
+/// Result containing a tuple of (alias_name, token, url, model, small_fast_model, max_thinking_tokens, api_timeout_ms, claude_code_disable_nonessential_traffic, anthropic_default_sonnet_model, anthropic_default_opus_model, anthropic_default_haiku_model)
+///
+/// # Errors
+/// Returns error if file cannot be read or parsed
+#[allow(clippy::type_complexity)]
+fn parse_config_from_file(
+    file_path: &str,
+) -> Result<(
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<u32>,
+    Option<u32>,
+    Option<u32>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+)> {
+    // Read the file
+    let file_content = fs::read_to_string(file_path)
+        .map_err(|e| anyhow!("Failed to read file '{}': {}", file_path, e))?;
+
+    // Parse JSON
+    let json: serde_json::Value = serde_json::from_str(&file_content)
+        .map_err(|e| anyhow!("Failed to parse JSON from file '{}': {}", file_path, e))?;
+
+    // Extract env section
+    let env = json.get("env").and_then(|v| v.as_object()).ok_or_else(|| {
+        anyhow!(
+            "File '{}' does not contain a valid 'env' section",
+            file_path
+        )
+    })?;
+
+    // Extract alias name from filename (without extension)
+    let path = Path::new(file_path);
+    let alias_name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow!("Invalid file path: {}", file_path))?
+        .to_string();
+
+    // Extract and map environment variables
+    let token = env
+        .get("ANTHROPIC_AUTH_TOKEN")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing ANTHROPIC_AUTH_TOKEN in file '{}'", file_path))?
+        .to_string();
+
+    let url = env
+        .get("ANTHROPIC_BASE_URL")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow!("Missing ANTHROPIC_BASE_URL in file '{}'", file_path))?
+        .to_string();
+
+    let model = env
+        .get("ANTHROPIC_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let small_fast_model = env
+        .get("ANTHROPIC_SMALL_FAST_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let max_thinking_tokens = env
+        .get("ANTHROPIC_MAX_THINKING_TOKENS")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let api_timeout_ms = env
+        .get("API_TIMEOUT_MS")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let claude_code_disable_nonessential_traffic = env
+        .get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let anthropic_default_sonnet_model = env
+        .get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let anthropic_default_opus_model = env
+        .get("ANTHROPIC_DEFAULT_OPUS_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let anthropic_default_haiku_model = env
+        .get("ANTHROPIC_DEFAULT_HAIKU_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    Ok((
+        alias_name,
+        token,
+        url,
+        model,
+        small_fast_model,
+        max_thinking_tokens,
+        api_timeout_ms,
+        claude_code_disable_nonessential_traffic,
+        anthropic_default_sonnet_model,
+        anthropic_default_opus_model,
+        anthropic_default_haiku_model,
+    ))
+}
 
 /// Handle adding a configuration with all the new features
 ///
@@ -20,7 +140,46 @@ use std::time::Duration;
 ///
 /// # Errors
 /// Returns error if validation fails or user cancels interactive input
-fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> Result<()> {
+fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage) -> Result<()> {
+    // If from-file is provided, parse the file and use those values
+    if let Some(file_path) = &params.from_file {
+        println!("Importing configuration from file: {}", file_path);
+
+        let (
+            file_alias_name,
+            file_token,
+            file_url,
+            file_model,
+            file_small_fast_model,
+            file_max_thinking_tokens,
+            file_api_timeout_ms,
+            file_claude_disable_nonessential_traffic,
+            file_sonnet_model,
+            file_opus_model,
+            file_haiku_model,
+        ) = parse_config_from_file(file_path)?;
+
+        // Use the file's alias name (ignoring the one provided via command line)
+        params.alias_name = file_alias_name;
+
+        // Override params with file values
+        params.token = Some(file_token);
+        params.url = Some(file_url);
+        params.model = file_model;
+        params.small_fast_model = file_small_fast_model;
+        params.max_thinking_tokens = file_max_thinking_tokens;
+        params.api_timeout_ms = file_api_timeout_ms;
+        params.claude_code_disable_nonessential_traffic = file_claude_disable_nonessential_traffic;
+        params.anthropic_default_sonnet_model = file_sonnet_model;
+        params.anthropic_default_opus_model = file_opus_model;
+        params.anthropic_default_haiku_model = file_haiku_model;
+
+        println!(
+            "Configuration '{}' will be imported from file",
+            params.alias_name
+        );
+    }
+
     // Validate alias name
     validate_alias_name(&params.alias_name)?;
 
@@ -29,6 +188,11 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         eprintln!("Configuration '{}' already exists.", params.alias_name);
         eprintln!("Use --force to overwrite or choose a different alias name.");
         return Ok(());
+    }
+
+    // Cannot use interactive mode with --from-file
+    if params.interactive && params.from_file.is_some() {
+        anyhow::bail!("Cannot use --interactive mode with --from-file");
     }
 
     // Determine token value
@@ -431,9 +595,22 @@ pub fn run() -> Result<()> {
                 interactive,
                 token_arg,
                 url_arg,
+                from_file,
             } => {
+                // When from_file is provided, alias_name will be extracted from the file
+                // For other cases, use the provided alias_name or provide a default
+                let final_alias_name = if from_file.is_some() {
+                    // Will be set from file parsing, use a placeholder for now
+                    "placeholder".to_string()
+                } else {
+                    alias_name.unwrap_or_else(|| {
+                        eprintln!("Error: alias_name is required when not using --from-file");
+                        std::process::exit(1);
+                    })
+                };
+
                 let params = AddCommandParams {
-                    alias_name,
+                    alias_name: final_alias_name,
                     token,
                     url,
                     model,
@@ -448,6 +625,7 @@ pub fn run() -> Result<()> {
                     interactive,
                     token_arg,
                     url_arg,
+                    from_file,
                 };
                 handle_add_command(params, &mut storage)?;
             }
