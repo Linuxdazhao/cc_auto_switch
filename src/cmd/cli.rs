@@ -56,6 +56,7 @@ pub struct Cli {
 
 /// Available subcommands for configuration management
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum Commands {
     /// Add a new Claude API configuration
     ///
@@ -99,6 +100,41 @@ pub enum Commands {
             help = "Maximum thinking tokens limit (optional)"
         )]
         max_thinking_tokens: Option<u32>,
+
+        /// API timeout in milliseconds
+        #[arg(
+            long = "api-timeout-ms",
+            help = "API timeout in milliseconds (optional)"
+        )]
+        api_timeout_ms: Option<u32>,
+
+        /// Disable non-essential traffic flag
+        #[arg(
+            long = "disable-nonessential-traffic",
+            help = "Disable non-essential traffic flag (optional)"
+        )]
+        claude_code_disable_nonessential_traffic: Option<u32>,
+
+        /// Default Sonnet model name
+        #[arg(
+            long = "default-sonnet-model",
+            help = "Default Sonnet model name (optional)"
+        )]
+        anthropic_default_sonnet_model: Option<String>,
+
+        /// Default Opus model name
+        #[arg(
+            long = "default-opus-model",
+            help = "Default Opus model name (optional)"
+        )]
+        anthropic_default_opus_model: Option<String>,
+
+        /// Default Haiku model name
+        #[arg(
+            long = "default-haiku-model",
+            help = "Default Haiku model name (optional)"
+        )]
+        anthropic_default_haiku_model: Option<String>,
 
         /// Force overwrite existing configuration
         #[arg(

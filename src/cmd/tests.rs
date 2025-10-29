@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::cmd::cli::*;
+    use crate::cmd::config::EnvironmentConfig;
     use crate::cmd::config::*;
     use std::fs;
     use tempfile::TempDir;
@@ -19,6 +20,11 @@ mod tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         }
     }
 
@@ -566,6 +572,11 @@ mod tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -721,6 +732,11 @@ mod tests {
             model: Some("claude-format-model".to_string()),
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let json = serde_json::to_string_pretty(&config).expect("Should serialize to pretty JSON");
@@ -788,6 +804,11 @@ mod tests {
             model: Some("claude-order-model".to_string()),
             small_fast_model: Some("haiku-order-model".to_string()),
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -916,6 +937,7 @@ mod tests {
 #[cfg(test)]
 mod config_edit_tests {
     use super::*;
+    use crate::cmd::config::EnvironmentConfig;
     use crate::cmd::types::{ConfigStorage, Configuration};
     use std::fs;
     use tempfile::TempDir;
@@ -932,6 +954,11 @@ mod config_edit_tests {
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
         storage.add_configuration(config);
 
@@ -950,6 +977,11 @@ mod config_edit_tests {
             model: Some("updated-model".to_string()),
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -975,6 +1007,11 @@ mod config_edit_tests {
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -999,6 +1036,11 @@ mod config_edit_tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let result = storage.update_configuration("nonexistent", new_config);
@@ -1018,6 +1060,11 @@ mod config_edit_tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
         storage.add_configuration(config2);
 
@@ -1029,6 +1076,11 @@ mod config_edit_tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1053,6 +1105,11 @@ mod config_edit_tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -1061,5 +1118,79 @@ mod config_edit_tests {
         let config = storage.get_configuration("test-config").unwrap();
         assert_eq!(config.model, None);
         assert_eq!(config.small_fast_model, None);
+    }
+
+    #[test]
+    fn test_new_configuration_fields() {
+        let config = Configuration {
+            alias_name: "test".to_string(),
+            token: "sk-ant-test".to_string(),
+            url: "https://api.test.com".to_string(),
+            model: None,
+            small_fast_model: None,
+            max_thinking_tokens: None,
+            api_timeout_ms: Some(3000000),
+            claude_code_disable_nonessential_traffic: Some(1),
+            anthropic_default_sonnet_model: Some("MiniMax-M2".to_string()),
+            anthropic_default_opus_model: Some("MiniMax-M2".to_string()),
+            anthropic_default_haiku_model: Some("MiniMax-M2".to_string()),
+        };
+
+        assert_eq!(config.api_timeout_ms, Some(3000000));
+        assert_eq!(config.claude_code_disable_nonessential_traffic, Some(1));
+        assert_eq!(
+            config.anthropic_default_sonnet_model,
+            Some("MiniMax-M2".to_string())
+        );
+        assert_eq!(
+            config.anthropic_default_opus_model,
+            Some("MiniMax-M2".to_string())
+        );
+        assert_eq!(
+            config.anthropic_default_haiku_model,
+            Some("MiniMax-M2".to_string())
+        );
+    }
+
+    #[test]
+    fn test_environment_config_with_new_fields() {
+        let config = Configuration {
+            alias_name: "test".to_string(),
+            token: "sk-ant-test".to_string(),
+            url: "https://api.test.com".to_string(),
+            model: None,
+            small_fast_model: None,
+            max_thinking_tokens: None,
+            api_timeout_ms: Some(3000000),
+            claude_code_disable_nonessential_traffic: Some(1),
+            anthropic_default_sonnet_model: Some("MiniMax-M2".to_string()),
+            anthropic_default_opus_model: Some("MiniMax-M2".to_string()),
+            anthropic_default_haiku_model: Some("MiniMax-M2".to_string()),
+        };
+
+        let env_config = EnvironmentConfig::from_config(&config);
+
+        assert_eq!(
+            env_config.env_vars.get("API_TIMEOUT_MS"),
+            Some(&"3000000".to_string())
+        );
+        assert_eq!(
+            env_config
+                .env_vars
+                .get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+            Some(&"1".to_string())
+        );
+        assert_eq!(
+            env_config.env_vars.get("ANTHROPIC_DEFAULT_SONNET_MODEL"),
+            Some(&"MiniMax-M2".to_string())
+        );
+        assert_eq!(
+            env_config.env_vars.get("ANTHROPIC_DEFAULT_OPUS_MODEL"),
+            Some(&"MiniMax-M2".to_string())
+        );
+        assert_eq!(
+            env_config.env_vars.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"),
+            Some(&"MiniMax-M2".to_string())
+        );
     }
 }

@@ -4,26 +4,13 @@ use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig, valida
 use crate::cmd::interactive::{
     handle_current_command, handle_interactive_selection, read_input, read_sensitive_input,
 };
+use crate::cmd::types::AddCommandParams;
 use anyhow::Result;
 use clap::Parser;
 use colored::*;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
-
-/// Parameters for adding a new configuration
-pub struct AddCommandParams {
-    pub alias_name: String,
-    pub token: Option<String>,
-    pub url: Option<String>,
-    pub model: Option<String>,
-    pub small_fast_model: Option<String>,
-    pub max_thinking_tokens: Option<u32>,
-    pub force: bool,
-    pub interactive: bool,
-    pub token_arg: Option<String>,
-    pub url_arg: Option<String>,
-}
 
 /// Handle adding a configuration with all the new features
 ///
@@ -142,6 +129,104 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         params.max_thinking_tokens
     };
 
+    // Determine API timeout value
+    let final_api_timeout_ms = if params.interactive {
+        if params.api_timeout_ms.is_some() {
+            eprintln!(
+                "Warning: API timeout provided via flags will be ignored in interactive mode"
+            );
+        }
+        let timeout_input = read_input(
+            "Enter API timeout in milliseconds (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if timeout_input.is_empty() {
+            None
+        } else if let Ok(timeout) = timeout_input.parse::<u32>() {
+            if timeout == 0 { None } else { Some(timeout) }
+        } else {
+            eprintln!("Warning: Invalid API timeout value, skipping");
+            None
+        }
+    } else {
+        params.api_timeout_ms
+    };
+
+    // Determine disable nonessential traffic flag value
+    let final_claude_code_disable_nonessential_traffic = if params.interactive {
+        if params.claude_code_disable_nonessential_traffic.is_some() {
+            eprintln!(
+                "Warning: Disable nonessential traffic flag provided via flags will be ignored in interactive mode"
+            );
+        }
+        let flag_input = read_input(
+            "Enter disable nonessential traffic flag (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if flag_input.is_empty() {
+            None
+        } else if let Ok(flag) = flag_input.parse::<u32>() {
+            if flag == 0 { None } else { Some(flag) }
+        } else {
+            eprintln!("Warning: Invalid disable nonessential traffic flag value, skipping");
+            None
+        }
+    } else {
+        params.claude_code_disable_nonessential_traffic
+    };
+
+    // Determine default Sonnet model value
+    let final_anthropic_default_sonnet_model = if params.interactive {
+        if params.anthropic_default_sonnet_model.is_some() {
+            eprintln!(
+                "Warning: Default Sonnet model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let model_input =
+            read_input("Enter default Sonnet model name (optional, press enter to skip): ")?;
+        if model_input.is_empty() {
+            None
+        } else {
+            Some(model_input)
+        }
+    } else {
+        params.anthropic_default_sonnet_model
+    };
+
+    // Determine default Opus model value
+    let final_anthropic_default_opus_model = if params.interactive {
+        if params.anthropic_default_opus_model.is_some() {
+            eprintln!(
+                "Warning: Default Opus model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let model_input =
+            read_input("Enter default Opus model name (optional, press enter to skip): ")?;
+        if model_input.is_empty() {
+            None
+        } else {
+            Some(model_input)
+        }
+    } else {
+        params.anthropic_default_opus_model
+    };
+
+    // Determine default Haiku model value
+    let final_anthropic_default_haiku_model = if params.interactive {
+        if params.anthropic_default_haiku_model.is_some() {
+            eprintln!(
+                "Warning: Default Haiku model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let model_input =
+            read_input("Enter default Haiku model name (optional, press enter to skip): ")?;
+        if model_input.is_empty() {
+            None
+        } else {
+            Some(model_input)
+        }
+    } else {
+        params.anthropic_default_haiku_model
+    };
+
     // Validate token format with flexible API provider support
     let is_anthropic_official = final_url.contains("api.anthropic.com");
     if is_anthropic_official {
@@ -166,6 +251,11 @@ fn handle_add_command(params: AddCommandParams, storage: &mut ConfigStorage) -> 
         model: final_model,
         small_fast_model: final_small_fast_model,
         max_thinking_tokens: final_max_thinking_tokens,
+        api_timeout_ms: final_api_timeout_ms,
+        claude_code_disable_nonessential_traffic: final_claude_code_disable_nonessential_traffic,
+        anthropic_default_sonnet_model: final_anthropic_default_sonnet_model,
+        anthropic_default_opus_model: final_anthropic_default_opus_model,
+        anthropic_default_haiku_model: final_anthropic_default_haiku_model,
     };
 
     storage.add_configuration(config);
@@ -218,6 +308,25 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         }
         if let Some(max_thinking_tokens) = config.max_thinking_tokens {
             config_info.push_str(&format!(", max_thinking_tokens: {max_thinking_tokens}"));
+        }
+        if let Some(api_timeout_ms) = config.api_timeout_ms {
+            config_info.push_str(&format!(", api_timeout_ms: {api_timeout_ms}"));
+        }
+        if let Some(claude_code_disable_nonessential_traffic) =
+            config.claude_code_disable_nonessential_traffic
+        {
+            config_info.push_str(&format!(
+                ", disable_nonessential_traffic: {claude_code_disable_nonessential_traffic}"
+            ));
+        }
+        if let Some(sonnet_model) = &config.anthropic_default_sonnet_model {
+            config_info.push_str(&format!(", default_sonnet_model: {sonnet_model}"));
+        }
+        if let Some(opus_model) = &config.anthropic_default_opus_model {
+            config_info.push_str(&format!(", default_opus_model: {opus_model}"));
+        }
+        if let Some(haiku_model) = &config.anthropic_default_haiku_model {
+            config_info.push_str(&format!(", default_haiku_model: {haiku_model}"));
         }
         println!("Switched to configuration '{alias_name}' ({config_info})");
         println!("Current URL: {}", config.url);
@@ -313,6 +422,11 @@ pub fn run() -> Result<()> {
                 model,
                 small_fast_model,
                 max_thinking_tokens,
+                api_timeout_ms,
+                claude_code_disable_nonessential_traffic,
+                anthropic_default_sonnet_model,
+                anthropic_default_opus_model,
+                anthropic_default_haiku_model,
                 force,
                 interactive,
                 token_arg,
@@ -325,6 +439,11 @@ pub fn run() -> Result<()> {
                     model,
                     small_fast_model,
                     max_thinking_tokens,
+                    api_timeout_ms,
+                    claude_code_disable_nonessential_traffic,
+                    anthropic_default_sonnet_model,
+                    anthropic_default_opus_model,
+                    anthropic_default_haiku_model,
                     force,
                     interactive,
                     token_arg,

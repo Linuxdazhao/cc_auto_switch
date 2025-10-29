@@ -53,6 +53,40 @@ impl EnvironmentConfig {
             );
         }
 
+        // Set API timeout only if provided
+        if let Some(timeout) = config.api_timeout_ms {
+            env_vars.insert("API_TIMEOUT_MS".to_string(), timeout.to_string());
+        }
+
+        // Set disable nonessential traffic flag only if provided
+        if let Some(flag) = config.claude_code_disable_nonessential_traffic {
+            env_vars.insert(
+                "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                flag.to_string(),
+            );
+        }
+
+        // Set default Sonnet model only if provided
+        if let Some(model) = &config.anthropic_default_sonnet_model
+            && !model.is_empty()
+        {
+            env_vars.insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), model.clone());
+        }
+
+        // Set default Opus model only if provided
+        if let Some(model) = &config.anthropic_default_opus_model
+            && !model.is_empty()
+        {
+            env_vars.insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), model.clone());
+        }
+
+        // Set default Haiku model only if provided
+        if let Some(model) = &config.anthropic_default_haiku_model
+            && !model.is_empty()
+        {
+            env_vars.insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
+        }
+
         EnvironmentConfig { env_vars }
     }
 

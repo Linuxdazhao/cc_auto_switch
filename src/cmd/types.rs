@@ -26,6 +26,21 @@ pub struct Configuration {
     /// ANTHROPIC_MAX_THINKING_TOKENS value (Maximum thinking tokens limit)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_thinking_tokens: Option<u32>,
+    /// API timeout in milliseconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_timeout_ms: Option<u32>,
+    /// Disable non-essential traffic flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_disable_nonessential_traffic: Option<u32>,
+    /// Default Sonnet model name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anthropic_default_sonnet_model: Option<String>,
+    /// Default Opus model name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anthropic_default_opus_model: Option<String>,
+    /// Default Haiku model name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anthropic_default_haiku_model: Option<String>,
 }
 
 /// Storage manager for Claude API configurations
@@ -108,6 +123,11 @@ pub struct AddCommandParams {
     pub model: Option<String>,
     pub small_fast_model: Option<String>,
     pub max_thinking_tokens: Option<u32>,
+    pub api_timeout_ms: Option<u32>,
+    pub claude_code_disable_nonessential_traffic: Option<u32>,
+    pub anthropic_default_sonnet_model: Option<String>,
+    pub anthropic_default_opus_model: Option<String>,
+    pub anthropic_default_haiku_model: Option<String>,
     pub force: bool,
     pub interactive: bool,
     pub token_arg: Option<String>,

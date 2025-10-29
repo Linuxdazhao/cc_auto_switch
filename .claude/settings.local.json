@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo test --lib)",
+      "Bash(cargo check)",
+      "Bash(cargo clean)",
+      "Bash(cargo test --lib --bins)",
+      "Bash(cargo test)",
+      "Read(//private/tmp/**)",
+      "Bash(cargo fmt --check)",
+      "Bash(cargo fmt)",
+      "Bash(cargo clippy -- -W warnings)",
+      "Bash(cargo run -- add -i)",
+      "Bash(cargo run -- add test-minimax -i)",
+      "Bash(cargo run -- list)",
+      "Bash(cargo run -- use test-minimax)",
+      "Bash(cargo run -- remove test-minimax)",
+      "Bash(cargo run --)",
+      "Bash(cargo run -- add test-edit -t sk-ant-test -u https://api.test.com --api-timeout-ms 3000000 --disable-nonessential-traffic 1 --default-sonnet-model MiniMax-M2 --default-opus-model MiniMax-M2 --default-haiku-model MiniMax-M2)",
+      "Bash(cargo run -- use test-edit)",
+      "Bash(cargo run -- remove test-edit)",
+      "Bash(cargo run -- add test-edit -t sk-ant-test -u https://api.test.com --api-timeout-ms 3000000)",
+      "WebSearch",
+      "Bash(git add -A)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -235,13 +235,11 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
 
         // Header - use BorderDrawing for compatibility
         let border = BorderDrawing::new();
-        const MAIN_MENU_WIDTH: usize = 80;
+        const MAIN_MENU_WIDTH: usize = 68;
 
         println!(
             "\r{}",
-            border
-                .draw_top_border("Main Menu", MAIN_MENU_WIDTH)
-                .green()
+            border.draw_top_border("Main Menu", MAIN_MENU_WIDTH).green()
         );
         println!(
             "\r{}",
@@ -252,10 +250,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
                 )
                 .green()
         );
-        println!(
-            "\r{}",
-            border.draw_bottom_border(MAIN_MENU_WIDTH).green()
-        );
+        println!("\r{}", border.draw_bottom_border(MAIN_MENU_WIDTH).green());
         println!();
 
         // Draw menu items
@@ -498,10 +493,7 @@ fn handle_full_interactive_menu(
                     .green()
             );
         }
-        println!(
-            "\r{}",
-            border.draw_bottom_border(CONFIG_MENU_WIDTH).green()
-        );
+        println!("\r{}", border.draw_bottom_border(CONFIG_MENU_WIDTH).green());
         println!();
 
         // Add official option (always visible, always red)
@@ -516,12 +508,7 @@ fn handle_full_interactive_menu(
             println!("\r    Use official Claude API (no custom configuration)");
             println!();
         } else {
-            println!(
-                "\r  {} {} {}",
-                "○".red(),
-                "[R]".red(),
-                "official".red()
-            );
+            println!("\r  {} {} {}", "○".red(), "[R]".red(), "official".red());
         }
 
         // Draw current page configs with proper numbering
@@ -1040,6 +1027,11 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     let model_label = "Model:";
     let small_model_label = "Small Fast Model:";
     let max_thinking_tokens_label = "Max Thinking Tokens:";
+    let api_timeout_ms_label = "API Timeout (ms):";
+    let disable_nonessential_traffic_label = "Disable Nonessential Traffic:";
+    let default_sonnet_model_label = "Default Sonnet Model:";
+    let default_opus_model_label = "Default Opus Model:";
+    let default_haiku_model_label = "Default Haiku Model:";
 
     // Find the widest label for alignment
     let max_label_width = [
@@ -1048,6 +1040,11 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
         model_label,
         small_model_label,
         max_thinking_tokens_label,
+        api_timeout_ms_label,
+        disable_nonessential_traffic_label,
+        default_sonnet_model_label,
+        default_opus_model_label,
+        default_haiku_model_label,
     ]
     .iter()
     .map(|label| text_display_width(label))
@@ -1108,6 +1105,86 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
             format!("{}", max_thinking_tokens).yellow()
         );
         lines.push(tokens_line);
+    }
+
+    // Format API timeout if available
+    if let Some(api_timeout_ms) = config.api_timeout_ms {
+        let timeout_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                api_timeout_ms_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", api_timeout_ms).yellow()
+        );
+        lines.push(timeout_line);
+    }
+
+    // Format disable nonessential traffic flag if available
+    if let Some(disable_flag) = config.claude_code_disable_nonessential_traffic {
+        let flag_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                disable_nonessential_traffic_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", disable_flag).yellow()
+        );
+        lines.push(flag_line);
+    }
+
+    // Format default Sonnet model if available
+    if let Some(sonnet_model) = &config.anthropic_default_sonnet_model {
+        let sonnet_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                default_sonnet_model_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            sonnet_model.yellow()
+        );
+        lines.push(sonnet_line);
+    }
+
+    // Format default Opus model if available
+    if let Some(opus_model) = &config.anthropic_default_opus_model {
+        let opus_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                default_opus_model_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            opus_model.yellow()
+        );
+        lines.push(opus_line);
+    }
+
+    // Format default Haiku model if available
+    if let Some(haiku_model) = &config.anthropic_default_haiku_model {
+        let haiku_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                default_haiku_model_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            haiku_model.yellow()
+        );
+        lines.push(haiku_line);
     }
 
     lines
@@ -1445,7 +1522,10 @@ mod pagination_tests {
         if selected_index < configs_len + 1 {
             selected_index += 1;
         }
-        assert_eq!(selected_index, original_index, "j key should not move beyond bottom boundary");
+        assert_eq!(
+            selected_index, original_index,
+            "j key should not move beyond bottom boundary"
+        );
     }
 
     /// Test k key navigation (should move selection up like Up arrow)
@@ -1462,7 +1542,10 @@ mod pagination_tests {
         selected_index = 0;
         let original_index = selected_index;
         selected_index = selected_index.saturating_sub(1);
-        assert_eq!(selected_index, original_index, "k key should not move beyond top boundary");
+        assert_eq!(
+            selected_index, original_index,
+            "k key should not move beyond top boundary"
+        );
     }
 
     /// Test j/k key boundary conditions match arrow key behavior
@@ -1476,13 +1559,19 @@ mod pagination_tests {
         if selected_index < CONFIGS_LEN + 1 {
             selected_index += 1; // This is what j key does
         }
-        assert_eq!(selected_index, original_index, "j key should respect bottom boundary like Down arrow");
+        assert_eq!(
+            selected_index, original_index,
+            "j key should respect bottom boundary like Down arrow"
+        );
 
         // Test k key at top boundary (same as Up arrow)
         let mut selected_index: usize = 0; // At official option
         let original_index = selected_index;
         selected_index = selected_index.saturating_sub(1); // This is what k key does
-        assert_eq!(selected_index, original_index, "k key should respect top boundary like Up arrow");
+        assert_eq!(
+            selected_index, original_index,
+            "k key should respect top boundary like Up arrow"
+        );
     }
 }
 
@@ -1502,7 +1591,7 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
         display_edit_menu(&editing_config);
 
         // Get user input for field selection
-        print!("\n请选择要编辑的字段 (1-5), 或输入 S 保存, C 取消: ");
+        print!("\n请选择要编辑的字段 (1-9, A-B), 或输入 S 保存, C 取消: ");
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -1516,6 +1605,11 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
             "4" => edit_field_model(&mut editing_config)?,
             "5" => edit_field_small_fast_model(&mut editing_config)?,
             "6" => edit_field_max_thinking_tokens(&mut editing_config)?,
+            "7" => edit_field_api_timeout_ms(&mut editing_config)?,
+            "8" => edit_field_claude_code_disable_nonessential_traffic(&mut editing_config)?,
+            "9" => edit_field_anthropic_default_sonnet_model(&mut editing_config)?,
+            "10" | "a" | "A" => edit_field_anthropic_default_opus_model(&mut editing_config)?,
+            "11" | "b" | "B" => edit_field_anthropic_default_haiku_model(&mut editing_config)?,
             "s" | "S" => {
                 // Save changes
                 return save_configuration_changes(&original_alias, &editing_config);
@@ -1536,22 +1630,22 @@ fn display_edit_menu(config: &Configuration) {
     println!("\n{}", "当前配置值:".blue().bold());
     println!("{}", "─────────────────────────".blue());
 
-    println!("1. 别名: {}", config.alias_name.green());
+    println!("1. 别名 (alias_name): {}", config.alias_name.green());
 
     println!(
-        "2. 令牌: {}",
+        "2. 令牌 (ANTHROPIC_AUTH_TOKEN): {}",
         format_token_for_display(&config.token).green()
     );
 
-    println!("3. URL: {}", config.url.green());
+    println!("3. URL (ANTHROPIC_BASE_URL): {}", config.url.green());
 
     println!(
-        "4. 模型: {}",
+        "4. 模型 (ANTHROPIC_MODEL): {}",
         config.model.as_deref().unwrap_or("[未设置]").green()
     );
 
     println!(
-        "5. 快速模型: {}",
+        "5. 快速模型 (ANTHROPIC_SMALL_FAST_MODEL): {}",
         config
             .small_fast_model
             .as_deref()
@@ -1560,11 +1654,56 @@ fn display_edit_menu(config: &Configuration) {
     );
 
     println!(
-        "6. 最大思考令牌数: {}",
+        "6. 最大思考令牌数 (ANTHROPIC_MAX_THINKING_TOKENS): {}",
         config
             .max_thinking_tokens
             .map(|t| t.to_string())
             .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "7. API超时时间 (API_TIMEOUT_MS): {}",
+        config
+            .api_timeout_ms
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "8. 禁用非必要流量 (CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC): {}",
+        config
+            .claude_code_disable_nonessential_traffic
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "9. 默认 Sonnet 模型 (ANTHROPIC_DEFAULT_SONNET_MODEL): {}",
+        config
+            .anthropic_default_sonnet_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "A. 默认 Opus 模型 (ANTHROPIC_DEFAULT_OPUS_MODEL): {}",
+        config
+            .anthropic_default_opus_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "B. 默认 Haiku 模型 (ANTHROPIC_DEFAULT_HAIKU_MODEL): {}",
+        config
+            .anthropic_default_haiku_model
+            .as_deref()
+            .unwrap_or("[未设置]")
             .green()
     );
 
@@ -1723,6 +1862,160 @@ fn edit_field_max_thinking_tokens(config: &mut Configuration) -> Result<()> {
             println!("最大思考令牌数已更新为: {}", tokens.to_string().green());
         } else {
             println!("{}", "错误: 请输入有效的数字".red());
+        }
+    }
+    Ok(())
+}
+
+/// Edit api_timeout_ms field
+fn edit_field_api_timeout_ms(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑 API 超时时间 (毫秒):");
+    println!(
+        "当前值: {}",
+        config
+            .api_timeout_ms
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入 0 清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == "0" {
+            config.api_timeout_ms = None;
+            println!("{}", "API 超时时间已清除".green());
+        } else if let Ok(timeout) = input.parse::<u32>() {
+            config.api_timeout_ms = Some(timeout);
+            println!("API 超时时间已更新为: {}", timeout.to_string().green());
+        } else {
+            println!("{}", "错误: 请输入有效的数字".red());
+        }
+    }
+    Ok(())
+}
+
+/// Edit claude_code_disable_nonessential_traffic field
+fn edit_field_claude_code_disable_nonessential_traffic(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑禁用非必要流量标志:");
+    println!(
+        "当前值: {}",
+        config
+            .claude_code_disable_nonessential_traffic
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入 0 清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == "0" {
+            config.claude_code_disable_nonessential_traffic = None;
+            println!("{}", "禁用非必要流量标志已清除".green());
+        } else if let Ok(flag) = input.parse::<u32>() {
+            config.claude_code_disable_nonessential_traffic = Some(flag);
+            println!("禁用非必要流量标志已更新为: {}", flag.to_string().green());
+        } else {
+            println!("{}", "错误: 请输入有效的数字".red());
+        }
+    }
+    Ok(())
+}
+
+/// Edit anthropic_default_sonnet_model field
+fn edit_field_anthropic_default_sonnet_model(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑默认 Sonnet 模型:");
+    println!(
+        "当前值: {}",
+        config
+            .anthropic_default_sonnet_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            config.anthropic_default_sonnet_model = None;
+            println!("{}", "默认 Sonnet 模型已清除".green());
+        } else {
+            config.anthropic_default_sonnet_model = Some(input.to_string());
+            println!("默认 Sonnet 模型已更新为: {}", input.green());
+        }
+    }
+    Ok(())
+}
+
+/// Edit anthropic_default_opus_model field
+fn edit_field_anthropic_default_opus_model(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑默认 Opus 模型:");
+    println!(
+        "当前值: {}",
+        config
+            .anthropic_default_opus_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            config.anthropic_default_opus_model = None;
+            println!("{}", "默认 Opus 模型已清除".green());
+        } else {
+            config.anthropic_default_opus_model = Some(input.to_string());
+            println!("默认 Opus 模型已更新为: {}", input.green());
+        }
+    }
+    Ok(())
+}
+
+/// Edit anthropic_default_haiku_model field
+fn edit_field_anthropic_default_haiku_model(config: &mut Configuration) -> Result<()> {
+    println!("\n编辑默认 Haiku 模型:");
+    println!(
+        "当前值: {}",
+        config
+            .anthropic_default_haiku_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            config.anthropic_default_haiku_model = None;
+            println!("{}", "默认 Haiku 模型已清除".green());
+        } else {
+            config.anthropic_default_haiku_model = Some(input.to_string());
+            println!("默认 Haiku 模型已更新为: {}", input.green());
         }
     }
     Ok(())

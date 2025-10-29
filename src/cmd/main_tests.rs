@@ -14,6 +14,11 @@ mod tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         }
     }
 
@@ -32,13 +37,18 @@ mod tests {
             model: model.map(String::from),
             small_fast_model: small_fast_model.map(String::from),
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         }
     }
 
     // AddCommandParams Tests
     #[test]
     fn test_add_command_params_creation() {
-        use crate::cmd::main::AddCommandParams;
+        use crate::cmd::types::AddCommandParams;
 
         let params = AddCommandParams {
             alias_name: "test".to_string(),
@@ -47,6 +57,11 @@ mod tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
             force: false,
             interactive: false,
             token_arg: None,
@@ -145,6 +160,11 @@ mod tests {
                 model,
                 small_fast_model,
                 max_thinking_tokens,
+                api_timeout_ms,
+                claude_code_disable_nonessential_traffic,
+                anthropic_default_sonnet_model,
+                anthropic_default_opus_model,
+                anthropic_default_haiku_model,
             }) => {
                 assert_eq!(alias_name, "my-config");
                 assert_eq!(token_arg, Some("sk-ant-test-token".to_string()));
@@ -188,6 +208,11 @@ mod tests {
                 model,
                 small_fast_model,
                 max_thinking_tokens,
+                api_timeout_ms,
+                claude_code_disable_nonessential_traffic,
+                anthropic_default_sonnet_model,
+                anthropic_default_opus_model,
+                anthropic_default_haiku_model,
             }) => {
                 assert_eq!(alias_name, "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));

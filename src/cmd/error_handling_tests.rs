@@ -11,6 +11,11 @@ mod error_handling_tests {
             model: None,
             small_fast_model: None,
             max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
         }
     }
 
