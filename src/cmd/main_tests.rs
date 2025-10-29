@@ -160,13 +160,13 @@ mod tests {
                 url,
                 model,
                 small_fast_model,
-                max_thinking_tokens,
-                api_timeout_ms,
-                claude_code_disable_nonessential_traffic,
-                anthropic_default_sonnet_model,
-                anthropic_default_opus_model,
-                anthropic_default_haiku_model,
-                from_file,
+                max_thinking_tokens: _,
+                api_timeout_ms: _,
+                claude_code_disable_nonessential_traffic: _,
+                anthropic_default_sonnet_model: _,
+                anthropic_default_opus_model: _,
+                anthropic_default_haiku_model: _,
+                from_file: _,
                 ..
             }) => {
                 assert_eq!(alias_name.unwrap(), "my-config");
@@ -210,13 +210,13 @@ mod tests {
                 url_arg,
                 model,
                 small_fast_model,
-                max_thinking_tokens,
-                api_timeout_ms,
-                claude_code_disable_nonessential_traffic,
-                anthropic_default_sonnet_model,
-                anthropic_default_opus_model,
-                anthropic_default_haiku_model,
-                from_file,
+                max_thinking_tokens: _,
+                api_timeout_ms: _,
+                claude_code_disable_nonessential_traffic: _,
+                anthropic_default_sonnet_model: _,
+                anthropic_default_opus_model: _,
+                anthropic_default_haiku_model: _,
+                from_file: _,
             }) => {
                 assert_eq!(alias_name.unwrap(), "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));
@@ -257,7 +257,7 @@ mod tests {
                 url,
                 model,
                 small_fast_model,
-                max_thinking_tokens,
+                max_thinking_tokens: _,
                 ..
             }) => {
                 assert_eq!(alias_name.unwrap(), "model-config");

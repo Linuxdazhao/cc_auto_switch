@@ -28,13 +28,13 @@ cargo run --release
 
 ```bash
 # Run all tests
-cargo test
+cargo nextest
 
 # Run tests with output
-cargo test -- --nocapture
+cargo nextest -- --nocapture
 
 # Run specific test
-cargo test test_name
+cargo nextest test_name
 ```
 
 ### Code Quality
@@ -115,7 +115,7 @@ The project includes automated version management and publishing to crates.io:
 1. Make code changes
 2. `./scripts/increment-version.sh` - Increment version
 3. `git add . && git commit -m "Your message"`
-4. `cargo test` - Run tests
+4. `cargo nextest` - Run tests
 5. `./scripts/publish.sh` - Publish to crates.io
 
 ### Dependency Management
@@ -347,7 +347,7 @@ The project includes pre-commit hooks that run automatically before each commit 
 - **cargo check**: Verifies code compilation
 - **cargo fmt --check**: Ensures code formatting compliance
 - **cargo clippy -- -D warnings**: Runs linting with warnings as errors
-- **cargo test**: Executes all tests
+- **cargo nextest**: Executes all tests
 - **cargo audit**: Security vulnerability scanning
 - **cargo doc --no-deps**: Validates documentation builds
 
@@ -505,7 +505,7 @@ git commit --no-verify
 5. **Testing**: Maintain high test coverage (currently 100% with 57 tests)
 6. **Documentation**: Keep README.md and CLAUDE.md synchronized with code changes
 7. **Git Push Validation**: Before pushing to GitHub, ensure all CI/CD workflows pass locally by running:
-   - `cargo test` - All tests must pass
+   - `cargo nextest` - All tests must pass
    - `cargo clippy -- -W warnings` - No clippy warnings
    - `cargo fmt --check` - Code must be formatted
    - `cargo audit` - No security vulnerabilities

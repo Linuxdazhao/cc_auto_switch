@@ -936,10 +936,8 @@ mod tests {
 
 #[cfg(test)]
 mod config_edit_tests {
-    use super::*;
     use crate::cmd::config::EnvironmentConfig;
     use crate::cmd::types::{ConfigStorage, Configuration};
-    use std::fs;
     use tempfile::TempDir;
 
     fn create_test_storage_dir() -> (TempDir, ConfigStorage) {
