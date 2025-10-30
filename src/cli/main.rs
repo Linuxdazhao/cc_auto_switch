@@ -2,9 +2,7 @@ use crate::cli::completion::{generate_aliases, generate_completion, list_aliases
 use crate::cli::{Cli, Commands};
 use crate::config::types::AddCommandParams;
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
-use crate::interactive::{
-    handle_current_command, handle_interactive_selection, read_input, read_sensitive_input,
-};
+use crate::interactive::{handle_interactive_selection, read_input, read_sensitive_input};
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;
@@ -698,9 +696,6 @@ pub fn run() -> Result<()> {
             }
             Commands::Use { alias_name } => {
                 handle_switch_command(Some(&alias_name))?;
-            }
-            Commands::Current => {
-                handle_current_command()?;
             }
             Commands::Version => {
                 println!("{}", env!("CARGO_PKG_VERSION"));

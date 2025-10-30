@@ -23,7 +23,7 @@ EXAMPLES:
     cc-switch use cc
     cc-switch list
     cc-switch remove config1 config2 config3
-    cc-switch current  # Interactive menu for configuration management
+    cc-switch  # Enter interactive mode (same as 'use' without arguments)
 
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
@@ -220,13 +220,6 @@ pub enum Commands {
         #[arg(help = "Configuration alias name (use 'cc' to reset to default)")]
         alias_name: String,
     },
-    /// Interactive current configuration menu
-    ///
-    /// Shows current configuration and provides interactive menu for:
-    /// 1. Execute claude --dangerously-skip-permissions
-    /// 2. Switch configuration (lists available aliases)
-    #[command(alias = "cur")]
-    Current,
     /// Print version information
     #[command(alias = "v")]
     Version,

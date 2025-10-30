@@ -304,16 +304,16 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_current_command() {
-        let args = vec!["cc-switch", "current"];
+    fn test_cli_default_command() {
+        let args = vec!["cc-switch"];
 
-        let cli = Cli::try_parse_from(args).expect("Should parse current command");
+        let cli = Cli::try_parse_from(args).expect("Should parse default command");
 
         match cli.command {
-            Some(Commands::Current) => {
-                // Test passes if we get Current command
+            None => {
+                // Test passes - no command means enter interactive mode
             }
-            _ => panic!("Expected Current command"),
+            _ => panic!("Expected no command for default behavior"),
         }
     }
 
