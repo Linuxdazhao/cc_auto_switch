@@ -1,13 +1,27 @@
+# Rust build artifacts
 /target
+**/*.rs.bk
 
-# NPM files
+# Cargo build profile
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+temp/
+*.tmp
+
+# NPM files (legacy - remove after migration complete)
 node_modules/
 *.tgz
 cc-switch-*.tgz
 
-# NPM binary directory (will be populated during install)
+# Binary artifacts
 bin/cc-switch
 bin/cc-switch.exe
-
-# Temporary files from NPM install
-temp/
