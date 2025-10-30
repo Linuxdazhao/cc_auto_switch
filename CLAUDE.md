@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance for Claude Code (claude.ai/code) when working in this codebase.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-`cc-switch` is a Rust CLI tool for managing multiple Claude API configurations and automatically switching between them. The tool allows users to store different API configurations (alias, token, URL) and switch between them by modifying Claude's settings.json file. This is particularly useful for developers who need to use multiple Claude API endpoints or switch between different accounts.
+`cc-switch` is a Rust CLI tool for managing multiple Claude API configurations and automatically switching between them. The tool allows users to store different API configurations (alias, token, URL, model settings) and switch between them by modifying Claude's settings.json file. This is particularly useful for developers who need to use multiple Claude API endpoints or switch between different accounts.
+
+The project follows Rust best practices with a library + binary structure and domain-based organization.
 
 ## Development Commands
 
@@ -15,21 +17,42 @@ This file provides guidance for Claude Code (claude.ai/code) when working in thi
 cargo build
 
 # Run project
-cargo run
+cargo run [args]
 
 # Release build
 cargo build --release
 
-# Release run
-cargo run --release
+# Run release binary
+cargo run --release [args]
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
-cargo nextest run
+# Run all tests (library + integration + doctests)
+cargo test
 
+# Run only library tests
+cargo test --lib
+
+# Run only integration tests
+cargo test --tests
+
+# Run specific test file
+cargo test --test tests
+
+# Run single test
+cargo test test_name
+
+# Run with output
+cargo test -- --nocapture test_name
+
+# Run integration tests only
+cargo test --test integration_tests
+
+# Run with nextest (if installed)
+cargo install cargo-nextest
+cargo nextest run
 ```
 
 ### Code Quality
@@ -41,10 +64,13 @@ cargo check
 # Format code
 cargo fmt
 
+# Format check (CI compatible)
+cargo fmt --check
+
 # Lint code
 cargo clippy
 
-# Lint with all warnings
+# Lint with all warnings treated as errors
 cargo clippy -- -W warnings
 
 # Run security audit
@@ -57,7 +83,7 @@ cargo audit
 # One-time setup
 ./scripts/setup-pre-commit.sh
 
-# Manual run on all files
+# Run on all files
 pre-commit run --all-files
 
 # Run on specific files
@@ -72,46 +98,32 @@ pre-commit uninstall
 
 ### Version Management and Release
 
-The project includes automated version management and publishing to crates.io:
-
-**Complete Release Workflow**:
-
+**Complete Release Workflow** (Recommended):
 ```bash
-# Run full release workflow (version increment + commit + publish)
 ./scripts/release.sh
 ```
+This handles version increment, commit, and publish automatically.
 
-**Manual Version Management**:
-
+**Manual Workflow**:
 ```bash
-# Manually increment version
+# 1. Make changes
+git add .
+git commit -m "Your message"
+
+# 2. Increment version
 ./scripts/increment-version.sh
 
-# Manually publish to crates.io
+# 3. Run tests
+cargo test
+
+# 4. Publish to crates.io
 ./scripts/publish.sh
 ```
 
-**Version Format**: Uses semantic versioning (x.y.z) where:
-
-- Major version (x): Breaking changes
-- Minor version (y): New features
-- Patch version (z): Bug fixes and patches
-
-**Automated Workflow**:
-
-1. Make code changes
-2. `./scripts/release.sh` - Handles version increment, commit, and publish
-3. Version in Cargo.toml is auto-incremented
-4. Tests run automatically
-5. Package is auto-published to crates.io
-
-**Manual Workflow**:
-
-1. Make code changes
-2. `./scripts/increment-version.sh` - Increment version
-3. `git add . && git commit -m "Your message"`
-4. `cargo nextest` - Run tests
-5. `./scripts/publish.sh` - Publish to crates.io
+**Version Format**: Semantic versioning (x.y.z)
+- Major (x): Breaking changes
+- Minor (y): New features
+- Patch (z): Bug fixes
 
 ### Dependency Management
 
@@ -125,6 +137,9 @@ cargo outdated
 # Add new dependency
 cargo add dependency_name
 
+# Add development dependency
+cargo add --dev dependency_name
+
 # Remove dependency
 cargo remove dependency_name
 ```
@@ -132,376 +147,359 @@ cargo remove dependency_name
 ## Project Structure
 
 ```
-cc_auto_switch/
-├── Cargo.toml              # Project configuration and dependencies
-├── Cargo.lock              # Dependency lock file
+cc-switch/
 ├── src/
-│   ├── main.rs             # Main application entry point (minimal)
-│   └── cmd/
-│       ├── main.rs         # Core CLI logic and orchestration
-│       ├── mod.rs          # Module declarations
-│       ├── cli.rs          # Command-line interface definitions
-│       ├── types.rs        # Core data structures and types
-│       ├── config.rs       # Configuration management logic
-│       ├── config_storage.rs # Configuration persistence and storage
-│       ├── interactive.rs  # Interactive menus and terminal UI
-│       ├── completion.rs   # Shell completion logic
-│       ├── shell_completion.rs # Shell-specific completion handlers
-│       ├── utils.rs        # Utility functions
-│       ├── tests.rs        # Core functionality unit tests
-│       ├── error_handling_tests.rs  # Error handling edge cases
-│       └── integration_tests.rs      # Integration tests
-├── .github/
-│   └── workflows/
-│       ├── ci.yml          # CI pipeline and cross-platform builds
-│       └── release.yml     # GitHub release workflow
-└── target/                 # Build output directory (git ignored)
+│   ├── lib.rs                 # Library crate with public API
+│   ├── main.rs                # Minimal binary entry point
+│   ├── cli/                   # CLI domain
+│   │   ├── cli.rs             # Command-line interface definitions
+│   │   ├── completion.rs      # Shell completion logic
+│   │   ├── display_utils.rs   # Terminal display utilities
+│   │   └── main.rs            # CLI command handlers
+│   ├── config/                # Configuration domain
+│   │   ├── mod.rs             # Module exports
+│   │   ├── config.rs          # Configuration management
+│   │   ├── config_storage.rs  # Persistent storage
+│   │   └── types.rs           # Data structures
+│   ├── interactive/           # Interactive UI domain
+│   │   ├── mod.rs             # Module exports
+│   │   └── interactive.rs     # Terminal UI with keyboard navigation
+│   ├── claude_settings.rs     # Claude settings.json management
+│   └── utils.rs               # Utility functions
+├── tests/                     # Integration tests (not unit tests)
+│   ├── integration_tests.rs   # End-to-end workflows
+│   ├── main_tests.rs          # CLI main logic tests
+│   ├── tests.rs               # Core functionality tests
+│   ├── completion_tests.rs    # Shell completion tests
+│   ├── interactive_tests.rs   # Interactive UI tests
+│   └── error_handling_tests.rs # Error scenarios
+├── scripts/                   # Automation scripts
+│   ├── release.sh             # Full release workflow
+│   ├── increment-version.sh   # Version bumping
+│   ├── publish.sh             # Publish to crates.io
+│   └── setup-pre-commit.sh    # Pre-commit setup
+└── .github/workflows/         # CI/CD pipelines
+    ├── ci.yml                 # Multi-platform CI
+    └── release.yml            # Release automation
 ```
 
 ## Architecture Overview
 
-### Core Components
+### Library + Binary Structure
 
-**Configuration Management** (`config.rs`, `config_storage.rs`, `types.rs`):
+The project is structured as a **library crate** with a **minimal binary entry point**:
 
-- `ConfigStorage`: Manages persistence of multiple API configurations in `~/.cc-switch/configurations.json`
-- `Configuration`: Represents a single API configuration, including alias, token, URL, model, and small_fast_model
-- `ClaudeSettings`: Handles environment variable configuration in Claude's settings.json file
-- `AddCommandParams`: Parameter structure for add command, supports interactive mode
+- **src/lib.rs**: Declares the library crate with public API exports
+- **src/main.rs**: Binary that calls `cc_switch::run()` from the library
+- **Benefits**: Enables code reuse, better testing, can be imported by other projects
 
-**CLI Interface** (`cli.rs`):
+### Domain-Based Organization
 
-- `Cli`: Main command parser using clap, supports subcommands and hidden completion flags
-- `Commands`: Enum defining available subcommands (add, remove, list, set-default-dir, completion, alias, use, current)
-- Rich help text with examples and Shell integration instructions
+The codebase is organized into three main domains:
 
-**Interactive Terminal UI** (`interactive.rs`):
+#### 1. CLI Domain (`src/cli/`)
+**Purpose**: Command-line interface, parsing, shell integration
+**Key Components**:
+- `cli.rs`: clap-based command parser, Commands enum
+- `completion.rs`: Shell completion script generation (fish, zsh, bash, elvish, powershell)
+- `main.rs`: Command handlers (add, remove, list, use, current, etc.)
+- `display_utils.rs`: Terminal text formatting, width calculation, alignment
 
-- `handle_current_command()`: Interactive main menu with keyboard navigation
-- `handle_interactive_selection()`: Real-time configuration browser with preview
-- **Number Key Quick Selection**: Press number keys 1-9 to directly select corresponding configurations
-- **Smart Pagination System**: Auto-paginate when >9 configurations, supports PageUp/PageDown or N/P keys
-- **Shortcut Key Support**: R key to reset to official config, E key to exit
-- Crossterm-based terminal handling with graceful degradation to simple menus
-- Auto-launch Claude CLI after configuration switch
+#### 2. Configuration Domain (`src/config/`)
+**Purpose**: Configuration management, persistence, validation
+**Key Components**:
+- `types.rs`: Data structures (Configuration, ConfigStorage, ClaudeSettings)
+- `config.rs`: Environment variable management
+- `config_storage.rs`: JSON persistence to `~/.cc-switch/configurations.json`
+- Exports convenience functions: `validate_alias_name()`, `get_config_storage_path()`
 
-**Shell Integration** (`completion.rs`, `shell_completion.rs`):
+#### 3. Interactive Domain (`src/interactive/`)
+**Purpose**: Terminal-based interactive UI
+**Key Components**:
+- `interactive.rs`: Crossterm-based terminal UI
+- `handle_current_command()`: Main interactive menu
+- `handle_interactive_selection()`: Configuration browser with preview
+- Features: Number key selection (1-9), smart pagination, keyboard navigation, auto-launch Claude
 
-- Dynamic completion for configuration aliases
-- Shell-specific completion handlers for fish, zsh, bash, elvish, powershell
-- Eval-compatible alias generation system
+### Data Flow
 
-### Key Data Flow
+1. **Add Configuration** → CLI parses args → Validates → Saves to JSON via ConfigStorage
+2. **Use Configuration** → CLI or interactive mode → Reads config → Updates Claude settings.json → Launches Claude
+3. **List Configurations** → Reads from ConfigStorage → Displays (JSON or plain text)
+4. **Shell Completion** → Dynamically loads configuration names → Generates shell-specific scripts
 
-1. **Configuration Storage**: Uses JSON serialization to store configurations in `~/.cc-switch/configurations.json`
-2. **Settings Modification**: Read/write Claude's settings.json to update `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL`
-3. **Path Resolution**: Supports both absolute and relative paths for custom Claude settings directory
+### Key Data Types
 
-### CLI Usage Patterns
+**Configuration** (in `src/config/types.rs`):
+```rust
+struct Configuration {
+    alias_name: String,
+    token: String,
+    url: String,
+    model: Option<String>,
+    small_fast_model: Option<String>,
+    max_thinking_tokens: Option<u32>,
+    api_timeout_ms: Option<u32>,
+    claude_code_disable_nonessential_traffic: Option<u32>,
+    anthropic_default_sonnet_model: Option<String>,
+    anthropic_default_opus_model: Option<String>,
+    anthropic_default_haiku_model: Option<String>,
+}
+```
+
+**ConfigStorage**:
+- Manages multiple Configuration objects
+- Persists to `~/.cc-switch/configurations.json`
+- Provides CRUD operations
+
+**EnvironmentConfig**:
+- Converts Configuration to environment variable tuples
+- Used for launching Claude with custom settings
+
+## CLI Usage Patterns
 
 ```bash
-# Add configurations (multiple formats supported)
+# Add configurations
 cc-switch add my-config sk-ant-xxx https://api.anthropic.com
 cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
 cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
-cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
 cc-switch add my-config -i  # Interactive mode
-cc-switch add my-config --force  # Overwrite existing config
+cc-switch add my-config --from-file config.json  # Import from JSON
 
 # Switch configurations
-cc-switch use my-config
-cc-switch use -a my-config
-cc-switch use --alias my-config
+cc-switch use my-config  # Switch to my-config
 cc-switch use  # Interactive mode
+cc-switch use cc  # Reset to default (removes custom API settings)
 
-# Interactive current configuration menu
-cc-switch current  # Shows current config + interactive menu
+# List configurations
+cc-switch list  # JSON output (default)
+cc-switch list -p  # Plain text output
 
-# Reset to default (remove API config)
-cc-switch use cc
+# Current configuration with interactive menu
+cc-switch current  # Shows current + allows switching
 
-# List all configurations
-cc-switch list
-
-# Manage multiple configurations
+# Manage configurations
 cc-switch remove config1 config2 config3
 
-# Set custom Claude settings directory
-cc-switch set-default-dir /path/to/claude/config
-
 # Shell integration
-cc-switch completion fish  # Generate completion scripts
+cc-switch completion fish  # Generate completion script
 cc-switch alias fish       # Generate eval-compatible aliases
-```
 
-## Shell Completion Setup
-
-### Fish Shell
-
-```bash
-# Generate completion script
-cargo run -- completion fish > ~/.config/fish/completions/cc-switch.fish
-
-# Restart fish or reload completions
-source ~/.config/fish/config.fish
-```
-
-### Zsh Shell
-
-```bash
-# Create completions directory if it doesn't exist
-mkdir -p ~/.zsh/completions
-
-# Generate completion script
-cargo run -- completion zsh > ~/.zsh/completions/_cc-switch
-
-# Add to ~/.zshrc if not already present
-echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
-
-# Reload shell configuration
-source ~/.zshrc
-
-# Force rebuild completion cache
-compinit
-```
-
-### Bash Shell
-
-```bash
-# Generate completion script
-cargo run -- completion bash > ~/.bash_completion.d/cc-switch
-
-# Add to ~/.bashrc if not already present
-echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
-
-# Reload shell configuration
-source ~/.bashrc
+# Get version
+cc-switch version
 ```
 
 ## Interactive Features
 
-### Current Command Interactive Menu
+### Current Command Menu (`cc-switch current`)
 
-The `cc-switch current` command provides a sophisticated interactive menu with:
-
-- **Current Configuration Display**: Shows active API token and URL
-- **Keyboard Navigation**: Arrow keys for menu navigation (with fallback to numbered menu)
-- **Number Key Quick Selection**: Press number keys 1-9 to directly select corresponding configurations
-- **Smart Pagination**: Auto-paginate when >9 configurations, display up to 9 per page
-- **Page Navigation**: PageUp/PageDown or N/P keys for quick page switching
-- **Quick Actions**: R key to reset to official config, E key to exit
-- **Real-time Selection**: Instant preview of configuration details during browsing
-- **Automatic Claude Launch**: Seamlessly launches Claude CLI after configuration switches
-- **Terminal Compatibility**: Crossterm-based terminal handling with graceful fallbacks
-
-### Interactive Selection Mode
-
-- **Visual Configuration Browser**: Browse all stored configurations with full details
-- **Configuration Preview**: See token, URL, model settings before switching
-- **Reset Option**: Quick reset to default Claude behavior
-- **Smart Fallbacks**: Automatic fallback to simple menus when terminal capabilities are limited
-
-### Keyboard Shortcuts Reference
-
-#### Single Page Mode (≤9 configurations)
-
-- **↑↓**: Navigate up/down
-- **1-9**: Number keys to directly select configuration
-- **R**: Reset to official configuration
-- **E**: Exit program
-- **Enter**: Confirm current selection
-- **Esc**: Cancel operation
-
-#### Pagination Mode (>9 configurations)
-
-- **↑↓**: Navigate up/down
-- **1-9**: Number keys to directly select configuration on current page
-- **N/PageDown**: Next page
+**Navigation**:
+- **↑↓**: Navigate menu
+- **1-9**: Quick-select configuration on current page
+- **N/PageDown**: Next page (when >9 configs)
 - **P/PageUp**: Previous page
-- **R**: Reset to official configuration (available on any page)
-- **E**: Exit program
-- **Enter**: Confirm current selection
+- **R**: Reset to official Claude (removes custom settings)
+- **E**: Exit
+- **Enter**: Confirm selection
 
-## Completion Features
+**Features**:
+- Real-time configuration preview
+- Smart pagination (9 configs per page)
+- Graceful terminal fallback
+- Auto-launches Claude after switch
 
-The shell completion provides:
+### Keyboard Shortcuts
 
-- **Command completion**: `cc-switch <TAB>` shows all subcommands
-- **Subcommand completion**: `cc-switch completion <TAB>` shows available shells
-- **Configuration alias completion**: `cc-switch use <TAB>` shows stored configuration names
-- **Option completion**: `cc-switch -<TAB>` shows available options
-- **Help completion**: Context-aware help for all commands and options
-- **Dynamic alias loading**: Completion system dynamically loads available configuration names
+**Single Page** (≤9 configs): 1-9 keys select directly
+**Multi Page** (>9 configs): 1-9 keys select on current page, use N/P to navigate
 
-## Pre-commit Hooks
+## Shell Integration
 
-The project includes pre-commit hooks that run automatically before each commit to ensure code quality:
+### Setup Completion
 
-### Required Checks (Run on every commit)
-
-- **cargo check**: Verifies code compilation
-- **cargo fmt --check**: Ensures code formatting compliance
-- **cargo clippy -- -D warnings**: Runs linting with warnings as errors
-- **cargo nextest**: Executes all tests
-- **cargo audit**: Security vulnerability scanning
-- **cargo doc --no-deps**: Validates documentation builds
-
-### Setup Instructions
-
+**Fish**:
 ```bash
-# One-time setup
-./scripts/setup-pre-commit.sh
-
-# Manual testing
-pre-commit run --all-files
-
-# Skip hooks (if needed)
-git commit --no-verify
+cargo run -- completion fish > ~/.config/fish/completions/cc-switch.fish
 ```
 
-### Development Environment
+**Zsh**:
+```bash
+cargo run -- completion zsh > ~/.zsh/completions/_cc-switch
+echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
+```
 
-- **Rust Version**: 1.88.0 or later
-- **Rust Edition**: 2024 (using nightly-2024-12-01 toolchain in CI)
-- **Cargo Version**: 1.88.0 or later
-- **Dependencies**: anyhow (error handling), clap (CLI parsing with completion), clap_complete (shell completion), serde (JSON), dirs (directory paths), colored (terminal output), crossterm (terminal UI), tempfile (testing)
-- **Pre-commit**: Python-based pre-commit framework (auto-installed)
+**Bash**:
+```bash
+cargo run -- completion bash > ~/.bash_completion.d/cc-switch
+echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
+```
 
-## CI/CD Pipeline
+### Aliases
 
-### CI Workflow (.github/workflows/ci.yml)
-
-- **Multi-platform testing**: Ubuntu, Windows, macOS
-- **Cross-compilation**: Builds for x86_64 and aarch64 architectures
-- **Code quality**: Formatting checks, clippy linting, security audit
-- **Coverage**: Code coverage reporting with codecov
-
-### Release Workflow (.github/workflows/release.yml)
-
-- **Multi-architecture releases**: Linux, Windows, macOS (Intel and ARM)
-- **Automated packaging**: Creates tar.gz artifacts for each target
-- **GitHub releases**: Automated release creation with changelog
-
-## File Storage Locations
-
-- **App Config**: `~/.cc-switch/configurations.json`
-- **Claude Settings**: `~/.claude/settings.json` (default) or custom directory
-- **Path Resolution**: Supports both absolute paths and home-relative paths
-
-## Important Implementation Details
-
-### Major Architecture Changes
-
-- **Modular Structure**: Codebase refactored from single file to multi-module architecture
-- **Interactive Terminal UI**: Full terminal-based interactive menus with keyboard navigation
-- **Enhanced Configuration**: Support for model and small_fast_model environment variables
-- **Real-time Preview**: Interactive selection shows full configuration details before switching
-- **Auto-launching**: Automatic Claude CLI execution after configuration switches
-
-### Command Evolution
-
-- **"switch" → "use"**: The main command changed from `switch` to `use` for clarity
-- **Backward Compatibility**: The `switch` command is still available as an alias
-- **Interactive Modes**: Both `use` and `current` commands support interactive selection
-- **Enhanced Add Command**: Support for positional and flag-based arguments with interactive mode
-
-### Error Handling
-
-- Uses `anyhow` for comprehensive error handling with context
-- All file operations include proper error context for debugging
-- Graceful handling of missing files (creates defaults)
-
-### Configuration Switching
-
-- The `use cc` command removes API configuration entirely (resets to default)
-- Preserves other settings in Claude's settings.json when modifying API config
-- Validates configuration existence before switching
-
-### Shell Integration
-
-- Dynamic completion for configuration aliases with real-time loading
-- Multi-shell support: fish, zsh, bash, elvish, powershell
-- Alias generation system: `cs='cc-switch'` and `ccd='claude --dangerously-skip-permissions'`
-- Hidden `--list-aliases` flag for programmatic access
-- Eval-compatible alias output for immediate shell integration
-
-### Cross-Platform Support
-
-- Uses `dirs` crate for cross-platform directory resolution
-- Handles file path differences between Windows, Linux, and macOS
-- CI builds for multiple target architectures
+Generate with `cc-switch alias <shell>`:
+- `cs='cc-switch'`
+- `ccd='claude --dangerously-skip-permissions'`
 
 ## Testing Strategy
 
+### Test Organization
+
+- **Library Tests** (`#[cfg(test)]` in `src/`): 20 tests
+  - Unit tests for individual functions
+  - Tests in same file as code
+
+- **Integration Tests** (`tests/` directory): 154 tests
+  - End-to-end workflow testing
+  - CLI interaction testing
+  - Error handling and edge cases
+  - Cross-platform compatibility
+
+### Running Tests
+
+```bash
+# All tests
+cargo test
+
+# Library only
+cargo test --lib
+
+# Integration only
+cargo test --tests
+
+# Specific integration test
+cargo test --test integration_tests
+
+# Single test
+cargo test test_name
+
+# With output
+cargo test -- --nocapture
+```
+
 ### Test Coverage
 
-- **Unit Tests**: 43 tests covering all core functionality
-- **Integration Tests**: Full workflow testing, error scenarios, edge cases
-- **Error Handling Tests**: Comprehensive error condition testing including boundary cases
-- **Interactive Feature Tests**: Number key quick selection, pagination logic, boundary condition testing
-- **Cross-Platform Tests**: Path resolution, file operations on different platforms
+- **Configuration Management**: CRUD operations, validation, JSON serialization
+- **Settings Management**: Environment variable handling, JSON persistence
+- **CLI Parsing**: Command structure, argument validation, help generation
+- **Error Handling**: Invalid inputs, file operations, edge cases
+- **Interactive Features**: Keyboard navigation, pagination, boundary conditions
+- **Shell Integration**: Completion generation, alias output
+- **Cross-Platform**: Path resolution, file operations on different OSes
 
-### Test Categories
+## Pre-commit Hooks
 
-1. **Configuration Management**: CRUD operations, validation, serialization
-2. **Settings Management**: JSON handling, environment variable management
-3. **CLI Parsing**: Command structure, argument validation, help generation
-4. **Error Handling**: Invalid inputs, file operations, edge cases
-5. **Integration**: End-to-end workflows, shell integration
-6. **Interactive Features**:
-   - Pagination calculation and navigation logic testing
-   - Number key mapping and boundary condition testing
-   - Empty configuration list and exception handling testing
+**Automatic Checks** (run on every commit):
+- `cargo check` - Compilation verification
+- `cargo fmt --check` - Code formatting
+- `cargo clippy -- -D warnings` - Linting (warnings as errors)
+- `cargo test` - All tests
+- `cargo audit` - Security vulnerability scan
+- `cargo doc --no-deps` - Documentation build
 
-## Key Dependencies and Their Roles
+**Setup**: `./scripts/setup-pre-commit.sh`
 
-- **anyhow**: Context-rich error handling and propagation
-- **clap**: Command-line argument parsing with auto-generated help and completion
-- **clap_complete**: Shell completion script generation
-- **serde**: JSON serialization/deserialization with derive macros
-- **dirs**: Cross-platform directory resolution (home, config directories)
-- **colored**: Terminal output formatting and colors
-- **crossterm**: Cross-platform terminal manipulation and events (keyboard navigation, raw mode)
-- **tempfile**: Temporary file management for testing
+## CI/CD Pipeline
+
+### CI Workflow (`.github/workflows/ci.yml`)
+- Multi-platform: Ubuntu, Windows, macOS
+- Cross-compilation: x86_64 and aarch64
+- Runs: formatting check, clippy, tests, security audit
+- Coverage reporting with codecov
+
+### Release Workflow (`.github/workflows/release.yml`)
+- Multi-architecture releases (Linux, Windows, macOS Intel/ARM)
+- Automatic tar.gz packaging
+- GitHub release creation with changelog
+
+## File Storage Locations
+
+- **Configuration Storage**: `~/.cc-switch/configurations.json`
+- **Claude Settings**: `~/.claude/settings.json` (default) or custom via `--set-default-dir`
+- **Path Resolution**: Supports absolute and home-relative paths
+
+## Error Handling
+
+- Uses `anyhow` for error context and propagation
+- All operations include detailed error messages
+- Graceful handling of missing files (creates defaults)
+- Validates inputs before processing
+
+## Cross-Platform Support
+
+- Uses `dirs` crate for home/config directory resolution
+- Handles path differences (Windows, Linux, macOS)
+- CI builds for multiple target architectures
+- Terminal handling via crossterm (cross-platform)
 
 ## Common Development Tasks
 
-### Adding New Commands
+### Adding a New Command
 
-1. Add variant to `Commands` enum in `src/cmd/cli.rs`
-2. Implement command handler function in appropriate module (`src/cmd/main.rs` or dedicated module)
-3. Add match arm in `run()` function in `src/cmd/main.rs`
-4. Add completion logic if needed in `src/cmd/completion.rs`
-5. Write comprehensive tests in appropriate test module
-6. Update help text and documentation
+1. Add variant to `Commands` enum in `src/cli/cli.rs`
+2. Implement handler in `src/cli/main.rs`
+3. Add match arm in `run()` function
+4. Add completion support in `src/cli/completion.rs` if needed
+5. Write integration tests in `tests/`
+6. Update help text in `src/cli/cli.rs`
 
 ### Modifying Configuration Structure
 
-1. Update `Configuration` struct
-2. Update serialization/deserialization logic if needed
-3. Modify storage operations
+1. Update `Configuration` struct in `src/config/types.rs`
+2. Update serialization in `config_storage.rs` if needed
+3. Update validation in `src/config/config.rs`
 4. Update tests to reflect changes
 5. Test backward compatibility
 
-### Adding New Shell Support
+### Adding Shell Support
 
-1. Add shell variant to `generate_completion()` function in `src/cmd/completion.rs`
-2. Implement shell-specific completion logic in `src/cmd/shell_completion.rs`
-3. Add to `generate_aliases()` function for alias support
-4. Update help text in `src/cmd/cli.rs`
-5. Test completion and alias functionality across platforms
+1. Add shell variant in `src/cli/completion.rs::generate_completion()`
+2. Add completion logic for the shell
+3. Add to `generate_aliases()` if needed
+4. Update help text
+5. Test on actual shell
 
-## Important Notes for Future Development
+## Important Implementation Notes
 
-1. **Backward Compatibility**: Maintain compatibility with existing configuration files
-2. **Error Context**: Provide detailed error messages with context for debugging
-3. **Cross-Platform**: Test on all supported platforms (Linux, macOS, Windows)
-4. **Security**: Handle API tokens securely, avoid logging sensitive data
-5. **Testing**: Maintain high test coverage (currently 100% with 57 tests)
-6. **Documentation**: Keep README.md and CLAUDE.md synchronized with code changes
-7. **Git Push Validation**: Before pushing to GitHub, ensure all CI/CD workflows pass locally by running:
-   - `cargo nextest` - All tests must pass
-   - `cargo clippy -- -W warnings` - No clippy warnings
-   - `cargo fmt --check` - Code must be formatted
-   - `cargo audit` - No security vulnerabilities
-   - Verify `.github/workflows/` configuration files are valid and workflow will succeed
+### Security
+- API tokens are never logged
+- Sensitive input handled carefully in interactive mode
+- Configuration files should have appropriate permissions
+
+### Backward Compatibility
+- Existing configuration files remain compatible
+- Old command names preserved where possible (`switch` → `use`)
+
+### Performance
+- Configuration loading is lazy (only when needed)
+- Large configuration lists paginated for responsiveness
+- Release build optimized with LTO and size optimization
+
+## Key Dependencies
+
+- **anyhow**: Context-rich error handling
+- **clap**: CLI parsing with derive macros
+- **clap_complete**: Shell completion generation
+- **serde/serde_json**: JSON serialization
+- **dirs**: Cross-platform directory paths
+- **colored**: Terminal output formatting
+- **crossterm**: Terminal manipulation and events
+- **tempfile**: Testing with temporary files
+
+## Version and Compatibility
+
+- **Rust Version**: 1.88.0 or later
+- **Rust Edition**: 2024
+- **Platforms**: Linux, macOS, Windows (CI tested)
+- **Architectures**: x86_64, aarch64 (via CI)
+
+## Before Pushing to GitHub
+
+Verify locally:
+```bash
+cargo test              # All tests pass
+cargo clippy -- -W warnings  # No warnings
+cargo fmt --check       # Code formatted
+cargo audit            # No security vulnerabilities
+```
+
+These are automatically checked by CI, but catching issues locally saves time.

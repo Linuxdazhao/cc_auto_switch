@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use std::fs;
 
-use crate::cmd::config::get_config_storage_path;
-use crate::cmd::types::{ConfigStorage, Configuration};
+use crate::config::config::get_config_storage_path;
+use crate::config::types::{ConfigStorage, Configuration};
 
 impl ConfigStorage {
     /// Load configurations from disk

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::cmd::completion::*;
+    use cc_switch::cli::completion::*;
 
     // generate_aliases Tests
     #[test]
@@ -459,7 +459,7 @@ mod tests {
     // Test command factory integration
     #[test]
     fn test_command_factory_usage() {
-        use crate::cmd::cli::Cli;
+        use cc_switch::cli::Cli;
         use clap::CommandFactory;
 
         // Test that we can create the command factory (used in generate_completion)

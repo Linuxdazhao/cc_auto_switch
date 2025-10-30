@@ -1,10 +1,10 @@
-use crate::cmd::cli::{Cli, Commands};
-use crate::cmd::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
-use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
-use crate::cmd::interactive::{
+use crate::cli::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
+use crate::cli::{Cli, Commands};
+use crate::config::types::AddCommandParams;
+use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
+use crate::interactive::{
     handle_current_command, handle_interactive_selection, read_input, read_sensitive_input,
 };
-use crate::cmd::types::AddCommandParams;
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::*;

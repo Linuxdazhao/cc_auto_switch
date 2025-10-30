@@ -2,15 +2,14 @@ use anyhow::{Context, Result};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use crate::config::types::Configuration;
+
 /// Type alias for environment variable map
 type EnvVarMap = BTreeMap<String, String>;
 /// Type alias for environment variable tuples
 type EnvVarTuple = (String, String);
 /// Type alias for environment variable tuples vector
 type EnvVarTuples = Vec<EnvVarTuple>;
-
-// Re-export types for backward compatibility
-pub use crate::cmd::types::{ConfigStorage, Configuration};
 
 /// Environment variable manager for API configuration
 ///

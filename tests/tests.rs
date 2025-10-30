@@ -1,9 +1,9 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod tests {
-    use crate::cmd::cli::*;
-    use crate::cmd::config::EnvironmentConfig;
-    use crate::cmd::config::*;
+    use cc_switch::cli::cli::*;
+    use cc_switch::config::EnvironmentConfig;
+    use cc_switch::config::*;
     use std::fs;
     use tempfile::TempDir;
 
@@ -838,7 +838,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_long_token() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with a long token (typical Claude API token)
         let token = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -851,7 +851,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_medium_token() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with medium length token (15 chars)
         let token = "sk-ant-medium1";
@@ -863,7 +863,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_short_token() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with short token (6 chars)
         let token = "short1";
@@ -875,7 +875,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_very_short_token() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with very short token (3 chars)
         let token = "abc";
@@ -887,7 +887,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_single_char() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with single character token
         let token = "x";
@@ -899,7 +899,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_empty_token() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with empty token
         let token = "";
@@ -911,7 +911,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_boundary_exactly_20_chars() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with exactly 20 characters (PREFIX_LEN + SUFFIX_LEN)
         let token = "12345678901234567890";
@@ -923,7 +923,7 @@ mod tests {
 
     #[test]
     fn test_format_token_for_display_boundary_21_chars() {
-        use crate::cmd::display_utils::format_token_for_display;
+        use cc_switch::cli::display_utils::format_token_for_display;
 
         // Test with 21 characters (just over PREFIX_LEN + SUFFIX_LEN)
         let token = "123456789012345678901";
@@ -937,8 +937,8 @@ mod tests {
 
 #[cfg(test)]
 mod config_edit_tests {
-    use crate::cmd::config::EnvironmentConfig;
-    use crate::cmd::types::{ConfigStorage, Configuration};
+    use cc_switch::config::EnvironmentConfig;
+    use cc_switch::config::types::{ConfigStorage, Configuration};
     use tempfile::TempDir;
 
     fn create_test_storage_dir() -> (TempDir, ConfigStorage) {

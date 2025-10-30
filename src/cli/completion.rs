@@ -1,9 +1,8 @@
+use crate::config::ConfigStorage;
 use anyhow::Result;
+use clap::CommandFactory;
 use colored::*;
 use std::io::stdout;
-
-use crate::cmd::cli::Cli;
-use crate::cmd::config_storage::ConfigStorage;
 
 /// Generate shell aliases for eval
 ///
@@ -45,7 +44,7 @@ pub fn generate_aliases(shell: &str) -> Result<()> {
 /// # Errors
 /// Returns error if shell is not supported or generation fails
 pub fn generate_completion(shell: &str) -> Result<()> {
-    use clap::CommandFactory;
+    use crate::cli::Cli;
 
     let mut app = Cli::command();
 

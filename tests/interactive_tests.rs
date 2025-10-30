@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
-    use crate::cmd::interactive::*;
+    use cc_switch::config::{ConfigStorage, Configuration, EnvironmentConfig};
+    use cc_switch::interactive::*;
 
     /// Helper function to create a test configuration
     fn create_test_config(alias: &str, token: &str, url: &str) -> Configuration {

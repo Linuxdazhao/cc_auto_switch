@@ -19,7 +19,7 @@
 ///
 /// # Examples
 /// ```
-/// use cc_switch::cmd::display_utils::text_display_width;
+/// use cc_switch::cli::display_utils::text_display_width;
 ///
 /// assert_eq!(text_display_width("Hello"), 5);           // 5 ASCII chars = 5 columns
 /// assert_eq!(text_display_width("你好"), 4);              // 2 Chinese chars = 4 columns  
@@ -71,7 +71,7 @@ pub fn text_display_width(text: &str) -> usize {
 ///
 /// # Examples
 /// ```
-/// use cc_switch::cmd::display_utils::{pad_text_to_width, TextAlignment};
+/// use cc_switch::cli::display_utils::{pad_text_to_width, TextAlignment};
 ///
 /// assert_eq!(pad_text_to_width("Hello", 10, TextAlignment::Left, ' '), "Hello     ");
 /// assert_eq!(pad_text_to_width("你好", 10, TextAlignment::Center, ' '), "   你好   ");

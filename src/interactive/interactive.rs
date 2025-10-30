@@ -1,9 +1,9 @@
-use crate::cmd::config::EnvironmentConfig;
-use crate::cmd::display_utils::{
+use crate::cli::display_utils::{
     TextAlignment, format_token_for_display, get_terminal_width, pad_text_to_width,
     text_display_width,
 };
-use crate::cmd::types::{ConfigStorage, Configuration};
+use crate::config::EnvironmentConfig;
+use crate::config::types::{ConfigStorage, Configuration};
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{

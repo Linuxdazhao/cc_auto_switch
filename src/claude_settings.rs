@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 
-use crate::cmd::types::{ClaudeSettings, Configuration};
-use crate::cmd::utils::get_claude_settings_path;
+use crate::config::types::{ClaudeSettings, Configuration};
+use crate::utils::get_claude_settings_path;
 
 impl ClaudeSettings {
     /// Load Claude settings from disk
@@ -40,7 +40,7 @@ impl ClaudeSettings {
 
         // Ensure env field exists (handle case where it might be missing from JSON)
         if settings.env.is_empty() && !content.contains("\"env\"") {
-            settings.env = HashMap::new();
+            settings.env = BTreeMap::new();
         }
 
         Ok(settings)
@@ -87,7 +87,7 @@ impl ClaudeSettings {
     pub fn switch_to_config(&mut self, config: &Configuration) {
         // Ensure env field exists
         if self.env.is_empty() {
-            self.env = HashMap::new();
+            self.env = BTreeMap::new();
         }
 
         // First remove all Anthropic environment variables to ensure clean state
@@ -103,20 +103,20 @@ impl ClaudeSettings {
             .insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
 
         // Set model configurations only if provided (don't set empty values)
-        if let Some(model) = &config.model {
-            if !model.is_empty() {
-                self.env
-                    .insert("ANTHROPIC_MODEL".to_string(), model.clone());
-            }
+        if let Some(model) = &config.model
+            && !model.is_empty()
+        {
+            self.env
+                .insert("ANTHROPIC_MODEL".to_string(), model.clone());
         }
 
-        if let Some(small_fast_model) = &config.small_fast_model {
-            if !small_fast_model.is_empty() {
-                self.env.insert(
-                    "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
-                    small_fast_model.clone(),
-                );
-            }
+        if let Some(small_fast_model) = &config.small_fast_model
+            && !small_fast_model.is_empty()
+        {
+            self.env.insert(
+                "ANTHROPIC_SMALL_FAST_MODEL".to_string(),
+                small_fast_model.clone(),
+            );
         }
     }
 
@@ -127,7 +127,7 @@ impl ClaudeSettings {
     pub fn remove_anthropic_env(&mut self) {
         // Ensure env field exists
         if self.env.is_empty() {
-            self.env = HashMap::new();
+            self.env = BTreeMap::new();
         }
 
         self.env.remove("ANTHROPIC_AUTH_TOKEN");

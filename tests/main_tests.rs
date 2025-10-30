@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::cmd::cli::{Cli, Commands};
-    use crate::cmd::config::{ConfigStorage, Configuration, EnvironmentConfig};
-    use crate::cmd::main::*;
+    use cc_switch::cli::main::*;
+    use cc_switch::cli::{Cli, Commands};
+    use cc_switch::config::{ConfigStorage, Configuration, EnvironmentConfig};
     use clap::Parser;
 
     /// Helper function to create a test configuration
@@ -48,7 +48,7 @@ mod tests {
     // AddCommandParams Tests
     #[test]
     fn test_add_command_params_creation() {
-        use crate::cmd::types::AddCommandParams;
+        use cc_switch::config::types::AddCommandParams;
 
         let params = AddCommandParams {
             alias_name: "test".to_string(),

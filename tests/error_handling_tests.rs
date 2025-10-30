@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod error_handling_tests {
-    use crate::cmd::config::*;
+    use cc_switch::config::*;
 
     /// Helper function to create a test configuration
     fn create_test_config(alias: &str, token: &str, url: &str) -> Configuration {
