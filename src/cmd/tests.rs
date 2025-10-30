@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::cmd::cli::*;
     use crate::cmd::config::EnvironmentConfig;
@@ -586,12 +587,12 @@ mod tests {
         assert!(
             env_tuples
                 .iter()
-                .any(|(k, v)| k == "ANTHROPIC_AUTH_TOKEN" && v == "")
+                .any(|(k, v)| k == "ANTHROPIC_AUTH_TOKEN" && v.is_empty())
         );
         assert!(
             env_tuples
                 .iter()
-                .any(|(k, v)| k == "ANTHROPIC_BASE_URL" && v == "")
+                .any(|(k, v)| k == "ANTHROPIC_BASE_URL" && v.is_empty())
         );
     }
 

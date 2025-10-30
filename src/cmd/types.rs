@@ -1,5 +1,12 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+
+/// Type alias for configuration map
+type ConfigMap = BTreeMap<String, Configuration>;
+/// Type alias for environment variable map
+type EnvMap = BTreeMap<String, String>;
+/// Type alias for JSON value map
+type JsonMap = BTreeMap<String, serde_json::Value>;
 
 /// Represents a Claude API configuration
 ///
@@ -50,7 +57,7 @@ pub struct Configuration {
 #[derive(Serialize, Deserialize, Default)]
 pub struct ConfigStorage {
     /// Map of alias names to configuration objects
-    pub configurations: HashMap<String, Configuration>,
+    pub configurations: ConfigMap,
     /// Custom directory for Claude settings (optional)
     pub claude_settings_dir: Option<String>,
 }
@@ -63,9 +70,9 @@ pub struct ConfigStorage {
 #[allow(dead_code)]
 pub struct ClaudeSettings {
     /// Environment variables map (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, ANTHROPIC_SMALL_FAST_MODEL)
-    pub env: HashMap<String, String>,
+    pub env: EnvMap,
     /// Other settings to preserve when modifying API configuration
-    pub other: HashMap<String, serde_json::Value>,
+    pub other: JsonMap,
 }
 
 impl Serialize for ClaudeSettings {
@@ -101,9 +108,9 @@ impl<'de> Deserialize<'de> for ClaudeSettings {
         #[derive(Deserialize)]
         struct ClaudeSettingsHelper {
             #[serde(default)]
-            env: HashMap<String, String>,
+            env: EnvMap,
             #[serde(flatten)]
-            other: HashMap<String, serde_json::Value>,
+            other: JsonMap,
         }
 
         let helper = ClaudeSettingsHelper::deserialize(deserializer)?;

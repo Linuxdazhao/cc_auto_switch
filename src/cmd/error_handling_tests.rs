@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod error_handling_tests {
     use crate::cmd::config::*;
 

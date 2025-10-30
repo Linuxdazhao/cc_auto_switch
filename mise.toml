@@ -1,0 +1,360 @@
+# mise configuration for cc_auto_switch
+# Replaces Makefile functionality
+
+# Use latest stable Rust version
+[tools]
+rust = "latest"
+
+[env]
+# Variables
+CARGO = "cargo"
+UPX = "upx"
+DIST_DIR = "dist"
+
+# Detect OS and set platform-specific variables
+[tasks.detect-os]
+description = "Detect current operating system"
+run = """bash -lc '''
+UNAME_S=$(uname -s)
+if [ "$UNAME_S" = "Linux" ]; then
+    echo "HOST_OS=linux"
+    echo "HOST_EXT="
+elif [ "$UNAME_S" = "Darwin" ]; then
+    echo "HOST_OS=macos"
+    echo "HOST_EXT="
+elif [ "$OS" = "Windows_NT" ]; then
+    echo "HOST_OS=windows"
+    echo "HOST_EXT=.exe"
+fi
+'''"""
+
+[tasks.all]
+description = "Build in release mode for current platform (default)"
+run = "cargo build --release"
+alias = "all"
+
+[tasks.build]
+description = "Build in release mode for current platform"
+run = "cargo build --release"
+
+[tasks.pack]
+description = "Build and pack with UPX for current platform"
+depends = ["build", "check-upx"]
+run = """bash -lc '''
+echo "Packing binary with UPX..."
+upx --best --ultra-brute -o /Users/jingzhao/target-rust/release/cc_auto_switch-packed /Users/jingzhao/target-rust/release/cc_auto_switch
+echo "Packed binary: /Users/jingzhao/target-rust/release/cc_auto_switch-packed"
+'''"""
+
+[tasks.install]
+description = "Build and install for current platform"
+depends = ["build"]
+run = "cargo install --path ."
+
+[tasks.build-all]
+description = "Build for all target platforms"
+run = """bash -lc '''
+for target in x86_64-unknown-linux-musl x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin; do
+    echo "Building for target $target..."
+    cargo build --release --target $target
+done
+'''"""
+
+[tasks.build-linux]
+description = "Build for Linux targets"
+run = """bash -lc '''
+echo "Building for target x86_64-unknown-linux-musl..."
+cargo build --release --target x86_64-unknown-linux-musl
+'''"""
+
+[tasks.build-macos]
+description = "Build for macOS targets"
+run = """bash -lc '''
+echo "Building for target x86_64-apple-darwin..."
+cargo build --release --target x86_64-apple-darwin
+echo "Building for target aarch64-apple-darwin..."
+cargo build --release --target aarch64-apple-darwin
+'''"""
+
+[tasks.build-windows]
+description = "Build for Windows targets"
+run = """bash -lc '''
+echo "Building for target x86_64-pc-windows-gnu..."
+cargo build --release --target x86_64-pc-windows-gnu
+'''"""
+
+[tasks.build-target]
+description = "Build for specific target (use: mise run build-target TARGET=x86_64-unknown-linux-musl)"
+run = """bash -lc '''
+target="$@"
+if [ -z "$target" ]; then
+    echo "Error: Please specify a target. Usage: mise run build-target TARGET=<target>"
+    exit 1
+fi
+echo "Building for target $target..."
+cargo build --release --target "$target"
+'''"""
+
+[tasks.package-all]
+description = "Package all targets as tar.gz files"
+depends = ["build-all"]
+run = """bash -lc '''
+echo "Packaging all targets..."
+mkdir -p dist
+for target in x86_64-unknown-linux-musl x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin; do
+    echo "Packaging $target..."
+    mkdir -p "dist/$target"
+    if echo "$target" | grep -q "windows"; then
+        ext=".exe"
+    else
+        ext=""
+    fi
+    if [ -f "target/$target/release/cc_auto_switch$ext" ]; then
+        cp "target/$target/release/cc_auto_switch$ext" "dist/$target/cc_auto_switch$ext"
+        cd "dist/$target" && tar -czf "../cc_auto_switch-$target.tar.gz" "cc_auto_switch$ext" && cd ../../
+        echo "  Created dist/cc_auto_switch-$target.tar.gz"
+    fi
+done
+'''"""
+
+[tasks.package-target]
+description = "Package specific target as tar.gz file (use: mise run package-target TARGET=x86_64-unknown-linux-musl)"
+depends = ["build-target"]
+run = """bash -lc '''
+target="$@"
+if [ -z "$target" ]; then
+    echo "Error: Please specify a target. Usage: mise run package-target TARGET=<target>"
+    exit 1
+fi
+echo "Packaging target $target..."
+mkdir -p "dist/$target"
+if echo "$target" | grep -q "windows"; then
+    ext=".exe"
+else
+    ext=""
+fi
+if [ -f "target/$target/release/cc_auto_switch$ext" ]; then
+    cp "target/$target/release/cc_auto_switch$ext" "dist/$target/cc_auto_switch$ext"
+    cd "dist/$target" && tar -czf "../cc_auto_switch-$target.tar.gz" "cc_auto_switch$ext" && cd ../../
+    echo "Created dist/cc_auto_switch-$target.tar.gz"
+fi
+'''"""
+
+[tasks.release]
+description = "Create complete release packages"
+depends = ["package-all"]
+run = """bash -lc '''
+echo "Creating release packages..."
+echo "Release packages created in dist/"
+ls -la dist/*.tar.gz
+'''"""
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = """bash -lc '''
+cargo clean
+rm -rf dist
+'''"""
+
+[tasks.rebuild]
+description = "Clean and rebuild for current platform"
+depends = ["clean", "build"]
+
+[tasks.rebuild-all]
+description = "Clean and rebuild all targets"
+depends = ["clean", "build-all"]
+
+[tasks.check-upx]
+description = "Check if UPX is installed"
+run = """bash -lc '''
+if ! command -v upx >/dev/null 2>&1; then
+    echo "UPX is not installed. Please install UPX to use packing features."
+    exit 1
+fi
+echo "UPX is installed."
+'''"""
+
+[tasks.sizes]
+description = "Show binary sizes for current platform"
+depends = ["build"]
+run = """bash -lc '''
+echo "Binary sizes:"
+ls -lh target/release/cc_auto_switch | awk '{print "Original: " $5}'
+if [ -f "/Users/jingzhao/target-rust/release/cc_auto_switch-packed" ]; then
+    echo "Packed:   $(ls -lh /Users/jingzhao/target-rust/release/cc_auto_switch-packed | awk '{print $5}')"
+    compression=$(( 100 - $(stat -c%s /Users/jingzhao/target-rust/release/cc_auto_switch-packed * 100 / $(stat -c%s target/release/cc_auto_switch)) ))
+    echo "Compression ratio: $compression%"
+fi
+'''"""
+
+[tasks.sizes-all]
+description = "Show binary sizes for all targets"
+depends = ["build-all"]
+run = """bash -lc '''
+echo "Binary sizes for all targets:"
+for target in x86_64-unknown-linux-musl x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin; do
+    if echo "$target" | grep -q "windows"; then
+        ext=".exe"
+    else
+        ext=""
+    fi
+    if [ -f "target/$target/release/cc_auto_switch$ext" ]; then
+        echo "  $target: $(ls -lh "target/$target/release/cc_auto_switch$ext" | awk '{print $5}')"
+    fi
+done
+'''"""
+
+[tasks.run]
+description = "Run the release binary"
+depends = ["build"]
+run = "target/release/cc_auto_switch"
+
+[tasks.run-packed]
+description = "Run the packed binary"
+depends = ["pack"]
+run = """bash -lc '''
+if [ -f "/Users/jingzhao/target-rust/release/cc_auto_switch-packed" ]; then
+    /Users/jingzhao/target-rust/release/cc_auto_switch-packed
+else
+    echo "Packed binary not found. Run 'mise pack' first."
+    exit 1
+fi
+'''"""
+
+[tasks.dev]
+description = "Run in development mode"
+run = "cargo run"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test"
+
+[tasks.check]
+description = "Check code compilation"
+run = "cargo check"
+
+[tasks.fmt]
+description = "Format code"
+run = "cargo fmt"
+
+[tasks.fmt-check]
+description = "Check code formatting"
+run = "cargo fmt --check"
+
+[tasks.lint]
+description = "Lint code"
+run = "cargo clippy"
+
+[tasks.clippy-strict]
+description = "Lint with warnings as errors"
+run = "cargo clippy -- -D warnings"
+
+[tasks.audit]
+description = "Run security audit"
+run = "cargo audit"
+
+[tasks.install-hooks]
+description = "Install pre-commit hooks"
+run = "./scripts/setup-pre-commit.sh"
+
+[tasks.run-hooks]
+description = "Run pre-commit hooks manually"
+run = "pre-commit run --all-files"
+
+[tasks.quality]
+description = "Run all quality checks"
+depends = ["fmt-check", "clippy-strict", "check", "test", "audit"]
+run = """bash -lc '''
+echo "All quality checks passed!"
+'''"""
+
+[tasks.quick-check]
+description = "Run quick checks (fmt + clippy + check)"
+depends = ["fmt-check", "clippy-strict", "check"]
+run = """bash -lc '''
+echo "Quick checks passed!"
+'''"""
+
+[tasks.update]
+description = "Update dependencies"
+run = "cargo update"
+
+[tasks.publish]
+description = "Publish to crates.io"
+run = """bash -lc '''
+echo "Publishing to crates.io..."
+cargo publish
+echo "Published to crates.io successfully!"
+'''"""
+
+[tasks.publish-dry-run]
+description = "Dry-run publish to crates.io"
+run = """bash -lc '''
+echo "Running dry-run publish to crates.io..."
+cargo publish --dry-run
+echo "Dry-run publish completed successfully!"
+'''"""
+
+[tasks.help]
+description = "Show help message"
+run = """bash -lc '''
+echo "Available targets:"
+echo ""
+echo "Build targets:"
+echo "  all             - Build in release mode for current platform (default)"
+echo "  build           - Build in release mode for current platform"
+echo "  build-all       - Build for all target platforms"
+echo "  build-linux     - Build for Linux targets (x86_64-unknown-linux-musl)"
+echo "  build-macos     - Build for macOS targets (x86_64-apple-darwin, aarch64-apple-darwin)"
+echo "  build-windows   - Build for Windows targets (x86_64-pc-windows-gnu)"
+echo "  build-target    - Build for specific target (use: mise run build-target TARGET=<target>)"
+echo ""
+echo "Package targets:"
+echo "  pack            - Build and pack with UPX for current platform"
+echo "  package-all     - Package all targets as tar.gz files"
+echo "  package-target  - Package specific target as tar.gz file (use: mise run package-target TARGET=<target>)"
+echo "  release         - Create complete release packages"
+echo ""
+echo "Install targets:"
+echo "  install         - Build and install binary for current platform"
+echo ""
+echo "Publish targets:"
+echo "  publish         - Publish to crates.io"
+echo "  publish-dry-run - Dry-run publish to crates.io"
+echo ""
+echo "Clean targets:"
+echo "  clean           - Clean build artifacts"
+echo "  rebuild         - Clean and rebuild for current platform"
+echo "  rebuild-all     - Clean and rebuild all targets"
+echo ""
+echo "Utility targets:"
+echo "  check-upx       - Check if UPX is installed"
+echo "  sizes           - Show binary sizes for current platform"
+echo "  sizes-all       - Show binary sizes for all targets"
+echo "  run             - Run the release binary"
+echo "  run-packed      - Run the packed binary"
+echo "  dev             - Run in development mode"
+echo "  test            - Run tests"
+echo "  check           - Check code compilation"
+echo "  fmt             - Format code"
+echo "  fmt-check       - Check code formatting"
+echo "  lint            - Lint code"
+echo "  clippy-strict   - Lint with warnings as errors"
+echo "  audit           - Run security audit"
+echo "  install-hooks   - Install pre-commit hooks"
+echo "  run-hooks       - Run pre-commit hooks manually"
+echo "  quality         - Run all quality checks"
+echo "  quick-check     - Run quick checks (fmt + clippy + check)"
+echo "  update          - Update dependencies"
+echo "  help            - Show this help message"
+echo ""
+echo "Supported targets:"
+echo "  x86_64-unknown-linux-musl, x86_64-pc-windows-gnu, x86_64-apple-darwin, aarch64-apple-darwin"
+echo ""
+echo "Examples:"
+echo "  mise run build-all                   # Build for all platforms"
+echo "  mise run build-linux                 # Build for Linux only"
+echo "  mise run package-target TARGET=x86_64-unknown-linux-musl  # Package specific Linux target"
+echo "  mise run release                     # Create complete release"
+echo "  mise run publish                     # Publish to crates.io"
+'''"""

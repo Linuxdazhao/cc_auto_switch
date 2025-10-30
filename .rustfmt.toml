@@ -1,0 +1,2 @@
+# Rustfmt configuration for cc_auto_switch
+edition = "2024"

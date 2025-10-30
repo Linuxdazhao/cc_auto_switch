@@ -160,6 +160,9 @@ mod tests {
         // Since we can't easily mock the file system, we test that it doesn't panic
         let result = list_aliases_for_completion();
         // Should succeed even if no configs exist (will create default storage)
+        if let Err(e) = &result {
+            eprintln!("Error: {:?}", e);
+        }
         assert!(result.is_ok(), "Should handle empty storage gracefully");
     }
 

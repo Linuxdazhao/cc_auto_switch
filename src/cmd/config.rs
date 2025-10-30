@@ -1,6 +1,13 @@
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
+
+/// Type alias for environment variable map
+type EnvVarMap = BTreeMap<String, String>;
+/// Type alias for environment variable tuples
+type EnvVarTuple = (String, String);
+/// Type alias for environment variable tuples vector
+type EnvVarTuples = Vec<EnvVarTuple>;
 
 // Re-export types for backward compatibility
 pub use crate::cmd::types::{ConfigStorage, Configuration};
@@ -11,7 +18,7 @@ pub use crate::cmd::types::{ConfigStorage, Configuration};
 #[derive(Default, Clone)]
 pub struct EnvironmentConfig {
     /// Environment variables to be set
-    pub env_vars: HashMap<String, String>,
+    pub env_vars: EnvVarMap,
 }
 
 impl EnvironmentConfig {
@@ -23,7 +30,7 @@ impl EnvironmentConfig {
     /// # Returns
     /// EnvironmentConfig with the appropriate environment variables set
     pub fn from_config(config: &Configuration) -> Self {
-        let mut env_vars = HashMap::new();
+        let mut env_vars = EnvVarMap::new();
 
         // Set required environment variables
         env_vars.insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
@@ -93,13 +100,13 @@ impl EnvironmentConfig {
     /// Create an empty environment configuration (for reset)
     pub fn empty() -> Self {
         EnvironmentConfig {
-            env_vars: HashMap::new(),
+            env_vars: EnvVarMap::new(),
         }
     }
 
     /// Get environment variables as a Vec of (key, value) tuples
     /// for use with Command::envs()
-    pub fn as_env_tuples(&self) -> Vec<(String, String)> {
+    pub fn as_env_tuples(&self) -> EnvVarTuples {
         self.env_vars
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))

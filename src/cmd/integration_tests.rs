@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod integration_tests {
     use crate::cmd::config::*;
     use std::fs;

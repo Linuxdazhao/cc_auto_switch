@@ -1223,9 +1223,8 @@ mod border_drawing_tests {
 
     #[test]
     fn test_border_drawing_unicode_support() {
-        let border = BorderDrawing::new();
-        // Should create without panic
-        assert!(border.unicode_supported || !border.unicode_supported); // Always true, just testing creation
+        let _border = BorderDrawing::new();
+        // Should create without panic - testing that BorderDrawing can be instantiated
     }
 
     #[test]
@@ -1234,7 +1233,7 @@ mod border_drawing_tests {
             unicode_supported: true,
         };
         let result = border.draw_top_border("Test", 20);
-        assert!(result.len() > 0);
+        assert!(!result.is_empty());
         assert!(result.contains("Test"));
     }
 
@@ -1244,7 +1243,7 @@ mod border_drawing_tests {
             unicode_supported: false,
         };
         let result = border.draw_top_border("Test", 20);
-        assert!(result.len() > 0);
+        assert!(!result.is_empty());
         assert!(result.contains("Test"));
         assert!(result.contains("+"));
         assert!(result.contains("-"));
@@ -1256,7 +1255,7 @@ mod border_drawing_tests {
             unicode_supported: true,
         };
         let result = border.draw_middle_line("Test message", 30);
-        assert!(result.len() > 0);
+        assert!(!result.is_empty());
         assert!(result.contains("Test message"));
     }
 
@@ -1266,7 +1265,7 @@ mod border_drawing_tests {
             unicode_supported: true,
         };
         let result = border.draw_bottom_border(20);
-        assert!(result.len() > 0);
+        assert!(!result.is_empty());
     }
 
     #[test]
@@ -1431,7 +1430,7 @@ mod pagination_tests {
 
         // Can go to previous page
         if current_page > 0 {
-            current_page -= 1;
+            current_page = current_page.saturating_sub(1);
         }
         assert_eq!(current_page, 1);
     }
@@ -1525,7 +1524,7 @@ mod pagination_tests {
 
         // Navigate to previous page
         if current_page > 0 {
-            current_page -= 1;
+            current_page = current_page.saturating_sub(1);
         }
         assert_eq!(current_page, 1, "Should navigate to previous page");
     }

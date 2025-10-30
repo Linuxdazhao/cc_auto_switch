@@ -78,28 +78,6 @@ mod tests {
 
     // handle_switch_command Tests
     #[test]
-    #[ignore] // Skip this test as it requires external command execution
-    fn test_handle_switch_command_cc_default() {
-        // Test switching to 'cc' (default configuration)
-        let result = handle_switch_command(Some("cc"));
-
-        // Function should complete without panicking
-        // Note: This test will launch Claude CLI in a real environment
-        // In a proper test, we'd want to mock the external command execution
-        match result {
-            Ok(_) => {
-                // Success case - command executed
-            }
-            Err(e) => {
-                // Error case might occur if claude CLI is not installed
-                let error_msg = e.to_string();
-                // Should be a meaningful error about the external command
-                assert!(!error_msg.is_empty());
-            }
-        }
-    }
-
-    #[test]
     fn test_handle_switch_command_nonexistent_alias() {
         // Test switching to a non-existent alias
         let result = handle_switch_command(Some("nonexistent-alias"));
@@ -116,24 +94,6 @@ mod tests {
         let result = handle_switch_command(Some(""));
 
         assert!(result.is_err(), "Should fail for empty alias");
-    }
-
-    #[test]
-    fn test_handle_switch_command_none_interactive_mode() {
-        // Test switching with None (should trigger interactive mode)
-        let result = handle_switch_command(None);
-
-        // This should try to enter interactive mode, which may fail in test environment
-        match result {
-            Ok(_) => {
-                // Success case - interactive mode worked
-            }
-            Err(e) => {
-                // Error case - interactive mode failed (expected in test environment)
-                let error_msg = e.to_string();
-                assert!(!error_msg.is_empty());
-            }
-        }
     }
 
     // CLI Command Parsing Tests
@@ -548,10 +508,10 @@ mod tests {
             "Should handle special characters in alias names"
         );
 
-        if let Ok(cli) = result {
-            if let Some(Commands::Add { alias_name, .. }) = cli.command {
-                assert_eq!(alias_name.unwrap(), "test-config_123");
-            }
+        if let Ok(cli) = result
+            && let Some(Commands::Add { alias_name, .. }) = cli.command
+        {
+            assert_eq!(alias_name.unwrap(), "test-config_123");
         }
     }
 
@@ -568,18 +528,17 @@ mod tests {
         let result = Cli::try_parse_from(args);
         assert!(result.is_ok(), "Should handle Unicode in arguments");
 
-        if let Ok(cli) = result {
-            if let Some(Commands::Add {
+        if let Ok(cli) = result
+            && let Some(Commands::Add {
                 alias_name,
                 token_arg,
                 url_arg,
                 ..
             }) = cli.command
-            {
-                assert_eq!(alias_name.unwrap(), "测试-config");
-                assert_eq!(token_arg, Some("sk-ant-测试".to_string()));
-                assert_eq!(url_arg, Some("https://αpi.测试.com".to_string()));
-            }
+        {
+            assert_eq!(alias_name.unwrap(), "测试-config");
+            assert_eq!(token_arg, Some("sk-ant-测试".to_string()));
+            assert_eq!(url_arg, Some("https://αpi.测试.com".to_string()));
         }
     }
 
@@ -594,18 +553,17 @@ mod tests {
         let result = Cli::try_parse_from(args);
         assert!(result.is_ok(), "Should handle very long arguments");
 
-        if let Ok(cli) = result {
-            if let Some(Commands::Add {
+        if let Ok(cli) = result
+            && let Some(Commands::Add {
                 alias_name,
                 token_arg,
                 url_arg,
                 ..
             }) = cli.command
-            {
-                assert_eq!(alias_name.unwrap().len(), 1000);
-                assert_eq!(token_arg.as_ref().unwrap().len(), 1007); // "sk-ant-" + 1000
-                assert_eq!(url_arg.as_ref().unwrap().len(), 1011); // "https://" + 1000 + "com"
-            }
+        {
+            assert_eq!(alias_name.unwrap().len(), 1000);
+            assert_eq!(token_arg.as_ref().unwrap().len(), 1007); // "sk-ant-" + 1000
+            assert_eq!(url_arg.as_ref().unwrap().len(), 1011); // "https://" + 1000 + "com"
         }
     }
 

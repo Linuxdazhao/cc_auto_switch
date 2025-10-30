@@ -1,0 +1,111 @@
+# Clippy configuration for cc_auto_switch
+# Official configuration reference: https://doc.rust-lang.org/clippy/
+
+# ========================================
+# Complexity Thresholds (Recommended)
+# ========================================
+# Type complexity: maximum acceptable type complexity
+# Default is 200, but 50-80 is more reasonable for maintainable code
+type-complexity-threshold = 80
+
+# Cognitive complexity: maximum acceptable cognitive complexity per function
+# Default is 200, but 15-25 is industry standard for maintainability
+cognitive-complexity-threshold = 25
+
+# ========================================
+# Import and Naming Policies
+# ========================================
+# Warn on ALL wildcard imports (including prelude, super, pub use)
+# Stricter control over import practices
+warn-on-all-wildcard-imports = true
+
+# Disallow common placeholder/test names
+# Use ".." to append to defaults: ["foo", "baz", "quux"] + custom names
+disallowed-names = ["test", "temp", "dummy", ".."]
+
+# Minimum identifier character threshold
+# Prevent overly short variable names (except common single-char vars)
+min-ident-chars-threshold = 2
+
+# Allow common short identifiers
+allowed-idents-below-min-chars = ["i", "j", "x", "y", "z", "w", "n", "id", ".."]
+
+# ========================================
+# Code Size and Structure Limits
+# ========================================
+# Maximum lines per function (default: 100)
+# CLI tools benefit from smaller, focused functions
+too-many-lines-threshold = 50
+
+# Maximum trait bounds before linting (default: 3)
+max-trait-bounds = 3
+
+# Maximum boolean parameters per function (default: 3)
+max-fn-params-bools = 2
+
+# Maximum boolean fields per struct (default: 3)
+max-struct-bools = 2
+
+# ========================================
+# File and Include Size Limits
+# ========================================
+# Maximum include file size in bytes (default: 1000000 = 1MB)
+# Reasonable for CLI configuration files
+max-include-file-size = 65536
+
+# ========================================
+# Stack and Memory Limits
+# ========================================
+# Maximum stack size per function in bytes (default: 512000 = 512KB)
+# CLI tools should avoid deep recursion
+stack-size-threshold = 262144
+
+# ========================================
+# Disallowed Types (Security & Best Practices)
+# ========================================
+# Explicitly disallow problematic types with reasons and replacements
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "Use BTreeMap for deterministic iteration", replacement = "std::collections::BTreeMap" },
+    { path = "std::collections::HashSet", reason = "Use BTreeSet for deterministic iteration", replacement = "std::collections::BTreeSet" },
+]
+
+# ========================================
+# Arithmetic Safety
+# ========================================
+# Prevent arithmetic side effects in performance-critical code
+# For CLI tools, be explicit about numeric operations
+arithmetic-side-effects-allowed = []
+
+# ========================================
+# Module and Item Ordering
+# ========================================
+# Enforce consistent module organization
+# Check all groupings: extern_crate, mod, use, macro, const, fn, etc.
+module-items-ordered-within-groupings = "all"
+
+# ========================================
+# Minimum Supported Rust Version
+# ========================================
+# CRITICAL: Set MSRV to match your project's rust-version in Cargo.toml
+# This disables lints that require newer Rust features
+# Update this to match: rust-version = "1.88" in Cargo.toml
+msrv = "1.88.0"
+
+# ========================================
+# Test-Specific Allowances
+# ========================================
+# Allow indexing/slicing in tests (common for test data manipulation)
+allow-indexing-slicing-in-tests = true
+
+# Allow useless_vec in tests (sometimes needed for test compatibility)
+allow-useless-vec-in-tests = true
+
+# ========================================
+# Private Item Documentation
+# ========================================
+# Check documentation on private items (good for library quality)
+# Set to false to only check public API documentation
+check-private-items = false
+
+# Allow underscore-prefixed fields to skip documentation
+missing-docs-allow-unused = true

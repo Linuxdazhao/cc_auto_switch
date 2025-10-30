@@ -28,13 +28,8 @@ cargo run --release
 
 ```bash
 # Run all tests
-cargo nextest
+cargo nextest run
 
-# Run tests with output
-cargo nextest -- --nocapture
-
-# Run specific test
-cargo nextest test_name
 ```
 
 ### Code Quality
@@ -510,4 +505,3 @@ git commit --no-verify
    - `cargo fmt --check` - Code must be formatted
    - `cargo audit` - No security vulnerabilities
    - Verify `.github/workflows/` configuration files are valid and workflow will succeed
-

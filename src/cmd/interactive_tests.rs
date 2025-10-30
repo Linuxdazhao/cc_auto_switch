@@ -594,7 +594,7 @@ mod tests {
 
         // Test complete workflow: storage -> config -> environment
         let config = storage.get_configuration("test1").unwrap();
-        let env_config = EnvironmentConfig::from_config(&config);
+        let env_config = EnvironmentConfig::from_config(config);
         let env_tuples = env_config.as_env_tuples();
 
         assert_eq!(env_tuples.len(), 2);
@@ -623,8 +623,8 @@ mod tests {
         let config1 = storage.get_configuration("test1").unwrap();
         let config2 = storage.get_configuration("test2").unwrap();
 
-        let env_config1 = EnvironmentConfig::from_config(&config1);
-        let env_config2 = EnvironmentConfig::from_config(&config2);
+        let env_config1 = EnvironmentConfig::from_config(config1);
+        let env_config2 = EnvironmentConfig::from_config(config2);
 
         let env_tuples1 = env_config1.as_env_tuples();
         let env_tuples2 = env_config2.as_env_tuples();
