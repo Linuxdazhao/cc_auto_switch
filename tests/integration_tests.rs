@@ -142,7 +142,10 @@ mod integration_tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.to_string_lossy().contains(".cc-switch"));
-        assert!(path.to_string_lossy().ends_with("configurations.json"));
+        assert!(path.to_string_lossy().contains(".claude"));
+        assert!(
+            path.to_string_lossy()
+                .ends_with("cc_auto_switch_setting.json")
+        );
     }
 }

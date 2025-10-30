@@ -7,34 +7,77 @@ use crate::config::types::{ConfigStorage, Configuration};
 impl ConfigStorage {
     /// Load configurations from disk
     ///
-    /// Reads the JSON file from `~/.cc_auto_switch/configurations.json`
+    /// Reads the JSON file from `~/.claude/cc_auto_switch_setting.json`
+    /// Auto-migrates from old location `~/.cc-switch/configurations.json` if it exists
     /// Returns default empty storage if file doesn't exist
     ///
     /// # Errors
     /// Returns error if file exists but cannot be read or parsed
     pub fn load() -> Result<Self> {
-        let path = get_config_storage_path()?;
+        let new_path = get_config_storage_path()?;
 
-        if !path.exists() {
-            return Ok(ConfigStorage::default());
+        // Check if the new file already exists
+        if new_path.exists() {
+            let content = fs::read_to_string(&new_path).with_context(|| {
+                format!(
+                    "Failed to read configuration storage from {}",
+                    new_path.display()
+                )
+            })?;
+
+            let storage: ConfigStorage = serde_json::from_str(&content)
+                .with_context(|| "Failed to parse configuration storage JSON")?;
+
+            return Ok(storage);
         }
 
-        let content = fs::read_to_string(&path).with_context(|| {
-            format!(
-                "Failed to read configuration storage from {}",
-                path.display()
-            )
-        })?;
+        // Check if old configuration file exists and migrate it
+        let old_path = dirs::home_dir()
+            .map(|home| home.join(".cc-switch").join("configurations.json"))
+            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
 
-        let storage: ConfigStorage = serde_json::from_str(&content)
-            .with_context(|| "Failed to parse configuration storage JSON")?;
+        if old_path.exists() {
+            println!("🔄 Migrating configuration from old location...");
 
-        Ok(storage)
+            let content = fs::read_to_string(&old_path).with_context(|| {
+                format!(
+                    "Failed to read old configuration from {}",
+                    old_path.display()
+                )
+            })?;
+
+            let storage: ConfigStorage = serde_json::from_str(&content)
+                .with_context(|| "Failed to parse old configuration storage JSON")?;
+
+            // Save to new location
+            storage
+                .save()
+                .with_context(|| "Failed to save migrated configuration to new location")?;
+
+            // Remove old directory
+            if let Some(parent) = old_path.parent() {
+                fs::remove_dir_all(parent).with_context(|| {
+                    format!(
+                        "Failed to remove old configuration directory {}",
+                        parent.display()
+                    )
+                })?;
+                println!(
+                    "✅ Configuration migrated successfully to {}",
+                    new_path.display()
+                );
+            }
+
+            return Ok(storage);
+        }
+
+        // No configuration file exists, return default empty storage
+        Ok(ConfigStorage::default())
     }
 
     /// Save configurations to disk
     ///
-    /// Writes the current state to `~/.cc_auto_switch/configurations.json`
+    /// Writes the current state to `~/.claude/cc_auto_switch_setting.json`
     /// Creates the directory structure if it doesn't exist
     ///
     /// # Errors

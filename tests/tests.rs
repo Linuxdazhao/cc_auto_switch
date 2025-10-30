@@ -454,8 +454,11 @@ mod tests {
         );
 
         let path = result.unwrap();
-        assert!(path.to_string_lossy().contains(".cc-switch"));
-        assert!(path.to_string_lossy().contains("configurations.json"));
+        assert!(path.to_string_lossy().contains(".claude"));
+        assert!(
+            path.to_string_lossy()
+                .contains("cc_auto_switch_setting.json")
+        );
     }
 
     #[test]

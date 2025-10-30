@@ -7,13 +7,13 @@ use std::time::Duration;
 
 /// Get the path to the configuration storage file
 ///
-/// Returns `~/.cc_auto_switch/configurations.json`
+/// Returns `~/.claude/cc_auto_switch_setting.json`
 ///
 /// # Errors
 /// Returns error if home directory cannot be found
 pub fn get_config_storage_path() -> Result<PathBuf> {
     let home_dir = dirs::home_dir().context("Could not find home directory")?;
-    Ok(home_dir.join(".cc-switch").join("configurations.json"))
+    Ok(home_dir.join(".claude").join("cc_auto_switch_setting.json"))
 }
 
 /// Get the path to the Claude settings file
