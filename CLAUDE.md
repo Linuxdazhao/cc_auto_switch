@@ -99,12 +99,15 @@ pre-commit uninstall
 ### Version Management and Release
 
 **Complete Release Workflow** (Recommended):
+
 ```bash
 ./scripts/release.sh
 ```
+
 This handles version increment, commit, and publish automatically.
 
 **Manual Workflow**:
+
 ```bash
 # 1. Make changes
 git add .
@@ -121,6 +124,7 @@ cargo test
 ```
 
 **Version Format**: Semantic versioning (x.y.z)
+
 - Major (x): Breaking changes
 - Minor (y): New features
 - Patch (z): Bug fixes
@@ -198,24 +202,30 @@ The project is structured as a **library crate** with a **minimal binary entry p
 The codebase is organized into three main domains:
 
 #### 1. CLI Domain (`src/cli/`)
+
 **Purpose**: Command-line interface, parsing, shell integration
 **Key Components**:
+
 - `cli.rs`: clap-based command parser, Commands enum
 - `completion.rs`: Shell completion script generation (fish, zsh, bash, elvish, powershell)
 - `main.rs`: Command handlers (add, remove, list, use, current, etc.)
 - `display_utils.rs`: Terminal text formatting, width calculation, alignment
 
 #### 2. Configuration Domain (`src/config/`)
+
 **Purpose**: Configuration management, persistence, validation
 **Key Components**:
+
 - `types.rs`: Data structures (Configuration, ConfigStorage, ClaudeSettings)
 - `config.rs`: Environment variable management
 - `config_storage.rs`: JSON persistence to `~/.cc-switch/configurations.json`
 - Exports convenience functions: `validate_alias_name()`, `get_config_storage_path()`
 
 #### 3. Interactive Domain (`src/interactive/`)
+
 **Purpose**: Terminal-based interactive UI
 **Key Components**:
+
 - `interactive.rs`: Crossterm-based terminal UI
 - `handle_current_command()`: Main interactive menu
 - `handle_interactive_selection()`: Configuration browser with preview
@@ -231,6 +241,7 @@ The codebase is organized into three main domains:
 ### Key Data Types
 
 **Configuration** (in `src/config/types.rs`):
+
 ```rust
 struct Configuration {
     alias_name: String,
@@ -248,11 +259,13 @@ struct Configuration {
 ```
 
 **ConfigStorage**:
+
 - Manages multiple Configuration objects
 - Persists to `~/.cc-switch/configurations.json`
 - Provides CRUD operations
 
 **EnvironmentConfig**:
+
 - Converts Configuration to environment variable tuples
 - Used for launching Claude with custom settings
 
@@ -294,6 +307,7 @@ cc-switch version
 ### Current Command Menu (`cc-switch current`)
 
 **Navigation**:
+
 - **↑↓**: Navigate menu
 - **1-9**: Quick-select configuration on current page
 - **N/PageDown**: Next page (when >9 configs)
@@ -303,6 +317,7 @@ cc-switch version
 - **Enter**: Confirm selection
 
 **Features**:
+
 - Real-time configuration preview
 - Smart pagination (9 configs per page)
 - Graceful terminal fallback
@@ -318,17 +333,20 @@ cc-switch version
 ### Setup Completion
 
 **Fish**:
+
 ```bash
 cargo run -- completion fish > ~/.config/fish/completions/cc-switch.fish
 ```
 
 **Zsh**:
+
 ```bash
 cargo run -- completion zsh > ~/.zsh/completions/_cc-switch
 echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
 ```
 
 **Bash**:
+
 ```bash
 cargo run -- completion bash > ~/.bash_completion.d/cc-switch
 echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
@@ -337,6 +355,7 @@ echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
 ### Aliases
 
 Generate with `cc-switch alias <shell>`:
+
 - `cs='cc-switch'`
 - `ccd='claude --dangerously-skip-permissions'`
 
@@ -389,6 +408,7 @@ cargo test -- --nocapture
 ## Pre-commit Hooks
 
 **Automatic Checks** (run on every commit):
+
 - `cargo check` - Compilation verification
 - `cargo fmt --check` - Code formatting
 - `cargo clippy -- -D warnings` - Linting (warnings as errors)
@@ -401,15 +421,18 @@ cargo test -- --nocapture
 ## CI/CD Pipeline
 
 ### CI Workflow (`.github/workflows/ci.yml`)
+
 - Multi-platform: Ubuntu, Windows, macOS
 - Cross-compilation: x86_64 and aarch64
 - Runs: formatting check, clippy, tests, security audit
 - Coverage reporting with codecov
 
 ### Release Workflow (`.github/workflows/release.yml`)
+
 - Multi-architecture releases (Linux, Windows, macOS Intel/ARM)
 - Automatic tar.gz packaging
 - GitHub release creation with changelog
+- brew repo addr <https://github.com/Linuxdazhao/homebrew-cc-switch/tree/main>
 
 ## File Storage Locations
 
@@ -461,15 +484,18 @@ cargo test -- --nocapture
 ## Important Implementation Notes
 
 ### Security
+
 - API tokens are never logged
 - Sensitive input handled carefully in interactive mode
 - Configuration files should have appropriate permissions
 
 ### Backward Compatibility
+
 - Existing configuration files remain compatible
 - Old command names preserved where possible (`switch` → `use`)
 
 ### Performance
+
 - Configuration loading is lazy (only when needed)
 - Large configuration lists paginated for responsiveness
 - Release build optimized with LTO and size optimization
@@ -495,6 +521,7 @@ cargo test -- --nocapture
 ## Before Pushing to GitHub
 
 Verify locally:
+
 ```bash
 cargo test              # All tests pass
 cargo clippy -- -W warnings  # No warnings
@@ -503,3 +530,4 @@ cargo audit            # No security vulnerabilities
 ```
 
 These are automatically checked by CI, but catching issues locally saves time.
+

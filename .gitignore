@@ -12,6 +12,7 @@ Cargo.lock
 *.swo
 *~
 .DS_Store
+cc-switch-*
 
 # Temporary files
 temp/
