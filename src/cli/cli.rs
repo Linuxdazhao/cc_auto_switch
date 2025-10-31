@@ -53,7 +53,7 @@ pub struct Cli {
     #[arg(long = "list-aliases", hide = true)]
     pub list_aliases: bool,
 
-    /// Migrate old config path (~/.cc-switch/configurations.json) to new path
+    /// Migrate old config path (~/.cc_auto_switch/configurations.json) to new path
     #[arg(
         long = "migrate",
         help = "Migrate old config path to new path and exit"

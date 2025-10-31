@@ -61,14 +61,14 @@ impl ConfigStorage {
 
     /// Migrate configurations from old path to new path
     ///
-    /// Old path: `~/.cc-switch/configurations.json`
+    /// Old path: `~/.cc_auto_switch/configurations.json`
     /// New path: `~/.claude/cc_auto_switch_setting.json`
     ///
     /// Safe to run multiple times. If old path does not exist, returns Ok(()) and prints a note.
     pub fn migrate_from_old_path() -> Result<()> {
         let new_path = get_config_storage_path()?;
         let old_path = dirs::home_dir()
-            .map(|home| home.join(".cc-switch").join("configurations.json"))
+            .map(|home| home.join(".cc_auto_switch").join("configurations.json"))
             .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
 
         if !old_path.exists() {
