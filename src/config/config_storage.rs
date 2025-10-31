@@ -31,47 +31,7 @@ impl ConfigStorage {
             return Ok(storage);
         }
 
-        // Check if old configuration file exists and migrate it
-        let old_path = dirs::home_dir()
-            .map(|home| home.join(".cc-switch").join("configurations.json"))
-            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-
-        if old_path.exists() {
-            println!("🔄 Migrating configuration from old location...");
-
-            let content = fs::read_to_string(&old_path).with_context(|| {
-                format!(
-                    "Failed to read old configuration from {}",
-                    old_path.display()
-                )
-            })?;
-
-            let storage: ConfigStorage = serde_json::from_str(&content)
-                .with_context(|| "Failed to parse old configuration storage JSON")?;
-
-            // Save to new location
-            storage
-                .save()
-                .with_context(|| "Failed to save migrated configuration to new location")?;
-
-            // Remove old directory
-            if let Some(parent) = old_path.parent() {
-                fs::remove_dir_all(parent).with_context(|| {
-                    format!(
-                        "Failed to remove old configuration directory {}",
-                        parent.display()
-                    )
-                })?;
-                println!(
-                    "✅ Configuration migrated successfully to {}",
-                    new_path.display()
-                );
-            }
-
-            return Ok(storage);
-        }
-
-        // No configuration file exists, return default empty storage
+        // No configuration file exists at new path, return default empty storage
         Ok(ConfigStorage::default())
     }
 
@@ -95,6 +55,58 @@ impl ConfigStorage {
             .with_context(|| "Failed to serialize configuration storage")?;
 
         fs::write(&path, json).with_context(|| format!("Failed to write to {}", path.display()))?;
+
+        Ok(())
+    }
+
+    /// Migrate configurations from old path to new path
+    ///
+    /// Old path: `~/.cc-switch/configurations.json`
+    /// New path: `~/.claude/cc_auto_switch_setting.json`
+    ///
+    /// Safe to run multiple times. If old path does not exist, returns Ok(()) and prints a note.
+    pub fn migrate_from_old_path() -> Result<()> {
+        let new_path = get_config_storage_path()?;
+        let old_path = dirs::home_dir()
+            .map(|home| home.join(".cc-switch").join("configurations.json"))
+            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+
+        if !old_path.exists() {
+            println!("ℹ️ No old configuration found at {}", old_path.display());
+            return Ok(());
+        }
+
+        println!("🔄 Migrating configuration from old location...");
+
+        let content = fs::read_to_string(&old_path).with_context(|| {
+            format!(
+                "Failed to read old configuration from {}",
+                old_path.display()
+            )
+        })?;
+
+        let storage: ConfigStorage = serde_json::from_str(&content)
+            .with_context(|| "Failed to parse old configuration storage JSON")?;
+
+        // Save to new location
+        storage
+            .save()
+            .with_context(|| "Failed to save migrated configuration to new location")?;
+
+        // Remove old directory
+        if let Some(parent) = old_path.parent() {
+            fs::remove_dir_all(parent).with_context(|| {
+                format!(
+                    "Failed to remove old configuration directory {}",
+                    parent.display()
+                )
+            })?;
+        }
+
+        println!(
+            "✅ Configuration migrated successfully to {}",
+            new_path.display()
+        );
 
         Ok(())
     }

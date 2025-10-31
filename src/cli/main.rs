@@ -566,6 +566,12 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
+    // Handle --migrate flag: migrate old path to new path and exit
+    if cli.migrate {
+        ConfigStorage::migrate_from_old_path()?;
+        return Ok(());
+    }
+
     // Handle --list-aliases flag for completion
     if cli.list_aliases {
         list_aliases_for_completion()?;
