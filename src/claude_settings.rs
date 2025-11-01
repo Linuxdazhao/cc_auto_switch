@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::collections::BTreeMap;
 use std::fs;
 
-use crate::config::types::{ClaudeSettings, Configuration};
+use crate::config::types::{ClaudeSettings, Configuration, StorageMode};
 use crate::utils::get_claude_settings_path;
 
 impl ClaudeSettings {
@@ -134,5 +134,104 @@ impl ClaudeSettings {
         self.env.remove("ANTHROPIC_BASE_URL");
         self.env.remove("ANTHROPIC_MODEL");
         self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
+    }
+
+    /// Switch to a specific API configuration with specified storage mode
+    ///
+    /// Updates the settings.json file based on the storage mode:
+    /// - Env mode: Launch Claude with environment variables (cleans settings.json)
+    /// - Config mode: Write to env field in settings.json (settings file persistence)
+    ///
+    /// # Arguments
+    /// * `config` - Configuration containing token, URL, and optional model settings to apply
+    /// * `mode` - Storage mode to use (Env or Config)
+    /// * `custom_dir` - Optional custom directory for Claude settings
+    ///
+    /// # Errors
+    /// Returns error if settings cannot be saved
+    pub fn switch_to_config_with_mode(
+        &mut self,
+        config: &Configuration,
+        mode: StorageMode,
+        custom_dir: Option<&str>,
+    ) -> Result<()> {
+        match mode {
+            StorageMode::Env => {
+                // Env mode: Check for Anthropic fields written by cc-switch
+                let has_anthropic_env = self.env.contains_key("ANTHROPIC_AUTH_TOKEN")
+                    || self.env.contains_key("ANTHROPIC_BASE_URL")
+                    || self.env.contains_key("ANTHROPIC_MODEL")
+                    || self.env.contains_key("ANTHROPIC_SMALL_FAST_MODEL");
+
+                let has_anthropic_config = self.other.contains_key("anthropicAuthToken")
+                    || self.other.contains_key("anthropicBaseUrl")
+                    || self.other.contains_key("anthropicModel")
+                    || self.other.contains_key("anthropicSmallFastModel");
+
+                // Check for legacy/unexpected fields that might interfere with environment mode
+                let mut unexpected_fields = Vec::new();
+                for key in self.other.keys() {
+                    if key != "anthropicAuthToken"
+                        && key != "anthropicBaseUrl"
+                        && key != "anthropicModel"
+                        && key != "anthropicSmallFastModel"
+                        && key != "anthropicDefaultSonnerModel"
+                        && key != "anthropicDefaultOpusModel"
+                        && key != "anthropicDefaultHaikuModel"
+                    {
+                        unexpected_fields.push(key.clone());
+                    }
+                }
+
+                if has_anthropic_env || has_anthropic_config || !unexpected_fields.is_empty() {
+                    eprintln!("⚠️  Cleaning up settings.json:");
+                    if has_anthropic_env || has_anthropic_config {
+                        eprintln!("  - Removing Anthropic settings");
+                    }
+                    if !unexpected_fields.is_empty() {
+                        eprintln!(
+                            "  - Removing unexpected fields: {}",
+                            unexpected_fields.join(", ")
+                        );
+                    }
+                }
+
+                self.remove_anthropic_env();
+                self.remove_anthropic_config_mode();
+
+                // Remove all unexpected fields
+                for field in unexpected_fields {
+                    self.other.remove(&field);
+                }
+
+                self.save(custom_dir)?;
+            }
+            StorageMode::Config => {
+                // Config mode: Write to env field in settings.json
+                // First clean up any old Anthropic fields from 'other' map
+                self.remove_anthropic_config_mode();
+                self.switch_to_config(config);
+                self.save(custom_dir)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Remove Anthropic settings in config mode
+    ///
+    /// Clears all Anthropic-related settings from env field and other map
+    /// Used to reset to default Claude behavior
+    pub fn remove_anthropic_config_mode(&mut self) {
+        self.remove_anthropic_env();
+
+        // Also remove Anthropic settings from 'other' map
+        self.other.remove("anthropicAuthToken");
+        self.other.remove("anthropicBaseUrl");
+        self.other.remove("anthropicModel");
+        self.other.remove("anthropicSmallFastModel");
+        self.other.remove("anthropicDefaultSonnetModel");
+        self.other.remove("anthropicDefaultOpusModel");
+        self.other.remove("anthropicDefaultHaikuModel");
     }
 }

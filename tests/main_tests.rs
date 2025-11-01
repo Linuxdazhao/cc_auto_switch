@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn test_handle_switch_command_nonexistent_alias() {
         // Test switching to a non-existent alias
-        let result = handle_switch_command(Some("nonexistent-alias"));
+        let result = handle_switch_command(Some("nonexistent-alias"), None);
 
         assert!(result.is_err(), "Should fail for non-existent alias");
         let error_msg = result.unwrap_err().to_string();
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_handle_switch_command_empty_alias() {
         // Test switching with empty string alias
-        let result = handle_switch_command(Some(""));
+        let result = handle_switch_command(Some(""), None);
 
         assert!(result.is_err(), "Should fail for empty alias");
     }

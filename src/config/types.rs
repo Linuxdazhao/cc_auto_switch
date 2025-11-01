@@ -8,6 +8,18 @@ type EnvMap = BTreeMap<String, String>;
 /// Type alias for JSON value map
 type JsonMap = BTreeMap<String, serde_json::Value>;
 
+/// Storage mode for how configuration should be written to settings.json
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub enum StorageMode {
+    /// Write to env field with uppercase environment variable names (default)
+    #[serde(rename = "env")]
+    #[default]
+    Env,
+    /// Write to root level with camelCase field names
+    #[serde(rename = "config")]
+    Config,
+}
+
 /// Represents a Claude API configuration
 ///
 /// Contains the components needed to configure Claude API access:
@@ -60,6 +72,9 @@ pub struct ConfigStorage {
     pub configurations: ConfigMap,
     /// Custom directory for Claude settings (optional)
     pub claude_settings_dir: Option<String>,
+    /// Default storage mode for writing configurations (None = use env mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_storage_mode: Option<StorageMode>,
 }
 
 /// Claude settings manager for API configuration

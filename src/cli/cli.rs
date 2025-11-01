@@ -59,6 +59,14 @@ pub struct Cli {
         help = "Migrate old config path to new path and exit"
     )]
     pub migrate: bool,
+
+    /// Storage mode for writing configuration (env or config)
+    #[arg(
+        long = "store",
+        help = "Storage mode for writing configuration (env: write to env field, config: write to root with camelCase)",
+        global = true
+    )]
+    pub store: Option<String>,
 }
 
 /// Available subcommands for configuration management

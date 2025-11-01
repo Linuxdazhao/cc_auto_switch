@@ -747,6 +747,7 @@ fn handle_simple_interactive_menu(
         // Show current page configs with improved formatting
         for (page_index, config) in page_configs.iter().enumerate() {
             let display_number = page_index + 1;
+
             println!(
                 "{}. {}",
                 format!("[{display_number}]").green().bold(),

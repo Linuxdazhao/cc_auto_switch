@@ -1,6 +1,6 @@
 use crate::cli::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
 use crate::cli::{Cli, Commands};
-use crate::config::types::AddCommandParams;
+use crate::config::types::{AddCommandParams, StorageMode};
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
 use crate::interactive::{handle_interactive_selection, read_input, read_sensitive_input};
 use anyhow::{Result, anyhow};
@@ -11,6 +11,24 @@ use std::path::Path;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
+
+/// Parse storage mode string to StorageMode enum
+///
+/// # Arguments
+/// * `store_str` - String representation of storage mode ("env" or "config")
+///
+/// # Returns
+/// Result containing StorageMode or error if invalid
+fn parse_storage_mode(store_str: &str) -> Result<StorageMode> {
+    match store_str.to_lowercase().as_str() {
+        "env" => Ok(StorageMode::Env),
+        "config" => Ok(StorageMode::Config),
+        _ => Err(anyhow!(
+            "Invalid storage mode '{}'. Use 'env' or 'config'",
+            store_str
+        )),
+    }
+}
 
 /// Parse a configuration from a JSON file
 ///
@@ -434,7 +452,7 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
 /// Handle configuration switching command
 ///
 /// Processes the switch subcommand to switch Claude API configuration:
-/// - None: Enter interactive selection mode  
+/// - None: Enter interactive selection mode
 /// - "cc": Launch Claude without custom environment variables (default behavior)
 /// - Other alias: Launch Claude with the specified configuration's environment variables
 ///
@@ -442,10 +460,11 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
 ///
 /// # Arguments
 /// * `alias_name` - Optional name of configuration to switch to, or "cc" for default
+/// * `store` - Storage mode to use (None = default to env)
 ///
 /// # Errors
 /// Returns error if configuration is not found or Claude CLI fails to launch
-pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
+pub fn handle_switch_command(alias_name: Option<&str>, store: Option<StorageMode>) -> Result<()> {
     let storage = ConfigStorage::load()?;
 
     // If no alias provided, enter interactive mode
@@ -455,10 +474,27 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
 
     let alias_name = alias_name.unwrap();
 
+    // Use global storage mode: --store flag > saved default > env default
+    let mode_to_use = store.unwrap_or_else(|| {
+        storage
+            .default_storage_mode
+            .clone()
+            .unwrap_or_else(StorageMode::default)
+    });
+
     let env_config = if alias_name == "cc" {
         // Default operation: launch Claude without custom environment variables
         println!("Using default Claude configuration (no custom API settings)");
         println!("Current URL: Default (api.anthropic.com)");
+
+        // Remove any existing Anthropic settings from settings.json
+        let mut settings = crate::config::types::ClaudeSettings::load(
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
+        settings.remove_anthropic_env();
+        settings.remove_anthropic_config_mode();
+        settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+
         EnvironmentConfig::empty()
     } else if let Some(config) = storage.get_configuration(alias_name) {
         let mut config_info = format!("token: {}, url: {}", config.token, config.url);
@@ -490,8 +526,19 @@ pub fn handle_switch_command(alias_name: Option<&str>) -> Result<()> {
         if let Some(haiku_model) = &config.anthropic_default_haiku_model {
             config_info.push_str(&format!(", default_haiku_model: {haiku_model}"));
         }
+
         println!("Switched to configuration '{alias_name}' ({config_info})");
         println!("Current URL: {}", config.url);
+
+        let mut settings = crate::config::types::ClaudeSettings::load(
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
+        settings.switch_to_config_with_mode(
+            config,
+            mode_to_use,
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
+
         EnvironmentConfig::from_config(config)
     } else {
         anyhow::bail!(
@@ -575,6 +622,32 @@ pub fn run() -> Result<()> {
     // Handle --list-aliases flag for completion
     if cli.list_aliases {
         list_aliases_for_completion()?;
+        return Ok(());
+    }
+
+    // Handle --store flag: set default storage mode and exit
+    if let Some(ref store_str) = cli.store
+        && cli.command.is_none()
+    {
+        // No command provided, so --store is a setter
+        let mode = match parse_storage_mode(store_str) {
+            Ok(mode) => mode,
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        };
+
+        let mut storage = ConfigStorage::load()?;
+        storage.default_storage_mode = Some(mode.clone());
+        storage.save()?;
+
+        let mode_str = match mode {
+            StorageMode::Env => "env",
+            StorageMode::Config => "config",
+        };
+
+        println!("Default storage mode set to: {}", mode_str);
         return Ok(());
     }
 
@@ -701,7 +774,18 @@ pub fn run() -> Result<()> {
                 generate_aliases(&shell)?;
             }
             Commands::Use { alias_name } => {
-                handle_switch_command(Some(&alias_name))?;
+                // Determine storage mode: --store flag > saved default > default
+                let parsed_store = match cli.store {
+                    Some(ref store_str) => match parse_storage_mode(store_str) {
+                        Ok(mode) => Some(mode),
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            std::process::exit(1);
+                        }
+                    },
+                    None => storage.default_storage_mode.clone(),
+                };
+                handle_switch_command(Some(&alias_name), parsed_store)?;
             }
             Commands::Version => {
                 println!("{}", env!("CARGO_PKG_VERSION"));
