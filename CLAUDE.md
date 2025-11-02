@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The project follows Rust best practices with a library + binary structure and domain-based organization.
 
+our program config dir is ~/.claude/cc_auto_switch_setting.json
+
 ## Development Commands
 
 ### Build and Run
@@ -536,4 +538,3 @@ cargo audit            # No security vulnerabilities
 ```
 
 These are automatically checked by CI, but catching issues locally saves time.
-
