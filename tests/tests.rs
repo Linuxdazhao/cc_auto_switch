@@ -1321,38 +1321,36 @@ mod claude_settings_tests {
         // Read the saved file
         let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
 
-        // Parse and verify Anthropic fields are in 'other' with camelCase, but other fields remain in other
+        // Parse and verify Anthropic fields are in 'env' with UPPERCASE names
         let saved_settings: ClaudeSettings =
             serde_json::from_str(&content).expect("Failed to parse saved settings");
 
-        // Verify Anthropic settings are in 'other' with camelCase names (not in env field)
+        // Verify Anthropic settings are in 'env' with UPPERCASE names
         assert!(
-            saved_settings.other.contains_key("anthropicAuthToken"),
-            "Config mode should use camelCase field names in 'other'"
+            saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"),
+            "Config mode should use UPPERCASE field names in 'env'"
         );
         assert_eq!(
-            saved_settings.other.get("anthropicAuthToken"),
-            Some(&serde_json::Value::String("sk-ant-test".to_string()))
+            saved_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            Some(&"sk-ant-test".to_string())
         );
         assert!(
-            saved_settings.other.contains_key("anthropicBaseUrl"),
-            "Config mode should have anthropicBaseUrl in 'other'"
+            saved_settings.env.contains_key("ANTHROPIC_BASE_URL"),
+            "Config mode should have ANTHROPIC_BASE_URL in 'env'"
         );
         assert_eq!(
-            saved_settings.other.get("anthropicBaseUrl"),
-            Some(&serde_json::Value::String(
-                "https://api.test.com".to_string()
-            ))
+            saved_settings.env.get("ANTHROPIC_BASE_URL"),
+            Some(&"https://api.test.com".to_string())
         );
 
-        // Verify env field is empty in config mode
-        assert!(
-            saved_settings.env.is_empty(),
-            "Config mode should not use env field"
-        );
-
-        // Verify non-Anthropic fields are preserved
+        // Verify non-Anthropic fields are preserved in 'other'
         assert!(saved_settings.other.contains_key("userPreferences"));
         assert!(saved_settings.other.contains_key("theme"));
+
+        // Verify old Anthropic fields are removed from 'other'
+        assert!(
+            !saved_settings.other.contains_key("anthropicAuthToken"),
+            "Old anthropicAuthToken should be removed from 'other'"
+        );
     }
 }

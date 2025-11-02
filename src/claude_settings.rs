@@ -134,6 +134,12 @@ impl ClaudeSettings {
         self.env.remove("ANTHROPIC_BASE_URL");
         self.env.remove("ANTHROPIC_MODEL");
         self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
+        self.env.remove("ANTHROPIC_MAX_THINKING_TOKENS");
+        self.env.remove("API_TIMEOUT_MS");
+        self.env.remove("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
+        self.env.remove("ANTHROPIC_DEFAULT_SONNET_MODEL");
+        self.env.remove("ANTHROPIC_DEFAULT_OPUS_MODEL");
+        self.env.remove("ANTHROPIC_DEFAULT_HAIKU_MODEL");
     }
 
     /// Switch to a specific API configuration with specified storage mode
@@ -161,12 +167,22 @@ impl ClaudeSettings {
                 let has_anthropic_env = self.env.contains_key("ANTHROPIC_AUTH_TOKEN")
                     || self.env.contains_key("ANTHROPIC_BASE_URL")
                     || self.env.contains_key("ANTHROPIC_MODEL")
-                    || self.env.contains_key("ANTHROPIC_SMALL_FAST_MODEL");
+                    || self.env.contains_key("ANTHROPIC_SMALL_FAST_MODEL")
+                    || self.env.contains_key("ANTHROPIC_MAX_THINKING_TOKENS")
+                    || self.env.contains_key("API_TIMEOUT_MS")
+                    || self.env.contains_key("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+                    || self.env.contains_key("ANTHROPIC_DEFAULT_SONNET_MODEL")
+                    || self.env.contains_key("ANTHROPIC_DEFAULT_OPUS_MODEL")
+                    || self.env.contains_key("ANTHROPIC_DEFAULT_HAIKU_MODEL");
 
                 let has_anthropic_config = self.other.contains_key("anthropicAuthToken")
                     || self.other.contains_key("anthropicBaseUrl")
                     || self.other.contains_key("anthropicModel")
-                    || self.other.contains_key("anthropicSmallFastModel");
+                    || self.other.contains_key("anthropicSmallFastModel")
+                    || self.other.contains_key("anthropicDefaultSonnerModel")
+                    || self.other.contains_key("anthropicDefaultOpusModel")
+                    || self.other.contains_key("anthropicDefaultHaikuModel")
+                    || self.other.contains_key("anthropicDefaultSonnetModel"); // handle both spellings
 
                 // Standard Claude settings fields that should be preserved
                 // These are legitimate Claude settings that should not be removed
@@ -229,37 +245,49 @@ impl ClaudeSettings {
                 self.save(custom_dir)?;
             }
             StorageMode::Config => {
-                // Config mode: Write Anthropic settings to root level with camelCase names
-                // First clean up any old Anthropic fields from 'other' map
+                // Config mode: Write Anthropic settings to env field with UPPERCASE names
+                // First clean up any old Anthropic fields from both 'env' and 'other' maps
+                self.remove_anthropic_env();
                 self.remove_anthropic_config_mode();
 
-                // Set Anthropic settings at root level with camelCase names
-                self.other.insert(
-                    "anthropicAuthToken".to_string(),
-                    serde_json::Value::String(config.token.clone()),
-                );
-                self.other.insert(
-                    "anthropicBaseUrl".to_string(),
-                    serde_json::Value::String(config.url.clone()),
-                );
+                // Apply the new configuration to env field
+                self.switch_to_config(config);
 
-                // Set model configurations only if provided (don't set empty values)
-                if let Some(model) = &config.model
-                    && !model.is_empty()
-                {
-                    self.other.insert(
-                        "anthropicModel".to_string(),
-                        serde_json::Value::String(model.clone()),
+                // Add the additional fields that switch_to_config doesn't handle
+                if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+                    self.env.insert(
+                        "ANTHROPIC_MAX_THINKING_TOKENS".to_string(),
+                        max_thinking_tokens.to_string(),
                     );
                 }
 
-                if let Some(small_fast_model) = &config.small_fast_model
-                    && !small_fast_model.is_empty()
-                {
-                    self.other.insert(
-                        "anthropicSmallFastModel".to_string(),
-                        serde_json::Value::String(small_fast_model.clone()),
+                if let Some(timeout) = config.api_timeout_ms {
+                    self.env.insert("API_TIMEOUT_MS".to_string(), timeout.to_string());
+                }
+
+                if let Some(flag) = config.claude_code_disable_nonessential_traffic {
+                    self.env.insert(
+                        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                        flag.to_string(),
                     );
+                }
+
+                if let Some(model) = &config.anthropic_default_sonnet_model
+                    && !model.is_empty()
+                {
+                    self.env.insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), model.clone());
+                }
+
+                if let Some(model) = &config.anthropic_default_opus_model
+                    && !model.is_empty()
+                {
+                    self.env.insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), model.clone());
+                }
+
+                if let Some(model) = &config.anthropic_default_haiku_model
+                    && !model.is_empty()
+                {
+                    self.env.insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
                 }
 
                 self.save(custom_dir)?;
