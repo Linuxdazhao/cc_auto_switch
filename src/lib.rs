@@ -14,5 +14,4 @@ pub mod utils;
 pub use crate::cli::completion::{
     generate_aliases, generate_completion, list_aliases_for_completion,
 };
-pub use crate::cli::main::handle_switch_command;
 pub use crate::cli::main::run;

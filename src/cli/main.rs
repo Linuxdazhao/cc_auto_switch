@@ -1,16 +1,12 @@
-use crate::cli::completion::{generate_aliases, generate_completion, list_aliases_for_completion};
+use crate::cli::completion::{generate_completion, list_aliases_for_completion};
 use crate::cli::{Cli, Commands};
 use crate::config::types::{AddCommandParams, StorageMode};
-use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
+use crate::config::{ConfigStorage, Configuration, validate_alias_name};
 use crate::interactive::{handle_interactive_selection, read_input, read_sensitive_input};
 use anyhow::{Result, anyhow};
 use clap::Parser;
-use colored::*;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
-use std::thread;
-use std::time::Duration;
 
 /// Parse storage mode string to StorageMode enum
 ///
@@ -449,158 +445,6 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
     Ok(())
 }
 
-/// Handle configuration switching command
-///
-/// Processes the switch subcommand to switch Claude API configuration:
-/// - None: Enter interactive selection mode
-/// - "cc": Launch Claude without custom environment variables (default behavior)
-/// - Other alias: Launch Claude with the specified configuration's environment variables
-///
-/// After switching, displays the current URL and automatically launches Claude CLI
-///
-/// # Arguments
-/// * `alias_name` - Optional name of configuration to switch to, or "cc" for default
-/// * `store` - Storage mode to use (None = default to env)
-///
-/// # Errors
-/// Returns error if configuration is not found or Claude CLI fails to launch
-pub fn handle_switch_command(alias_name: Option<&str>, store: Option<StorageMode>) -> Result<()> {
-    let storage = ConfigStorage::load()?;
-
-    // If no alias provided, enter interactive mode
-    if alias_name.is_none() {
-        return handle_interactive_selection(&storage);
-    }
-
-    let alias_name = alias_name.unwrap();
-
-    // Use global storage mode: --store flag > saved default > env default
-    let mode_to_use = store.unwrap_or_else(|| {
-        storage
-            .default_storage_mode
-            .clone()
-            .unwrap_or_else(StorageMode::default)
-    });
-
-    let env_config = if alias_name == "cc" {
-        // Default operation: launch Claude without custom environment variables
-        println!("Using default Claude configuration (no custom API settings)");
-        println!("Current URL: Default (api.anthropic.com)");
-
-        // Remove any existing Anthropic settings from settings.json
-        let mut settings = crate::config::types::ClaudeSettings::load(
-            storage.get_claude_settings_dir().map(|s| s.as_str()),
-        )?;
-        settings.remove_anthropic_env();
-        settings.remove_anthropic_config_mode();
-        settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
-
-        EnvironmentConfig::empty()
-    } else if let Some(config) = storage.get_configuration(alias_name) {
-        let mut config_info = format!("token: {}, url: {}", config.token, config.url);
-        if let Some(model) = &config.model {
-            config_info.push_str(&format!(", model: {model}"));
-        }
-        if let Some(small_fast_model) = &config.small_fast_model {
-            config_info.push_str(&format!(", small_fast_model: {small_fast_model}"));
-        }
-        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
-            config_info.push_str(&format!(", max_thinking_tokens: {max_thinking_tokens}"));
-        }
-        if let Some(api_timeout_ms) = config.api_timeout_ms {
-            config_info.push_str(&format!(", api_timeout_ms: {api_timeout_ms}"));
-        }
-        if let Some(claude_code_disable_nonessential_traffic) =
-            config.claude_code_disable_nonessential_traffic
-        {
-            config_info.push_str(&format!(
-                ", disable_nonessential_traffic: {claude_code_disable_nonessential_traffic}"
-            ));
-        }
-        if let Some(sonnet_model) = &config.anthropic_default_sonnet_model {
-            config_info.push_str(&format!(", default_sonnet_model: {sonnet_model}"));
-        }
-        if let Some(opus_model) = &config.anthropic_default_opus_model {
-            config_info.push_str(&format!(", default_opus_model: {opus_model}"));
-        }
-        if let Some(haiku_model) = &config.anthropic_default_haiku_model {
-            config_info.push_str(&format!(", default_haiku_model: {haiku_model}"));
-        }
-
-        println!("Switched to configuration '{alias_name}' ({config_info})");
-        println!("Current URL: {}", config.url);
-
-        let mut settings = crate::config::types::ClaudeSettings::load(
-            storage.get_claude_settings_dir().map(|s| s.as_str()),
-        )?;
-        settings.switch_to_config_with_mode(
-            config,
-            mode_to_use,
-            storage.get_claude_settings_dir().map(|s| s.as_str()),
-        )?;
-
-        EnvironmentConfig::from_config(config)
-    } else {
-        anyhow::bail!(
-            "Configuration '{}' not found. Use 'list' command to see available configurations.",
-            alias_name
-        );
-    };
-
-    // Wait 0.2 second
-    println!("Waiting 0.2 second before launching Claude...");
-    println!(
-        "Executing: claude {}",
-        "--dangerously-skip-permissions".red()
-    );
-    thread::sleep(Duration::from_millis(200));
-
-    // Set environment variables for current process
-    for (key, value) in env_config.as_env_tuples() {
-        unsafe {
-            std::env::set_var(&key, &value);
-        }
-    }
-
-    // Launch Claude CLI with exec to replace current process
-    println!("Launching Claude CLI...");
-
-    // On Unix systems, use exec to replace current process
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        let error = Command::new("claude")
-            .arg("--dangerously-skip-permissions")
-            .exec();
-        // exec never returns on success, so if we get here, it failed
-        anyhow::bail!("Failed to exec claude: {}", error);
-    }
-
-    // On non-Unix systems, fallback to spawn and wait
-    #[cfg(not(unix))]
-    {
-        use std::process::Stdio;
-        let mut child = Command::new("claude")
-            .arg("--dangerously-skip-permissions")
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .context(
-                "Failed to launch Claude CLI. Make sure 'claude' command is available in PATH",
-            )?;
-
-        // Wait for the Claude process to finish and pass control to it
-        let status = child
-            .wait()
-            .context("Failed to wait for Claude CLI process")?;
-
-        if !status.success() {
-            anyhow::bail!("Claude CLI exited with error status: {}", status);
-        }
-    }
-}
-
 /// Main entry point for the CLI application
 ///
 /// Parses command-line arguments and executes the appropriate action:
@@ -769,26 +613,6 @@ pub fn run() -> Result<()> {
             }
             Commands::Completion { shell } => {
                 generate_completion(&shell)?;
-            }
-            Commands::Alias { shell } => {
-                generate_aliases(&shell)?;
-            }
-            Commands::Use { alias_name } => {
-                // Determine storage mode: --store flag > saved default > default
-                let parsed_store = match cli.store {
-                    Some(ref store_str) => match parse_storage_mode(store_str) {
-                        Ok(mode) => Some(mode),
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                            std::process::exit(1);
-                        }
-                    },
-                    None => storage.default_storage_mode.clone(),
-                };
-                handle_switch_command(Some(&alias_name), parsed_store)?;
-            }
-            Commands::Version => {
-                println!("{}", env!("CARGO_PKG_VERSION"));
             }
         }
     } else {

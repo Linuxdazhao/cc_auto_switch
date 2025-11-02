@@ -76,26 +76,6 @@ mod tests {
         assert!(!params.interactive);
     }
 
-    // handle_switch_command Tests
-    #[test]
-    fn test_handle_switch_command_nonexistent_alias() {
-        // Test switching to a non-existent alias
-        let result = handle_switch_command(Some("nonexistent-alias"), None);
-
-        assert!(result.is_err(), "Should fail for non-existent alias");
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("not found"));
-        assert!(error_msg.contains("nonexistent-alias"));
-    }
-
-    #[test]
-    fn test_handle_switch_command_empty_alias() {
-        // Test switching with empty string alias
-        let result = handle_switch_command(Some(""), None);
-
-        assert!(result.is_err(), "Should fail for empty alias");
-    }
-
     // CLI Command Parsing Tests
     #[test]
     fn test_cli_add_command_parsing() {
@@ -262,34 +242,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_use_command() {
-        let args = vec!["cc-switch", "use", "my-config"];
-
-        let cli = Cli::try_parse_from(args).expect("Should parse use command");
-
-        match cli.command {
-            Some(Commands::Use { alias_name }) => {
-                assert_eq!(alias_name, "my-config");
-            }
-            _ => panic!("Expected Use command"),
-        }
-    }
-
-    #[test]
-    fn test_cli_switch_alias_command() {
-        let args = vec!["cc-switch", "switch", "my-config"];
-
-        let cli = Cli::try_parse_from(args).expect("Should parse switch (alias) command");
-
-        match cli.command {
-            Some(Commands::Use { alias_name }) => {
-                assert_eq!(alias_name, "my-config");
-            }
-            _ => panic!("Expected Use command (via switch alias)"),
-        }
-    }
-
-    #[test]
     fn test_cli_list_command() {
         let args = vec!["cc-switch", "list"];
 
@@ -328,20 +280,6 @@ mod tests {
                 assert_eq!(shell, "fish");
             }
             _ => panic!("Expected Completion command"),
-        }
-    }
-
-    #[test]
-    fn test_cli_alias_command() {
-        let args = vec!["cc-switch", "alias", "bash"];
-
-        let cli = Cli::try_parse_from(args).expect("Should parse alias command");
-
-        match cli.command {
-            Some(Commands::Alias { shell }) => {
-                assert_eq!(shell, "bash".to_string());
-            }
-            _ => panic!("Expected Alias command"),
         }
     }
 
@@ -445,16 +383,6 @@ mod tests {
         assert!(
             result.is_err(),
             "Should fail when no alias names provided to remove"
-        );
-    }
-
-    #[test]
-    fn test_cli_use_missing_alias() {
-        let result = Cli::try_parse_from(vec!["cc-switch", "use"]);
-
-        assert!(
-            result.is_err(),
-            "Should fail when alias name is missing for use command"
         );
     }
 

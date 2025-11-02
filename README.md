@@ -29,15 +29,17 @@ cc-switch add work sk-ant-work-xxx https://api.anthropic.com
 cc-switch add personal sk-ant-personal-xxx https://api.anthropic.com
 
 # 切换到工作配置
-cc-switch use work
+cc-switch
+# 然后从交互菜单中选择 'work'
 
 # 切换到个人配置
-cc-switch use personal
+cc-switch
+# 然后从交互菜单中选择 'personal'
 
 # 查看所有配置
 cc-switch list
 
-# 进入交互模式
+# 进入交互模式（同上）
 cc-switch
 ```
 
@@ -56,16 +58,13 @@ brew install cc-switch
 
 ## 主要命令
 
-| 命令 | 别名 | 作用 |
-|------|------|------|
-| `cc-switch add <名称>` | `a` | 添加新配置 |
-| `cc-switch use <名称>` | `use`, `sw`, `switch` | 切换到配置（使用 'cc' 重置） |
-| `cc-switch list` | `l` | 显示所有配置（JSON 或纯文本） |
-| `cc-switch remove <名称...>` | `r` | 删除一个或多个配置 |
-| `cc-switch completion <shell>` | `C` | 生成 Shell 补全脚本 |
-| `cc-switch alias <shell>` | `A` | 生成 Shell 别名用于 eval |
-| `cc-switch version` | `v` | 打印版本信息 |
-| `cc-switch` | - | 进入交互模式 |
+| 命令 | 作用 |
+|------|------|
+| `cc-switch add <名称>` | 添加新配置 |
+| `cc-switch list` | 显示所有配置（JSON 或纯文本） |
+| `cc-switch remove <名称...>` | 删除一个或多个配置 |
+| `cc-switch completion <shell>` | 生成 Shell 补全脚本 |
+| `cc-switch` | 进入交互模式 |
 
 ## 高级用法
 
@@ -109,9 +108,6 @@ cc-switch add --from-file config.json
 # 设置默认存储模式
 cc-switch --store env    # 写入到 env 字段（默认）
 cc-switch --store config # 写入到根级别，使用 camelCase
-
-# 为单个操作使用特定模式
-cc-switch use my-config --store env
 ```
 
 ### 列出配置
@@ -160,16 +156,23 @@ cc-switch completion powershell
 
 ### 创建别名
 ```bash
-# 快速别名，立即使用
-eval "$(cc-switch alias fish)"
+# 将别名永久添加到 shell 配置
 
-# 现在可以使用：
-cs use work     # 代替 cc-switch use work
-ccd             # 快速启动 Claude
-
-# 或将别名永久添加到 shell 配置
+# Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
+
+# Zsh
+echo "alias cs='cc-switch'" >> ~/.zshrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+
+# Bash
+echo "alias cs='cc-switch'" >> ~/.bashrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
+
+# 现在可以使用：
+cs              # 代替 cc-switch（进入交互模式）
+ccd             # 快速启动 Claude
 ```
 
 ## 工作原理

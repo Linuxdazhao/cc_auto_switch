@@ -191,8 +191,8 @@ pub fn handle_current_command() -> Result<()> {
 
     println!("\n{}", "Current Configuration:".green().bold());
     println!("Environment variable mode: configurations are set per-command execution");
-    println!("Use 'cc-switch use <alias>' to launch Claude with specific configuration");
-    println!("Use 'cc-switch use cc' to launch Claude with default settings");
+    println!("Select a configuration from the menu below to launch Claude");
+    println!("Select 'cc' to launch Claude with default settings");
 
     // Try to enable interactive menu with keyboard navigation
     let raw_mode_enabled = terminal::enable_raw_mode().is_ok();
@@ -401,7 +401,14 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
         .is_ok()
         {
             // Full interactive mode with arrow keys
-            let result = handle_full_interactive_menu(&mut stdout, &configs, &mut selected_index);
+            let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
+            let result = handle_full_interactive_menu(
+                &mut stdout,
+                &configs,
+                &mut selected_index,
+                storage,
+                storage_mode,
+            );
 
             // Always restore terminal
             let _ = execute!(stdout, terminal::LeaveAlternateScreen);
@@ -423,6 +430,8 @@ fn handle_full_interactive_menu(
     stdout: &mut io::Stdout,
     configs: &[&Configuration],
     selected_index: &mut usize,
+    storage: &ConfigStorage,
+    storage_mode: crate::config::types::StorageMode,
 ) -> Result<()> {
     // Handle empty configuration list
     if configs.is_empty() {
@@ -629,7 +638,12 @@ fn handle_full_interactive_menu(
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
 
-                    return handle_selection_action(configs, *selected_index);
+                    return handle_selection_action(
+                        configs,
+                        *selected_index,
+                        storage,
+                        storage_mode,
+                    );
                 }
                 KeyCode::Esc => {
                     // Clean up terminal before exit
@@ -650,7 +664,12 @@ fn handle_full_interactive_menu(
                         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                         let _ = terminal::disable_raw_mode();
 
-                        return handle_selection_action(configs, selection_index);
+                        return handle_selection_action(
+                            configs,
+                            selection_index,
+                            storage,
+                            storage_mode,
+                        );
                     }
                     // Invalid digit - ignore silently
                 }
@@ -659,7 +678,7 @@ fn handle_full_interactive_menu(
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
 
-                    return handle_selection_action(configs, 0);
+                    return handle_selection_action(configs, 0, storage, storage_mode);
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Only allow editing if a config is selected (not official or exit)
@@ -700,7 +719,12 @@ fn handle_full_interactive_menu(
                     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
                     let _ = terminal::disable_raw_mode();
 
-                    return handle_selection_action(configs, configs.len() + 1);
+                    return handle_selection_action(
+                        configs,
+                        configs.len() + 1,
+                        storage,
+                        storage_mode,
+                    );
                 }
                 _ => {}
             },
@@ -713,13 +737,13 @@ fn handle_full_interactive_menu(
 /// Handle simple interactive menu (fallback)
 fn handle_simple_interactive_menu(
     configs: &[&Configuration],
-    _storage: &ConfigStorage,
+    storage: &ConfigStorage,
 ) -> Result<()> {
     const PAGE_SIZE: usize = 9; // Same page size as full interactive menu
 
     // If configs fit in one page, show the simple original menu
     if configs.len() <= PAGE_SIZE {
-        return handle_simple_single_page_menu(configs);
+        return handle_simple_single_page_menu(configs, storage);
     }
 
     // Multi-page simple menu
@@ -783,6 +807,15 @@ fn handle_simple_interactive_menu(
             "r" => {
                 // Official option
                 println!("Using official Claude configuration");
+
+                // Update settings.json to remove Anthropic configuration
+                let mut settings = crate::config::types::ClaudeSettings::load(
+                    storage.get_claude_settings_dir().map(|s| s.as_str()),
+                )?;
+                settings.remove_anthropic_env();
+                settings.remove_anthropic_config_mode();
+                settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+
                 return launch_claude_with_env(EnvironmentConfig::empty());
             }
             "e" => {
@@ -809,7 +842,13 @@ fn handle_simple_interactive_menu(
                 {
                     let actual_config_index = start_idx + (digit - 1);
                     let selection_index = actual_config_index + 1; // +1 because official is at index 0
-                    return handle_selection_action(configs, selection_index);
+                    let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
+                    return handle_selection_action(
+                        configs,
+                        selection_index,
+                        storage,
+                        storage_mode,
+                    );
                 }
                 println!("无效选择，请重新输入");
             }
@@ -818,7 +857,10 @@ fn handle_simple_interactive_menu(
 }
 
 /// Handle simple single page menu (original behavior for ≤9 configs)
-fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
+fn handle_simple_single_page_menu(
+    configs: &[&Configuration],
+    storage: &ConfigStorage,
+) -> Result<()> {
     println!("\n{}", "Available Configurations:".blue().bold());
 
     // Add official option (first)
@@ -853,10 +895,20 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
         Ok(1) => {
             // Official option
             println!("Using official Claude configuration");
+
+            // Update settings.json to remove Anthropic configuration
+            let mut settings = crate::config::types::ClaudeSettings::load(
+                storage.get_claude_settings_dir().map(|s| s.as_str()),
+            )?;
+            settings.remove_anthropic_env();
+            settings.remove_anthropic_config_mode();
+            settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+
             launch_claude_with_env(EnvironmentConfig::empty())
         }
         Ok(num) if num >= 2 && num <= configs.len() + 1 => {
-            handle_selection_action(configs, num - 2) // -2 because official is at position 1
+            let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
+            handle_selection_action(configs, num - 1, storage, storage_mode) // -1 to account for official option at index 0
         }
         Ok(num) if num == configs.len() + 2 => {
             println!("Exiting...");
@@ -870,10 +922,24 @@ fn handle_simple_single_page_menu(configs: &[&Configuration]) -> Result<()> {
 }
 
 /// Handle the actual selection and configuration switch
-fn handle_selection_action(configs: &[&Configuration], selected_index: usize) -> Result<()> {
+fn handle_selection_action(
+    configs: &[&Configuration],
+    selected_index: usize,
+    storage: &ConfigStorage,
+    storage_mode: crate::config::types::StorageMode,
+) -> Result<()> {
     if selected_index == 0 {
         // Official option (reset to default)
         println!("\nUsing official Claude configuration");
+
+        // Update settings.json to remove Anthropic configuration
+        let mut settings = crate::config::types::ClaudeSettings::load(
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
+        settings.remove_anthropic_env();
+        settings.remove_anthropic_config_mode();
+        settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+
         launch_claude_with_env(EnvironmentConfig::empty())
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
@@ -891,6 +957,16 @@ fn handle_selection_action(configs: &[&Configuration], selected_index: usize) ->
         for detail_line in details {
             println!("{detail_line}");
         }
+
+        // Update settings.json with the configuration
+        let mut settings = crate::config::types::ClaudeSettings::load(
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
+        settings.switch_to_config_with_mode(
+            &selected_config,
+            storage_mode,
+            storage.get_claude_settings_dir().map(|s| s.as_str()),
+        )?;
 
         launch_claude_with_env(env_config)
     } else {

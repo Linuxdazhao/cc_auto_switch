@@ -208,7 +208,7 @@ The codebase is organized into three main domains:
 
 - `cli.rs`: clap-based command parser, Commands enum
 - `completion.rs`: Shell completion script generation (fish, zsh, bash, elvish, powershell)
-- `main.rs`: Command handlers (add, remove, list, use, current, etc.)
+- `main.rs`: Command handlers (add, remove, list, completion, etc.)
 - `display_utils.rs`: Terminal text formatting, width calculation, alignment
 
 #### 2. Configuration Domain (`src/config/`)
@@ -234,7 +234,7 @@ The codebase is organized into three main domains:
 ### Data Flow
 
 1. **Add Configuration** → CLI parses args → Validates → Saves to JSON via ConfigStorage
-2. **Use Configuration** → CLI or interactive mode → Reads config → Updates Claude settings.json → Launches Claude
+2. **Switch Configuration** → Interactive mode → Reads config → Updates Claude settings.json → Launches Claude
 3. **List Configurations** → Reads from ConfigStorage → Displays (JSON or plain text)
 4. **Shell Completion** → Dynamically loads configuration names → Generates shell-specific scripts
 
@@ -280,9 +280,8 @@ cc-switch add my-config -i  # Interactive mode
 cc-switch add my-config --from-file config.json  # Import from JSON
 
 # Switch configurations
-cc-switch use my-config  # Switch to my-config
-cc-switch use  # Interactive mode
-cc-switch use cc  # Reset to default (removes custom API settings)
+# Interactive mode to view and switch configurations
+cc-switch  # Enter interactive mode (no arguments needed)
 
 # List configurations
 cc-switch list  # JSON output (default)
@@ -296,15 +295,11 @@ cc-switch remove config1 config2 config3
 
 # Shell integration
 cc-switch completion fish  # Generate completion script
-cc-switch alias fish       # Generate eval-compatible aliases
-
-# Get version
-cc-switch version
 ```
 
 ## Interactive Features
 
-### Current Command Menu (`cc-switch current`)
+### Interactive Configuration Selection (`cc-switch`)
 
 **Navigation**:
 
@@ -354,10 +349,21 @@ echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
 
 ### Aliases
 
-Generate with `cc-switch alias <shell>`:
+You can add your own shell aliases for quick access:
 
-- `cs='cc-switch'`
-- `ccd='claude --dangerously-skip-permissions'`
+```bash
+# Fish
+echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
+
+# Zsh
+echo "alias cs='cc-switch'" >> ~/.zshrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+
+# Bash
+echo "alias cs='cc-switch'" >> ~/.bashrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
+```
 
 ## Testing Strategy
 
@@ -492,7 +498,7 @@ cargo test -- --nocapture
 ### Backward Compatibility
 
 - Existing configuration files remain compatible
-- Old command names preserved where possible (`switch` → `use`)
+- Uses interactive mode for configuration switching
 
 ### Performance
 

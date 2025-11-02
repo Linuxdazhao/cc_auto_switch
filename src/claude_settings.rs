@@ -168,17 +168,36 @@ impl ClaudeSettings {
                     || self.other.contains_key("anthropicModel")
                     || self.other.contains_key("anthropicSmallFastModel");
 
-                // Check for legacy/unexpected fields that might interfere with environment mode
+                // Standard Claude settings fields that should be preserved
+                // These are legitimate Claude settings that should not be removed
+                let standard_claude_fields = [
+                    "$schema",
+                    "alwaysThinkingEnabled",
+                    "claudeCodeDisableNonessentialTraffic",
+                    "feedbackSurveyState",
+                    "mcpServers",
+                    "statusLine",
+                    "ui",
+                    "theme",
+                    "featureFlags",
+                    "experiments",
+                ];
+
+                // Check for truly unexpected fields (not Anthropic and not standard Claude)
                 let mut unexpected_fields = Vec::new();
                 for key in self.other.keys() {
-                    if key != "anthropicAuthToken"
-                        && key != "anthropicBaseUrl"
-                        && key != "anthropicModel"
-                        && key != "anthropicSmallFastModel"
-                        && key != "anthropicDefaultSonnerModel"
-                        && key != "anthropicDefaultOpusModel"
-                        && key != "anthropicDefaultHaikuModel"
-                    {
+                    let is_anthropic_field = key == "anthropicAuthToken"
+                        || key == "anthropicBaseUrl"
+                        || key == "anthropicModel"
+                        || key == "anthropicSmallFastModel"
+                        || key == "anthropicDefaultSonnerModel"
+                        || key == "anthropicDefaultOpusModel"
+                        || key == "anthropicDefaultHaikuModel"
+                        || key == "anthropicDefaultSonnetModel"; // handle both spellings
+
+                    let is_standard_claude_field = standard_claude_fields.contains(&key.as_str());
+
+                    if !is_anthropic_field && !is_standard_claude_field {
                         unexpected_fields.push(key.clone());
                     }
                 }
@@ -199,18 +218,50 @@ impl ClaudeSettings {
                 self.remove_anthropic_env();
                 self.remove_anthropic_config_mode();
 
-                // Remove all unexpected fields
+                // Remove only truly unexpected fields (preserve standard Claude settings)
                 for field in unexpected_fields {
                     self.other.remove(&field);
                 }
 
+                // Apply the new configuration to env field
+                self.switch_to_config(config);
+
                 self.save(custom_dir)?;
             }
             StorageMode::Config => {
-                // Config mode: Write to env field in settings.json
+                // Config mode: Write Anthropic settings to root level with camelCase names
                 // First clean up any old Anthropic fields from 'other' map
                 self.remove_anthropic_config_mode();
-                self.switch_to_config(config);
+
+                // Set Anthropic settings at root level with camelCase names
+                self.other.insert(
+                    "anthropicAuthToken".to_string(),
+                    serde_json::Value::String(config.token.clone()),
+                );
+                self.other.insert(
+                    "anthropicBaseUrl".to_string(),
+                    serde_json::Value::String(config.url.clone()),
+                );
+
+                // Set model configurations only if provided (don't set empty values)
+                if let Some(model) = &config.model
+                    && !model.is_empty()
+                {
+                    self.other.insert(
+                        "anthropicModel".to_string(),
+                        serde_json::Value::String(model.clone()),
+                    );
+                }
+
+                if let Some(small_fast_model) = &config.small_fast_model
+                    && !small_fast_model.is_empty()
+                {
+                    self.other.insert(
+                        "anthropicSmallFastModel".to_string(),
+                        serde_json::Value::String(small_fast_model.clone()),
+                    );
+                }
+
                 self.save(custom_dir)?;
             }
         }

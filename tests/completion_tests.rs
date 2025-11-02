@@ -472,10 +472,6 @@ mod tests {
         let subcommand_names: Vec<&str> = app.get_subcommands().map(|cmd| cmd.get_name()).collect();
 
         assert!(
-            subcommand_names.contains(&"use"),
-            "Should have 'use' subcommand"
-        );
-        assert!(
             subcommand_names.contains(&"add"),
             "Should have 'add' subcommand"
         );

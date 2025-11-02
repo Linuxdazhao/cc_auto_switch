@@ -31,15 +31,17 @@ cc-switch add work sk-ant-work-xxx https://api.anthropic.com
 cc-switch add personal sk-ant-personal-xxx https://api.anthropic.com
 
 # Switch to work configuration
-cc-switch use work
+cc-switch
+# Then select 'work' from the interactive menu
 
 # Switch to personal configuration
-cc-switch use personal
+cc-switch
+# Then select 'personal' from the interactive menu
 
 # See all configurations
 cc-switch list
 
-# Enter interactive mode
+# Enter interactive mode (same as above)
 cc-switch
 ```
 
@@ -58,16 +60,13 @@ brew install cc-switch
 
 ## Main Commands
 
-| Command | Alias | What it does |
-|---------|-------|--------------|
-| `cc-switch add <name>` | `a` | Add new configuration |
-| `cc-switch use <name>` | `use`, `sw`, `switch` | Switch to configuration (use 'cc' to reset) |
-| `cc-switch list` | `l` | Show all configurations (JSON or plain text) |
-| `cc-switch remove <name...>` | `r` | Delete one or more configurations |
-| `cc-switch completion <shell>` | `C` | Generate shell completion scripts |
-| `cc-switch alias <shell>` | `A` | Generate shell aliases for eval |
-| `cc-switch version` | `v` | Print version information |
-| `cc-switch` | - | Enter interactive mode |
+| Command | What it does |
+|---------|--------------|
+| `cc-switch add <name>` | Add new configuration |
+| `cc-switch list` | Show all configurations (JSON or plain text) |
+| `cc-switch remove <name...>` | Delete one or more configurations |
+| `cc-switch completion <shell>` | Generate shell completion scripts |
+| `cc-switch` | Enter interactive mode |
 
 ## Advanced Usage
 
@@ -111,9 +110,6 @@ cc-switch add --from-file config.json
 # Set default storage mode
 cc-switch --store env    # Write to env field (default)
 cc-switch --store config # Write to root level with camelCase
-
-# Use specific mode for one operation
-cc-switch use my-config --store env
 ```
 
 ### List Configurations
@@ -162,16 +158,23 @@ cc-switch completion powershell
 
 ### Create Aliases
 ```bash
-# Quick aliases for immediate use
-eval "$(cc-switch alias fish)"
+# Add aliases permanently to shell config
 
-# Now you can use:
-cs use work     # Instead of cc-switch use work
-ccd             # Quick Claude launch
-
-# Or add aliases permanently to shell config
+# Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
+
+# Zsh
+echo "alias cs='cc-switch'" >> ~/.zshrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+
+# Bash
+echo "alias cs='cc-switch'" >> ~/.bashrc
+echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
+
+# Now you can use:
+cs              # Instead of cc-switch (enters interactive mode)
+ccd             # Quick Claude launch
 ```
 
 ## How it Works

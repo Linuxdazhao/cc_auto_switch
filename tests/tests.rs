@@ -389,34 +389,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_parsing_use_command() {
-        use clap::Parser;
-
-        let args = vec!["cc-switch", "use", "my-config"];
-        let cli = Cli::try_parse_from(args).unwrap();
-
-        if let Some(Commands::Use { alias_name }) = cli.command {
-            assert_eq!(alias_name, "my-config");
-        } else {
-            panic!("Expected Use command");
-        }
-    }
-
-    #[test]
-    fn test_cli_parsing_switch_alias() {
-        use clap::Parser;
-
-        let args = vec!["cc-switch", "switch", "my-config"];
-        let cli = Cli::try_parse_from(args).unwrap();
-
-        if let Some(Commands::Use { alias_name }) = cli.command {
-            assert_eq!(alias_name, "my-config");
-        } else {
-            panic!("Expected Use command (switch alias)");
-        }
-    }
-
-    #[test]
     fn test_cli_parsing_remove_command() {
         use clap::Parser;
 
@@ -1239,7 +1211,7 @@ mod claude_settings_tests {
         // Create a test configuration
         let config = create_test_config("test-config", "sk-ant-test", "https://api.test.com");
 
-        // Create ClaudeSettings with unexpected fields
+        // Create ClaudeSettings with unexpected fields (not standard Claude fields)
         let mut other = BTreeMap::new();
         other.insert("exist".to_string(), serde_json::Value::Bool(true));
         other.insert(
@@ -1272,17 +1244,39 @@ mod claude_settings_tests {
         // Read the saved file
         let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
 
-        // Parse and verify no unexpected fields remain
+        // Parse and verify unexpected fields are removed
         let saved_settings: ClaudeSettings =
             serde_json::from_str(&content).expect("Failed to parse saved settings");
 
         assert!(
-            saved_settings.other.is_empty(),
-            "All unexpected fields should be removed"
+            !saved_settings.other.contains_key("exist"),
+            "Unexpected field 'exist' should be removed"
         );
         assert!(
-            saved_settings.env.is_empty(),
-            "Env mode should have empty env field"
+            !saved_settings.other.contains_key("someLegacyField"),
+            "Unexpected field 'someLegacyField' should be removed"
+        );
+        assert!(
+            !saved_settings.other.contains_key("anthropicAuthToken"),
+            "Anthropic fields should be removed from 'other' in env mode"
+        );
+
+        // Verify Anthropic env variables are set in env field
+        assert!(
+            saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"),
+            "Env mode should populate env field with Anthropic settings"
+        );
+        assert_eq!(
+            saved_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            Some(&"sk-ant-test".to_string())
+        );
+        assert!(
+            saved_settings.env.contains_key("ANTHROPIC_BASE_URL"),
+            "Env mode should have ANTHROPIC_BASE_URL"
+        );
+        assert_eq!(
+            saved_settings.env.get("ANTHROPIC_BASE_URL"),
+            Some(&"https://api.test.com".to_string())
         );
     }
 
@@ -1327,27 +1321,38 @@ mod claude_settings_tests {
         // Read the saved file
         let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
 
-        // Parse and verify Anthropic fields are in env, but other fields remain in other
+        // Parse and verify Anthropic fields are in 'other' with camelCase, but other fields remain in other
         let saved_settings: ClaudeSettings =
             serde_json::from_str(&content).expect("Failed to parse saved settings");
 
-        // Verify Anthropic env variables are set
-        assert!(saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"));
-        assert_eq!(
-            saved_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test".to_string())
+        // Verify Anthropic settings are in 'other' with camelCase names (not in env field)
+        assert!(
+            saved_settings.other.contains_key("anthropicAuthToken"),
+            "Config mode should use camelCase field names in 'other'"
         );
-        assert!(saved_settings.env.contains_key("ANTHROPIC_BASE_URL"));
         assert_eq!(
-            saved_settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.test.com".to_string())
+            saved_settings.other.get("anthropicAuthToken"),
+            Some(&serde_json::Value::String("sk-ant-test".to_string()))
+        );
+        assert!(
+            saved_settings.other.contains_key("anthropicBaseUrl"),
+            "Config mode should have anthropicBaseUrl in 'other'"
+        );
+        assert_eq!(
+            saved_settings.other.get("anthropicBaseUrl"),
+            Some(&serde_json::Value::String(
+                "https://api.test.com".to_string()
+            ))
+        );
+
+        // Verify env field is empty in config mode
+        assert!(
+            saved_settings.env.is_empty(),
+            "Config mode should not use env field"
         );
 
         // Verify non-Anthropic fields are preserved
         assert!(saved_settings.other.contains_key("userPreferences"));
         assert!(saved_settings.other.contains_key("theme"));
-
-        // Verify old Anthropic fields were removed from 'other'
-        assert!(!saved_settings.other.contains_key("anthropicAuthToken"));
     }
 }
