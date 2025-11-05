@@ -1204,31 +1204,24 @@ mod claude_settings_tests {
     }
 
     #[test]
-    fn test_switch_to_env_mode_removes_unexpected_fields() {
+    fn test_switch_to_env_mode_detects_conflicts() {
         let temp_dir = create_test_temp_dir();
         let settings_path = temp_dir.path().join("settings.json");
 
         // Create a test configuration
         let config = create_test_config("test-config", "sk-ant-test", "https://api.test.com");
 
-        // Create ClaudeSettings with unexpected fields (not standard Claude fields)
-        let mut other = BTreeMap::new();
-        other.insert("exist".to_string(), serde_json::Value::Bool(true));
-        other.insert(
-            "someLegacyField".to_string(),
-            serde_json::Value::String("value".to_string()),
-        );
-        other.insert(
-            "anthropicAuthToken".to_string(),
-            serde_json::Value::String("old-token".to_string()),
-        );
+        // Create ClaudeSettings with Anthropic env fields (should be auto-cleaned)
+        let mut env = BTreeMap::new();
+        env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), "old-token".to_string());
+        env.insert("ANTHROPIC_BASE_URL".to_string(), "https://old-url.com".to_string());
 
         let mut settings = ClaudeSettings {
-            env: BTreeMap::new(),
-            other,
+            env,
+            other: BTreeMap::new(),
         };
 
-        // Switch to Env mode
+        // Try to switch to Env mode - should succeed and auto-clean conflicts
         let result = settings.switch_to_config_with_mode(
             &config,
             StorageMode::Env,
@@ -1236,47 +1229,74 @@ mod claude_settings_tests {
         );
 
         // Verify the operation succeeded
-        assert!(result.is_ok(), "Switch to Env mode should succeed");
+        assert!(
+            result.is_ok(),
+            "Switch to Env mode should succeed and auto-clean conflicts"
+        );
 
-        // Verify the file was created
-        assert!(settings_path.exists(), "Settings file should be created");
+        // Verify the settings file was created with cleaned env
+        assert!(
+            settings_path.exists(),
+            "Settings file should be created after cleaning"
+        );
 
-        // Read the saved file
+        // Read the saved file and verify conflicts were removed
         let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
-
-        // Parse and verify unexpected fields are removed
         let saved_settings: ClaudeSettings =
             serde_json::from_str(&content).expect("Failed to parse saved settings");
 
+        // Verify Anthropic fields were removed
         assert!(
-            !saved_settings.other.contains_key("exist"),
-            "Unexpected field 'exist' should be removed"
+            !saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"),
+            "ANTHROPIC_AUTH_TOKEN should be removed from env field"
         );
         assert!(
-            !saved_settings.other.contains_key("someLegacyField"),
-            "Unexpected field 'someLegacyField' should be removed"
+            !saved_settings.env.contains_key("ANTHROPIC_BASE_URL"),
+            "ANTHROPIC_BASE_URL should be removed from env field"
         );
-        assert!(
-            !saved_settings.other.contains_key("anthropicAuthToken"),
-            "Anthropic fields should be removed from 'other' in env mode"
+    }
+
+    #[test]
+    fn test_switch_to_env_mode_succeeds_without_conflicts() {
+        let temp_dir = create_test_temp_dir();
+        let settings_path = temp_dir.path().join("settings.json");
+
+        // Create a test configuration
+        let config = create_test_config("test-config", "sk-ant-test", "https://api.test.com");
+
+        // Create ClaudeSettings with only standard Claude fields (no conflicts)
+        let mut other = BTreeMap::new();
+        other.insert(
+            "$schema".to_string(),
+            serde_json::Value::String("https://claude.ai/schema.json".to_string()),
+        );
+        other.insert(
+            "theme".to_string(),
+            serde_json::Value::String("dark".to_string()),
         );
 
-        // Verify Anthropic env variables are set in env field
+        let mut settings = ClaudeSettings {
+            env: BTreeMap::new(),
+            other,
+        };
+
+        // Try to switch to Env mode - should succeed when no conflicts exist
+        let result = settings.switch_to_config_with_mode(
+            &config,
+            StorageMode::Env,
+            Some(temp_dir.path().to_str().unwrap()),
+        );
+
+        // Verify the operation succeeded
         assert!(
-            saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"),
-            "Env mode should populate env field with Anthropic settings"
+            result.is_ok(),
+            "Switch to Env mode should succeed when no conflicts exist"
         );
-        assert_eq!(
-            saved_settings.env.get("ANTHROPIC_AUTH_TOKEN"),
-            Some(&"sk-ant-test".to_string())
-        );
+
+        // Verify no file was created (env mode shouldn't touch settings.json)
         assert!(
-            saved_settings.env.contains_key("ANTHROPIC_BASE_URL"),
-            "Env mode should have ANTHROPIC_BASE_URL"
-        );
-        assert_eq!(
-            saved_settings.env.get("ANTHROPIC_BASE_URL"),
-            Some(&"https://api.test.com".to_string())
+            !settings_path.exists(),
+            "Settings file should not be created in env mode"
         );
     }
 
@@ -1308,12 +1328,30 @@ mod claude_settings_tests {
             other,
         };
 
+        // Temporarily unset system environment variables for this test
+        let original_auth_token = std::env::var("ANTHROPIC_AUTH_TOKEN").ok();
+        let original_base_url = std::env::var("ANTHROPIC_BASE_URL").ok();
+        unsafe {
+            std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
+            std::env::remove_var("ANTHROPIC_BASE_URL");
+        }
+
         // Switch to Config mode
         let result = settings.switch_to_config_with_mode(
             &config,
             StorageMode::Config,
             Some(temp_dir.path().to_str().unwrap()),
         );
+
+        // Restore original environment variables
+        unsafe {
+            if let Some(token) = original_auth_token {
+                std::env::set_var("ANTHROPIC_AUTH_TOKEN", token);
+            }
+            if let Some(url) = original_base_url {
+                std::env::set_var("ANTHROPIC_BASE_URL", url);
+            }
+        }
 
         // Verify the operation succeeded
         assert!(result.is_ok(), "Switch to Config mode should succeed");
@@ -1347,10 +1385,7 @@ mod claude_settings_tests {
         assert!(saved_settings.other.contains_key("userPreferences"));
         assert!(saved_settings.other.contains_key("theme"));
 
-        // Verify old Anthropic fields are removed from 'other'
-        assert!(
-            !saved_settings.other.contains_key("anthropicAuthToken"),
-            "Old anthropicAuthToken should be removed from 'other'"
-        );
+        // Note: anthropicAuthToken in 'other' field is preserved since it's not in 'env'
+        // The 'other' field is for Claude's own internal settings and we don't modify it
     }
 }

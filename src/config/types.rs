@@ -62,6 +62,185 @@ pub struct Configuration {
     pub anthropic_default_haiku_model: Option<String>,
 }
 
+impl Configuration {
+    /// Get all environment variable names that this configuration can set
+    ///
+    /// Returns a vector of all UPPERCASE environment variable names
+    /// that can be set by this configuration, used for conflict detection
+    /// in env mode.
+    pub fn get_env_field_names() -> Vec<&'static str> {
+        vec![
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_MODEL",
+            "ANTHROPIC_SMALL_FAST_MODEL",
+            "ANTHROPIC_MAX_THINKING_TOKENS",
+            "API_TIMEOUT_MS",
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_env_field_names() {
+        let fields = Configuration::get_env_field_names();
+
+        // Verify all expected fields are present
+        let expected_fields = vec![
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_MODEL",
+            "ANTHROPIC_SMALL_FAST_MODEL",
+            "ANTHROPIC_MAX_THINKING_TOKENS",
+            "API_TIMEOUT_MS",
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        ];
+
+        assert_eq!(
+            fields.len(),
+            expected_fields.len(),
+            "Should have exactly 10 fields"
+        );
+
+        for expected_field in expected_fields {
+            assert!(
+                fields.contains(&expected_field),
+                "Missing field: {}",
+                expected_field
+            );
+        }
+
+        // Verify all fields are uppercase
+        for field in &fields {
+            assert_eq!(
+                field,
+                &field.to_uppercase(),
+                "Field {} should be uppercase",
+                field
+            );
+        }
+    }
+
+    #[test]
+    fn test_remove_anthropic_env_uses_dynamic_fields() {
+        let mut settings = ClaudeSettings::default();
+
+        // Add all possible environment variables
+        let env_fields = Configuration::get_env_field_names();
+        for field in &env_fields {
+            settings
+                .env
+                .insert(field.to_string(), "test_value".to_string());
+        }
+
+        // Add some other env variables that shouldn't be removed
+        settings
+            .env
+            .insert("OTHER_VAR".to_string(), "other_value".to_string());
+        settings
+            .env
+            .insert("CLAUDE_THEME".to_string(), "dark".to_string());
+
+        // Remove Anthropic environment variables
+        settings.remove_anthropic_env();
+
+        // Verify all Anthropic fields are removed
+        for field in &env_fields {
+            assert!(
+                !settings.env.contains_key(*field),
+                "Field {} should be removed",
+                field
+            );
+        }
+
+        // Verify other fields are preserved
+        assert!(
+            settings.env.contains_key("OTHER_VAR"),
+            "Other variables should be preserved"
+        );
+        assert!(
+            settings.env.contains_key("CLAUDE_THEME"),
+            "Other variables should be preserved"
+        );
+        assert_eq!(
+            settings.env.get("OTHER_VAR"),
+            Some(&"other_value".to_string())
+        );
+        assert_eq!(settings.env.get("CLAUDE_THEME"), Some(&"dark".to_string()));
+    }
+
+    #[test]
+    fn test_switch_to_config_uses_dynamic_fields() {
+        let mut settings = ClaudeSettings::default();
+
+        // Add all possible environment variables
+        let env_fields = Configuration::get_env_field_names();
+        for field in &env_fields {
+            settings
+                .env
+                .insert(field.to_string(), "old_value".to_string());
+        }
+
+        // Create a test configuration
+        let config = Configuration {
+            alias_name: "test".to_string(),
+            token: "new_token".to_string(),
+            url: "https://api.new.com".to_string(),
+            model: Some("new_model".to_string()),
+            small_fast_model: Some("new_fast_model".to_string()),
+            max_thinking_tokens: Some(50000),
+            api_timeout_ms: Some(300000),
+            claude_code_disable_nonessential_traffic: Some(1),
+            anthropic_default_sonnet_model: Some("new_sonnet".to_string()),
+            anthropic_default_opus_model: Some("new_opus".to_string()),
+            anthropic_default_haiku_model: Some("new_haiku".to_string()),
+        };
+
+        // Switch to new configuration
+        settings.switch_to_config(&config);
+
+        // Verify the required fields are set correctly
+        assert_eq!(
+            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            Some(&"new_token".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_BASE_URL"),
+            Some(&"https://api.new.com".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_MODEL"),
+            Some(&"new_model".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_SMALL_FAST_MODEL"),
+            Some(&"new_fast_model".to_string())
+        );
+
+        // Verify fields not set in the config are removed (not just left with old values)
+        assert!(!settings.env.contains_key("ANTHROPIC_MAX_THINKING_TOKENS"));
+        assert!(!settings.env.contains_key("API_TIMEOUT_MS"));
+        assert!(
+            !settings
+                .env
+                .contains_key("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+        );
+        assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_SONNET_MODEL"));
+        assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_OPUS_MODEL"));
+        assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_HAIKU_MODEL"));
+    }
+}
+
 /// Storage manager for Claude API configurations
 ///
 /// Handles persistence and retrieval of multiple API configurations

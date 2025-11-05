@@ -74,26 +74,6 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
     Ok(input.trim().to_string())
 }
 
-/// Validate alias name
-///
-/// # Arguments
-/// * `alias_name` - The alias name to validate
-///
-/// # Returns
-/// Ok(()) if valid, Err with message if invalid
-pub fn validate_alias_name(alias_name: &str) -> Result<()> {
-    if alias_name.is_empty() {
-        anyhow::bail!("Alias name cannot be empty");
-    }
-    if alias_name == "cc" {
-        anyhow::bail!("Alias name 'cc' is reserved and cannot be used");
-    }
-    if alias_name.chars().any(|c| c.is_whitespace()) {
-        anyhow::bail!("Alias name cannot contain whitespace");
-    }
-    Ok(())
-}
-
 /// Execute claude command with or without --dangerously-skip-permissions
 ///
 /// # Arguments

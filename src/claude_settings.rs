@@ -90,11 +90,11 @@ impl ClaudeSettings {
             self.env = BTreeMap::new();
         }
 
-        // First remove all Anthropic environment variables to ensure clean state
-        self.env.remove("ANTHROPIC_AUTH_TOKEN");
-        self.env.remove("ANTHROPIC_BASE_URL");
-        self.env.remove("ANTHROPIC_MODEL");
-        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
+        // Remove all Anthropic environment variables to ensure clean state
+        let env_fields = Configuration::get_env_field_names();
+        for field in &env_fields {
+            self.env.remove(*field);
+        }
 
         // Set required environment variables
         self.env
@@ -130,16 +130,11 @@ impl ClaudeSettings {
             self.env = BTreeMap::new();
         }
 
-        self.env.remove("ANTHROPIC_AUTH_TOKEN");
-        self.env.remove("ANTHROPIC_BASE_URL");
-        self.env.remove("ANTHROPIC_MODEL");
-        self.env.remove("ANTHROPIC_SMALL_FAST_MODEL");
-        self.env.remove("ANTHROPIC_MAX_THINKING_TOKENS");
-        self.env.remove("API_TIMEOUT_MS");
-        self.env.remove("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
-        self.env.remove("ANTHROPIC_DEFAULT_SONNET_MODEL");
-        self.env.remove("ANTHROPIC_DEFAULT_OPUS_MODEL");
-        self.env.remove("ANTHROPIC_DEFAULT_HAIKU_MODEL");
+        // Remove all environment variables that can be set by configurations
+        let env_fields = Configuration::get_env_field_names();
+        for field in &env_fields {
+            self.env.remove(*field);
+        }
     }
 
     /// Switch to a specific API configuration with specified storage mode
@@ -163,92 +158,82 @@ impl ClaudeSettings {
     ) -> Result<()> {
         match mode {
             StorageMode::Env => {
-                // Env mode: Check for Anthropic fields written by cc-switch
-                let has_anthropic_env = self.env.contains_key("ANTHROPIC_AUTH_TOKEN")
-                    || self.env.contains_key("ANTHROPIC_BASE_URL")
-                    || self.env.contains_key("ANTHROPIC_MODEL")
-                    || self.env.contains_key("ANTHROPIC_SMALL_FAST_MODEL")
-                    || self.env.contains_key("ANTHROPIC_MAX_THINKING_TOKENS")
-                    || self.env.contains_key("API_TIMEOUT_MS")
-                    || self.env.contains_key("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
-                    || self.env.contains_key("ANTHROPIC_DEFAULT_SONNET_MODEL")
-                    || self.env.contains_key("ANTHROPIC_DEFAULT_OPUS_MODEL")
-                    || self.env.contains_key("ANTHROPIC_DEFAULT_HAIKU_MODEL");
+                // Env mode: Check for conflicts with existing configurable fields
+                // Automatically remove them from settings.json if found
 
-                let has_anthropic_config = self.other.contains_key("anthropicAuthToken")
-                    || self.other.contains_key("anthropicBaseUrl")
-                    || self.other.contains_key("anthropicModel")
-                    || self.other.contains_key("anthropicSmallFastModel")
-                    || self.other.contains_key("anthropicDefaultSonnerModel")
-                    || self.other.contains_key("anthropicDefaultOpusModel")
-                    || self.other.contains_key("anthropicDefaultHaikuModel")
-                    || self.other.contains_key("anthropicDefaultSonnetModel"); // handle both spellings
+                // Get all environment variable names that can be set by configurations
+                let anthropic_env_fields = Configuration::get_env_field_names();
 
-                // Standard Claude settings fields that should be preserved
-                // These are legitimate Claude settings that should not be removed
-                let standard_claude_fields = [
-                    "$schema",
-                    "alwaysThinkingEnabled",
-                    "claudeCodeDisableNonessentialTraffic",
-                    "feedbackSurveyState",
-                    "mcpServers",
-                    "statusLine",
-                    "ui",
-                    "theme",
-                    "featureFlags",
-                    "experiments",
-                ];
+                let mut removed_fields = Vec::new();
 
-                // Check for truly unexpected fields (not Anthropic and not standard Claude)
-                let mut unexpected_fields = Vec::new();
-                for key in self.other.keys() {
-                    let is_anthropic_field = key == "anthropicAuthToken"
-                        || key == "anthropicBaseUrl"
-                        || key == "anthropicModel"
-                        || key == "anthropicSmallFastModel"
-                        || key == "anthropicDefaultSonnerModel"
-                        || key == "anthropicDefaultOpusModel"
-                        || key == "anthropicDefaultHaikuModel"
-                        || key == "anthropicDefaultSonnetModel"; // handle both spellings
-
-                    let is_standard_claude_field = standard_claude_fields.contains(&key.as_str());
-
-                    if !is_anthropic_field && !is_standard_claude_field {
-                        unexpected_fields.push(key.clone());
+                // Check and remove Anthropic variables from env field
+                for field in &anthropic_env_fields {
+                    if self.env.remove(*field).is_some() {
+                        removed_fields.push(field.to_string());
                     }
                 }
 
-                if has_anthropic_env || has_anthropic_config || !unexpected_fields.is_empty() {
-                    eprintln!("⚠️  Cleaning up settings.json:");
-                    if has_anthropic_env || has_anthropic_config {
-                        eprintln!("  - Removing Anthropic settings");
+                // If fields were removed, report what was cleaned and save
+                if !removed_fields.is_empty() {
+                    eprintln!("🧹 Cleaning settings.json for env mode:");
+                    eprintln!("   Removed configurable fields:");
+                    for field in &removed_fields {
+                        eprintln!("   - {}", field);
                     }
-                    if !unexpected_fields.is_empty() {
-                        eprintln!(
-                            "  - Removing unexpected fields: {}",
-                            unexpected_fields.join(", ")
-                        );
-                    }
+                    eprintln!();
+                    eprintln!(
+                        "   Settings.json cleaned. Environment variables will be used instead."
+                    );
+
+                    // Save the cleaned settings
+                    self.save(custom_dir)?;
                 }
 
-                self.remove_anthropic_env();
-                self.remove_anthropic_config_mode();
-
-                // Remove only truly unexpected fields (preserve standard Claude settings)
-                for field in unexpected_fields {
-                    self.other.remove(&field);
-                }
-
-                // Apply the new configuration to env field
-                self.switch_to_config(config);
-
-                self.save(custom_dir)?;
+                // Env mode: Environment variables will be set directly when launching Claude
             }
             StorageMode::Config => {
                 // Config mode: Write Anthropic settings to env field with UPPERCASE names
-                // First clean up any old Anthropic fields from both 'env' and 'other' maps
-                self.remove_anthropic_env();
-                self.remove_anthropic_config_mode();
+                // Check for conflicts with system environment variables and settings.json
+                // Report errors and exit if configurable fields are found
+
+                // Get all environment variable names that can be set by configurations
+                let anthropic_env_fields = Configuration::get_env_field_names();
+
+                let mut conflicts = Vec::new();
+
+                // Check system environment variables for Anthropic variables
+                for field in &anthropic_env_fields {
+                    if std::env::var(field).is_ok() {
+                        conflicts.push(format!("system env: {}", field));
+                    }
+                }
+
+                // Check env field in settings.json for Anthropic variables
+                for field in &anthropic_env_fields {
+                    if self.env.contains_key(*field) {
+                        conflicts.push(format!("settings.json env field: {}", field));
+                    }
+                }
+
+                // If conflicts found, report error and exit
+                if !conflicts.is_empty() {
+                    eprintln!("❌ Conflict detected in config mode:");
+                    eprintln!("   Found existing Anthropic configuration:");
+                    for conflict in &conflicts {
+                        eprintln!("   - {}", conflict);
+                    }
+                    eprintln!();
+                    eprintln!(
+                        "   Config mode cannot work when Anthropic environment variables are already set."
+                    );
+                    eprintln!("   Please:");
+                    eprintln!("   1. Unset system environment variables, or");
+                    eprintln!("   2. Use 'env' mode instead, or");
+                    eprintln!("   3. Manually clean settings.json");
+                    return Err(anyhow::anyhow!(
+                        "Config mode conflict: Anthropic environment variables already exist"
+                    ));
+                }
 
                 // Apply the new configuration to env field
                 self.switch_to_config(config);
@@ -262,7 +247,8 @@ impl ClaudeSettings {
                 }
 
                 if let Some(timeout) = config.api_timeout_ms {
-                    self.env.insert("API_TIMEOUT_MS".to_string(), timeout.to_string());
+                    self.env
+                        .insert("API_TIMEOUT_MS".to_string(), timeout.to_string());
                 }
 
                 if let Some(flag) = config.claude_code_disable_nonessential_traffic {
@@ -275,19 +261,22 @@ impl ClaudeSettings {
                 if let Some(model) = &config.anthropic_default_sonnet_model
                     && !model.is_empty()
                 {
-                    self.env.insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), model.clone());
+                    self.env
+                        .insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), model.clone());
                 }
 
                 if let Some(model) = &config.anthropic_default_opus_model
                     && !model.is_empty()
                 {
-                    self.env.insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), model.clone());
+                    self.env
+                        .insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), model.clone());
                 }
 
                 if let Some(model) = &config.anthropic_default_haiku_model
                     && !model.is_empty()
                 {
-                    self.env.insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
+                    self.env
+                        .insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
                 }
 
                 self.save(custom_dir)?;
@@ -295,22 +284,5 @@ impl ClaudeSettings {
         }
 
         Ok(())
-    }
-
-    /// Remove Anthropic settings in config mode
-    ///
-    /// Clears all Anthropic-related settings from env field and other map
-    /// Used to reset to default Claude behavior
-    pub fn remove_anthropic_config_mode(&mut self) {
-        self.remove_anthropic_env();
-
-        // Also remove Anthropic settings from 'other' map
-        self.other.remove("anthropicAuthToken");
-        self.other.remove("anthropicBaseUrl");
-        self.other.remove("anthropicModel");
-        self.other.remove("anthropicSmallFastModel");
-        self.other.remove("anthropicDefaultSonnetModel");
-        self.other.remove("anthropicDefaultOpusModel");
-        self.other.remove("anthropicDefaultHaikuModel");
     }
 }

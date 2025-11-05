@@ -15,6 +15,49 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
+/// Calculate display width of a character
+/// Returns 2 for wide characters (CJK), 1 for others
+fn char_display_width(c: char) -> usize {
+    match c as u32 {
+        0x00..=0x7F => 1,
+        0x80..=0x2FF => 1,
+        0x2190..=0x21FF => 2,
+        0x3000..=0x303F => 2,
+        0x3040..=0x309F => 2,
+        0x30A0..=0x30FF => 2,
+        0x4E00..=0x9FFF => 2,
+        0xAC00..=0xD7AF => 2,
+        0x3400..=0x4DBF => 2,
+        0xFF01..=0xFF60 => 2,
+        _ => 1,
+    }
+}
+
+/// Truncate text to fit within available width, considering character display width
+fn truncate_text_to_width(text: &str, available_width: usize) -> (String, usize) {
+    let mut current_width = 0;
+    let truncated: String = text
+        .chars()
+        .take_while(|&c| {
+            let char_width = char_display_width(c);
+            if current_width + char_width <= available_width {
+                current_width += char_width;
+                true
+            } else {
+                false
+            }
+        })
+        .collect();
+    let truncated_width = text_display_width(&truncated);
+    (truncated, truncated_width)
+}
+
+/// Clean up terminal state by leaving alternate screen and disabling raw mode
+fn cleanup_terminal(stdout: &mut io::Stdout) {
+    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+    let _ = terminal::disable_raw_mode();
+}
+
 /// Border drawing utilities for terminal compatibility
 struct BorderDrawing {
     /// Check if terminal supports Unicode box drawing characters
@@ -95,75 +138,28 @@ impl BorderDrawing {
 
     /// Draw middle border line with text
     fn draw_middle_line(&self, text: &str, width: usize) -> String {
-        if self.unicode_supported {
-            let text_len = text_display_width(text);
-            // Account for borders: "║ " (1+1) + " ║" (1+1) = 4 characters
-            // But we need to account for actual display width of the text
-            let available_width = width.saturating_sub(4);
-            if text_len > available_width {
-                // Truncate text to fit within available width, considering display width
-                let mut current_width = 0;
-                let truncated: String = text
-                    .chars()
-                    .take_while(|&c| {
-                        let char_width = match c as u32 {
-                            0x00..=0x7F => 1,
-                            0x80..=0x2FF => 1,
-                            0x2190..=0x21FF => 2,
-                            0x3000..=0x303F => 2,
-                            0x3040..=0x309F => 2,
-                            0x30A0..=0x30FF => 2,
-                            0x4E00..=0x9FFF => 2,
-                            0xAC00..=0xD7AF => 2,
-                            0x3400..=0x4DBF => 2,
-                            0xFF01..=0xFF60 => 2,
-                            _ => 1,
-                        };
-                        if current_width + char_width <= available_width {
-                            current_width += char_width;
-                            true
-                        } else {
-                            false
-                        }
-                    })
-                    .collect();
-                // Calculate actual display width of truncated text
-                let truncated_width = text_display_width(&truncated);
-                let padding_spaces = available_width.saturating_sub(truncated_width);
-                format!("║ {}{} ║", truncated, " ".repeat(padding_spaces))
-            } else {
-                let padded_text =
-                    pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
-                format!("║ {padded_text} ║")
-            }
+        let text_len = text_display_width(text);
+        // Account for borders: "║ " (1+1) + " ║" (1+1) = 4 characters
+        let available_width = width.saturating_sub(4);
+
+        let (left_border, right_border) = if self.unicode_supported {
+            ("║", "║")
         } else {
-            // ASCII fallback
-            let text_len = text_display_width(text);
-            let available_width = width.saturating_sub(4);
-            if text_len > available_width {
-                // Truncate text to fit within available width
-                let mut current_width = 0;
-                let truncated: String = text
-                    .chars()
-                    .take_while(|&c| {
-                        let char_width = if (c as u32) <= 0x7F { 1 } else { 2 };
-                        if current_width + char_width <= available_width {
-                            current_width += char_width;
-                            true
-                        } else {
-                            false
-                        }
-                    })
-                    .collect();
-                // Calculate actual display width of truncated text
-                let truncated_width = text_display_width(&truncated);
-                let padding_spaces = available_width.saturating_sub(truncated_width);
-                format!("| {}{} |", truncated, " ".repeat(padding_spaces))
-            } else {
-                let padded_text =
-                    pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
-                format!("| {padded_text} |")
-            }
+            ("|", "|")
+        };
+
+        if text_len > available_width {
+            // Truncate text to fit within available width, considering display width
+            let (truncated, truncated_width) = truncate_text_to_width(text, available_width);
+            let padding_spaces = available_width.saturating_sub(truncated_width);
+            format!(
+                "{left_border} {}{} {right_border}",
+                truncated,
+                " ".repeat(padding_spaces)
+            )
+        } else {
+            let padded_text = pad_text_to_width(text, available_width, TextAlignment::Left, ' ');
+            format!("{left_border} {padded_text} {right_border}")
         }
     }
 
@@ -275,8 +271,7 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
             Ok(event) => event,
             Err(e) => {
                 // Clean up terminal state on input error
-                let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                let _ = terminal::disable_raw_mode();
+                cleanup_terminal(stdout);
                 return Err(e.into());
             }
         };
@@ -298,15 +293,13 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
                     }
                     KeyCode::Enter => {
                         // Execute terminal cleanup here
-                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                        let _ = terminal::disable_raw_mode();
+                        cleanup_terminal(stdout);
 
                         return handle_main_menu_action(selected_index, storage);
                     }
                     KeyCode::Esc => {
                         // Clean up terminal before exit
-                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                        let _ = terminal::disable_raw_mode();
+                        cleanup_terminal(stdout);
 
                         println!("\nExiting...");
                         return Ok(());
@@ -597,8 +590,7 @@ fn handle_full_interactive_menu(
             Ok(event) => event,
             Err(e) => {
                 // Clean up terminal state on input error
-                let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                let _ = terminal::disable_raw_mode();
+                cleanup_terminal(stdout);
                 return Err(e.into());
             }
         };
@@ -635,8 +627,7 @@ fn handle_full_interactive_menu(
                 }
                 KeyCode::Enter => {
                     // Clean up terminal before processing selection
-                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                    let _ = terminal::disable_raw_mode();
+                    cleanup_terminal(stdout);
 
                     return handle_selection_action(
                         configs,
@@ -647,8 +638,7 @@ fn handle_full_interactive_menu(
                 }
                 KeyCode::Esc => {
                     // Clean up terminal before exit
-                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                    let _ = terminal::disable_raw_mode();
+                    cleanup_terminal(stdout);
 
                     println!("\nSelection cancelled");
                     return Ok(());
@@ -661,8 +651,7 @@ fn handle_full_interactive_menu(
                         let selection_index = actual_config_index + 1; // +1 because official is at index 0
 
                         // Clean up terminal before processing selection
-                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                        let _ = terminal::disable_raw_mode();
+                        cleanup_terminal(stdout);
 
                         return handle_selection_action(
                             configs,
@@ -675,8 +664,7 @@ fn handle_full_interactive_menu(
                 }
                 KeyCode::Char('r') | KeyCode::Char('R') => {
                     // Clean up terminal before processing selection
-                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                    let _ = terminal::disable_raw_mode();
+                    cleanup_terminal(stdout);
 
                     return handle_selection_action(configs, 0, storage, storage_mode);
                 }
@@ -684,8 +672,7 @@ fn handle_full_interactive_menu(
                     // Only allow editing if a config is selected (not official or exit)
                     if *selected_index > 0 && *selected_index <= configs.len() {
                         // Clean up terminal before entering edit mode
-                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                        let _ = terminal::disable_raw_mode();
+                        cleanup_terminal(stdout);
 
                         let config_index = *selected_index - 1; // -1 because official is at index 0
 
@@ -716,8 +703,7 @@ fn handle_full_interactive_menu(
                 }
                 KeyCode::Char('q') | KeyCode::Char('Q') => {
                     // Clean up terminal before processing selection
-                    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                    let _ = terminal::disable_raw_mode();
+                    cleanup_terminal(stdout);
 
                     return handle_selection_action(
                         configs,
@@ -813,7 +799,6 @@ fn handle_simple_interactive_menu(
                     storage.get_claude_settings_dir().map(|s| s.as_str()),
                 )?;
                 settings.remove_anthropic_env();
-                settings.remove_anthropic_config_mode();
                 settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
                 return launch_claude_with_env(EnvironmentConfig::empty());
@@ -901,7 +886,6 @@ fn handle_simple_single_page_menu(
                 storage.get_claude_settings_dir().map(|s| s.as_str()),
             )?;
             settings.remove_anthropic_env();
-            settings.remove_anthropic_config_mode();
             settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
             launch_claude_with_env(EnvironmentConfig::empty())
@@ -937,7 +921,6 @@ fn handle_selection_action(
             storage.get_claude_settings_dir().map(|s| s.as_str()),
         )?;
         settings.remove_anthropic_env();
-        settings.remove_anthropic_config_mode();
         settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
         launch_claude_with_env(EnvironmentConfig::empty())
@@ -1836,10 +1819,14 @@ fn display_edit_menu(config: &Configuration) {
     );
 }
 
-/// Edit alias field
-fn edit_field_alias(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑别名:");
-    println!("当前值: {}", config.alias_name.cyan());
+/// Helper function to edit a string field
+fn edit_string_field(
+    field_name: &str,
+    current_value: &str,
+    validator: impl Fn(&str) -> Result<()>,
+) -> Result<Option<String>> {
+    println!("\n编辑{field_name}:");
+    println!("当前值: {}", current_value.cyan());
     print!("新值 (回车保持不变): ");
     io::stdout().flush()?;
 
@@ -1848,35 +1835,109 @@ fn edit_field_alias(config: &mut Configuration) -> Result<()> {
     let input = input.trim();
 
     if !input.is_empty() {
-        // Validate alias (reuse existing validation logic)
+        validator(input)?;
+        println!("{field_name}已更新为: {}", input.green());
+        Ok(Some(input.to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Type alias for optional string field result
+type OptionalStringResult = Result<Option<Option<String>>>;
+
+/// Helper function to edit an optional string field (can be cleared)
+fn edit_optional_string_field(
+    field_name: &str,
+    current_value: Option<&str>,
+) -> OptionalStringResult {
+    println!("\n编辑{field_name}:");
+    println!("当前值: {}", current_value.unwrap_or("[未设置]").cyan());
+    print!("新值 (回车保持不变，输入空格清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == " " {
+            println!("{}", format!("{field_name}已清除").green());
+            Ok(Some(None))
+        } else {
+            println!("{field_name}已更新为: {}", input.green());
+            Ok(Some(Some(input.to_string())))
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// Type alias for optional u32 field result
+type OptionalU32Result = Result<Option<Option<u32>>>;
+
+/// Helper function to edit an optional u32 field (can be cleared)
+fn edit_optional_u32_field(field_name: &str, current_value: Option<u32>) -> OptionalU32Result {
+    println!("\n编辑{field_name}:");
+    println!(
+        "当前值: {}",
+        current_value
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .cyan()
+    );
+    print!("新值 (回车保持不变，输入 0 清除): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim();
+
+    if !input.is_empty() {
+        if input == "0" {
+            println!("{}", format!("{field_name}已清除").green());
+            Ok(Some(None))
+        } else if let Ok(value) = input.parse::<u32>() {
+            println!("{field_name}已更新为: {}", value.to_string().green());
+            Ok(Some(Some(value)))
+        } else {
+            println!("{}", "错误: 请输入有效的数字".red());
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// Edit alias field
+fn edit_field_alias(config: &mut Configuration) -> Result<()> {
+    let validator = |input: &str| -> Result<()> {
         if input.contains(char::is_whitespace) {
-            println!("{}", "错误: 别名不能包含空白字符".red());
-            return Ok(());
+            anyhow::bail!("错误: 别名不能包含空白字符");
         }
         if input == "cc" {
-            println!("{}", "错误: 'cc' 是保留名称".red());
-            return Ok(());
+            anyhow::bail!("错误: 'cc' 是保留名称");
         }
+        Ok(())
+    };
 
-        config.alias_name = input.to_string();
-        println!("别名已更新为: {}", input.green());
+    match edit_string_field("别名", &config.alias_name, validator) {
+        Ok(Some(new_value)) => config.alias_name = new_value,
+        Ok(None) => {}
+        Err(e) => println!("{}", e.to_string().red()),
     }
     Ok(())
 }
 
 /// Edit token field
 fn edit_field_token(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑令牌:");
-    println!("当前值: {}", format_token_for_display(&config.token).cyan());
-    print!("新值 (回车保持不变): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        config.token = input.to_string();
+    let no_validator = |_: &str| -> Result<()> { Ok(()) };
+    if let Some(new_value) = edit_string_field(
+        "令牌",
+        &format_token_for_display(&config.token),
+        no_validator,
+    )? {
+        config.token = new_value;
         println!("{}", "令牌已更新".green());
     }
     Ok(())
@@ -1884,260 +1945,89 @@ fn edit_field_token(config: &mut Configuration) -> Result<()> {
 
 /// Edit URL field
 fn edit_field_url(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑 URL:");
-    println!("当前值: {}", config.url.cyan());
-    print!("新值 (回车保持不变): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        config.url = input.to_string();
-        println!("URL 已更新为: {}", input.green());
+    let no_validator = |_: &str| -> Result<()> { Ok(()) };
+    if let Some(new_value) = edit_string_field("URL", &config.url, no_validator)? {
+        config.url = new_value;
     }
     Ok(())
 }
 
 /// Edit model field
 fn edit_field_model(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑模型:");
-    println!(
-        "当前值: {}",
-        config.model.as_deref().unwrap_or("[未设置]").cyan()
-    );
-    print!("新值 (回车保持不变，输入空格清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == " " {
-            config.model = None;
-            println!("{}", "模型已清除".green());
-        } else {
-            config.model = Some(input.to_string());
-            println!("模型已更新为: {}", input.green());
-        }
+    if let Some(result) = edit_optional_string_field("模型", config.model.as_deref())? {
+        config.model = result;
     }
     Ok(())
 }
 
 /// Edit small_fast_model field
 fn edit_field_small_fast_model(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑快速模型:");
-    println!(
-        "当前值: {}",
-        config
-            .small_fast_model
-            .as_deref()
-            .unwrap_or("[未设置]")
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入空格清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == " " {
-            config.small_fast_model = None;
-            println!("{}", "快速模型已清除".green());
-        } else {
-            config.small_fast_model = Some(input.to_string());
-            println!("快速模型已更新为: {}", input.green());
-        }
+    if let Some(result) =
+        edit_optional_string_field("快速模型", config.small_fast_model.as_deref())?
+    {
+        config.small_fast_model = result;
     }
     Ok(())
 }
 
 /// Edit max_thinking_tokens field
 fn edit_field_max_thinking_tokens(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑最大思考令牌数:");
-    println!(
-        "当前值: {}",
-        config
-            .max_thinking_tokens
-            .map(|t| t.to_string())
-            .unwrap_or("[未设置]".to_string())
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入 0 清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == "0" {
-            config.max_thinking_tokens = None;
-            println!("{}", "最大思考令牌数已清除".green());
-        } else if let Ok(tokens) = input.parse::<u32>() {
-            config.max_thinking_tokens = Some(tokens);
-            println!("最大思考令牌数已更新为: {}", tokens.to_string().green());
-        } else {
-            println!("{}", "错误: 请输入有效的数字".red());
-        }
+    if let Some(result) = edit_optional_u32_field("最大思考令牌数", config.max_thinking_tokens)?
+    {
+        config.max_thinking_tokens = result;
     }
     Ok(())
 }
 
 /// Edit api_timeout_ms field
 fn edit_field_api_timeout_ms(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑 API 超时时间 (毫秒):");
-    println!(
-        "当前值: {}",
-        config
-            .api_timeout_ms
-            .map(|t| t.to_string())
-            .unwrap_or("[未设置]".to_string())
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入 0 清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == "0" {
-            config.api_timeout_ms = None;
-            println!("{}", "API 超时时间已清除".green());
-        } else if let Ok(timeout) = input.parse::<u32>() {
-            config.api_timeout_ms = Some(timeout);
-            println!("API 超时时间已更新为: {}", timeout.to_string().green());
-        } else {
-            println!("{}", "错误: 请输入有效的数字".red());
-        }
+    if let Some(result) = edit_optional_u32_field("API超时时间 (毫秒)", config.api_timeout_ms)?
+    {
+        config.api_timeout_ms = result;
     }
     Ok(())
 }
 
 /// Edit claude_code_disable_nonessential_traffic field
 fn edit_field_claude_code_disable_nonessential_traffic(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑禁用非必要流量标志:");
-    println!(
-        "当前值: {}",
-        config
-            .claude_code_disable_nonessential_traffic
-            .map(|t| t.to_string())
-            .unwrap_or("[未设置]".to_string())
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入 0 清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == "0" {
-            config.claude_code_disable_nonessential_traffic = None;
-            println!("{}", "禁用非必要流量标志已清除".green());
-        } else if let Ok(flag) = input.parse::<u32>() {
-            config.claude_code_disable_nonessential_traffic = Some(flag);
-            println!("禁用非必要流量标志已更新为: {}", flag.to_string().green());
-        } else {
-            println!("{}", "错误: 请输入有效的数字".red());
-        }
+    if let Some(result) = edit_optional_u32_field(
+        "禁用非必要流量标志",
+        config.claude_code_disable_nonessential_traffic,
+    )? {
+        config.claude_code_disable_nonessential_traffic = result;
     }
     Ok(())
 }
 
 /// Edit anthropic_default_sonnet_model field
 fn edit_field_anthropic_default_sonnet_model(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑默认 Sonnet 模型:");
-    println!(
-        "当前值: {}",
-        config
-            .anthropic_default_sonnet_model
-            .as_deref()
-            .unwrap_or("[未设置]")
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入空格清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == " " {
-            config.anthropic_default_sonnet_model = None;
-            println!("{}", "默认 Sonnet 模型已清除".green());
-        } else {
-            config.anthropic_default_sonnet_model = Some(input.to_string());
-            println!("默认 Sonnet 模型已更新为: {}", input.green());
-        }
+    if let Some(result) = edit_optional_string_field(
+        "默认 Sonnet 模型",
+        config.anthropic_default_sonnet_model.as_deref(),
+    )? {
+        config.anthropic_default_sonnet_model = result;
     }
     Ok(())
 }
 
 /// Edit anthropic_default_opus_model field
 fn edit_field_anthropic_default_opus_model(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑默认 Opus 模型:");
-    println!(
-        "当前值: {}",
-        config
-            .anthropic_default_opus_model
-            .as_deref()
-            .unwrap_or("[未设置]")
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入空格清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == " " {
-            config.anthropic_default_opus_model = None;
-            println!("{}", "默认 Opus 模型已清除".green());
-        } else {
-            config.anthropic_default_opus_model = Some(input.to_string());
-            println!("默认 Opus 模型已更新为: {}", input.green());
-        }
+    if let Some(result) = edit_optional_string_field(
+        "默认 Opus 模型",
+        config.anthropic_default_opus_model.as_deref(),
+    )? {
+        config.anthropic_default_opus_model = result;
     }
     Ok(())
 }
 
 /// Edit anthropic_default_haiku_model field
 fn edit_field_anthropic_default_haiku_model(config: &mut Configuration) -> Result<()> {
-    println!("\n编辑默认 Haiku 模型:");
-    println!(
-        "当前值: {}",
-        config
-            .anthropic_default_haiku_model
-            .as_deref()
-            .unwrap_or("[未设置]")
-            .cyan()
-    );
-    print!("新值 (回车保持不变，输入空格清除): ");
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let input = input.trim();
-
-    if !input.is_empty() {
-        if input == " " {
-            config.anthropic_default_haiku_model = None;
-            println!("{}", "默认 Haiku 模型已清除".green());
-        } else {
-            config.anthropic_default_haiku_model = Some(input.to_string());
-            println!("默认 Haiku 模型已更新为: {}", input.green());
-        }
+    if let Some(result) = edit_optional_string_field(
+        "默认 Haiku 模型",
+        config.anthropic_default_haiku_model.as_deref(),
+    )? {
+        config.anthropic_default_haiku_model = result;
     }
     Ok(())
 }
