@@ -1328,12 +1328,24 @@ mod claude_settings_tests {
             other,
         };
 
-        // Temporarily unset system environment variables for this test
+        // Temporarily unset all Anthropic-related environment variables for this test
         let original_auth_token = std::env::var("ANTHROPIC_AUTH_TOKEN").ok();
         let original_base_url = std::env::var("ANTHROPIC_BASE_URL").ok();
+        let original_model = std::env::var("ANTHROPIC_MODEL").ok();
+        let original_small_fast_model = std::env::var("ANTHROPIC_SMALL_FAST_MODEL").ok();
+        let original_disable_traffic = std::env::var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC").ok();
+        let original_sonnet = std::env::var("ANTHROPIC_DEFAULT_SONNET_MODEL").ok();
+        let original_opus = std::env::var("ANTHROPIC_DEFAULT_OPUS_MODEL").ok();
+        let original_haiku = std::env::var("ANTHROPIC_DEFAULT_HAIKU_MODEL").ok();
         unsafe {
             std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
             std::env::remove_var("ANTHROPIC_BASE_URL");
+            std::env::remove_var("ANTHROPIC_MODEL");
+            std::env::remove_var("ANTHROPIC_SMALL_FAST_MODEL");
+            std::env::remove_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
+            std::env::remove_var("ANTHROPIC_DEFAULT_SONNET_MODEL");
+            std::env::remove_var("ANTHROPIC_DEFAULT_OPUS_MODEL");
+            std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
         }
 
         // Switch to Config mode
@@ -1347,9 +1359,43 @@ mod claude_settings_tests {
         unsafe {
             if let Some(token) = original_auth_token {
                 std::env::set_var("ANTHROPIC_AUTH_TOKEN", token);
+            } else {
+                std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
             }
             if let Some(url) = original_base_url {
                 std::env::set_var("ANTHROPIC_BASE_URL", url);
+            } else {
+                std::env::remove_var("ANTHROPIC_BASE_URL");
+            }
+            if let Some(model) = original_model {
+                std::env::set_var("ANTHROPIC_MODEL", model);
+            } else {
+                std::env::remove_var("ANTHROPIC_MODEL");
+            }
+            if let Some(sfm) = original_small_fast_model {
+                std::env::set_var("ANTHROPIC_SMALL_FAST_MODEL", sfm);
+            } else {
+                std::env::remove_var("ANTHROPIC_SMALL_FAST_MODEL");
+            }
+            if let Some(disable) = original_disable_traffic {
+                std::env::set_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", disable);
+            } else {
+                std::env::remove_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
+            }
+            if let Some(sonnet) = original_sonnet {
+                std::env::set_var("ANTHROPIC_DEFAULT_SONNET_MODEL", sonnet);
+            } else {
+                std::env::remove_var("ANTHROPIC_DEFAULT_SONNET_MODEL");
+            }
+            if let Some(opus) = original_opus {
+                std::env::set_var("ANTHROPIC_DEFAULT_OPUS_MODEL", opus);
+            } else {
+                std::env::remove_var("ANTHROPIC_DEFAULT_OPUS_MODEL");
+            }
+            if let Some(haiku) = original_haiku {
+                std::env::set_var("ANTHROPIC_DEFAULT_HAIKU_MODEL", haiku);
+            } else {
+                std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
             }
         }
 
