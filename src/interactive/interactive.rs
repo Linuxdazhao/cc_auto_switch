@@ -376,7 +376,7 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
         return Ok(());
     }
 
-    let mut configs: Vec<&Configuration> = storage.configurations.values().collect();
+    let mut configs: Vec<Configuration> = storage.configurations.values().cloned().collect();
     configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
 
     let mut selected_index = 0;
@@ -397,7 +397,7 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
             let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
             let result = handle_full_interactive_menu(
                 &mut stdout,
-                &configs,
+                &mut configs,
                 &mut selected_index,
                 storage,
                 storage_mode,
@@ -415,13 +415,13 @@ pub fn handle_interactive_selection(storage: &ConfigStorage) -> Result<()> {
     }
 
     // Fallback to simple numbered menu
-    handle_simple_interactive_menu(&configs, storage)
+    handle_simple_interactive_menu(&configs.iter().collect::<Vec<_>>(), storage)
 }
 
 /// Handle full interactive menu with arrow key navigation and pagination
 fn handle_full_interactive_menu(
     stdout: &mut io::Stdout,
-    configs: &[&Configuration],
+    configs: &mut Vec<Configuration>,
     selected_index: &mut usize,
     storage: &ConfigStorage,
     storage_mode: crate::config::types::StorageMode,
@@ -630,7 +630,7 @@ fn handle_full_interactive_menu(
                     cleanup_terminal(stdout);
 
                     return handle_selection_action(
-                        configs,
+                        &configs.iter().collect::<Vec<_>>(),
                         *selected_index,
                         storage,
                         storage_mode,
@@ -654,7 +654,7 @@ fn handle_full_interactive_menu(
                         cleanup_terminal(stdout);
 
                         return handle_selection_action(
-                            configs,
+                            &configs.iter().collect::<Vec<_>>(),
                             selection_index,
                             storage,
                             storage_mode,
@@ -666,7 +666,7 @@ fn handle_full_interactive_menu(
                     // Clean up terminal before processing selection
                     cleanup_terminal(stdout);
 
-                    return handle_selection_action(configs, 0, storage, storage_mode);
+                    return handle_selection_action(&configs.iter().collect::<Vec<_>>(), 0, storage, storage_mode);
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Only allow editing if a config is selected (not official or exit)
@@ -676,27 +676,46 @@ fn handle_full_interactive_menu(
 
                         let config_index = *selected_index - 1; // -1 because official is at index 0
 
-                        // Check if we should return to menu (user pressed 'q' in edit mode)
-                        if let Err(e) = handle_config_edit(configs[config_index]) {
-                            // Check if this is a "return to menu" error
-                            if e.downcast_ref::<EditModeError>()
-                                == Some(&EditModeError::ReturnToMenu)
-                            {
-                                // Re-enter alternate screen and raw mode, then continue the loop
-                                if execute!(
-                                    stdout,
-                                    terminal::EnterAlternateScreen,
-                                    terminal::Clear(terminal::ClearType::All)
-                                )
-                                .is_ok()
-                                    && terminal::enable_raw_mode().is_ok()
-                                {
-                                    // Continue the menu loop
+                        // Try to edit the configuration
+                        let edit_result = handle_config_edit(&configs[config_index]);
+
+                        // Re-enter alternate screen and raw mode before continuing
+                        if execute!(
+                            stdout,
+                            terminal::EnterAlternateScreen,
+                            terminal::Clear(terminal::ClearType::All)
+                        )
+                        .is_ok()
+                            && terminal::enable_raw_mode().is_ok()
+                        {
+                            // Check if edit was successful (saved) or if user cancelled
+                            match edit_result {
+                                Ok(_) => {
+                                    // Configuration was saved successfully, reload configs
+                                    if let Ok(reloaded_storage) = ConfigStorage::load() {
+                                        *configs = reloaded_storage.configurations.values().cloned().collect();
+                                        configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
+                                        // Keep selection within bounds
+                                        if *selected_index > configs.len() + 1 {
+                                            *selected_index = configs.len() + 1;
+                                        }
+                                    }
+                                    // Continue the loop to display updated configs
                                     continue;
                                 }
+                                Err(e) => {
+                                    // Check if this is a "return to menu" error (user cancelled)
+                                    if e.downcast_ref::<EditModeError>()
+                                        == Some(&EditModeError::ReturnToMenu)
+                                    {
+                                        // User cancelled edit, just continue the loop
+                                        continue;
+                                    }
+                                    // For other errors, propagate them up
+                                    cleanup_terminal(stdout);
+                                    return Err(e);
+                                }
                             }
-                            // For other errors, propagate them up
-                            return Err(e);
                         }
                     }
                     // Invalid selection - ignore silently
@@ -706,7 +725,7 @@ fn handle_full_interactive_menu(
                     cleanup_terminal(stdout);
 
                     return handle_selection_action(
-                        configs,
+                        &configs.iter().collect::<Vec<_>>(),
                         configs.len() + 1,
                         storage,
                         storage_mode,
