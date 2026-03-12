@@ -1,8 +1,10 @@
 use crate::cli::completion::{generate_completion, list_aliases_for_completion};
 use crate::cli::{Cli, Commands};
-use crate::config::types::{AddCommandParams, StorageMode};
-use crate::config::{ConfigStorage, Configuration, validate_alias_name};
-use crate::interactive::{handle_interactive_selection, read_input, read_sensitive_input};
+use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
+use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
+use crate::interactive::{
+    handle_interactive_selection, launch_claude_with_env, read_input, read_sensitive_input,
+};
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use std::fs;
@@ -613,6 +615,39 @@ pub fn run() -> Result<()> {
             }
             Commands::Completion { shell } => {
                 generate_completion(&shell)?;
+            }
+            Commands::Use {
+                alias_name,
+                prompt,
+            } => {
+                let config = storage
+                    .configurations
+                    .get(&alias_name)
+                    .ok_or_else(|| anyhow!("Configuration '{}' not found", alias_name))?
+                    .clone();
+
+                let env_config = EnvironmentConfig::from_config(&config);
+                let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
+
+                // Update settings.json with the configuration
+                let mut settings = ClaudeSettings::load(
+                    storage.get_claude_settings_dir().map(|s| s.as_str()),
+                )?;
+                settings.switch_to_config_with_mode(
+                    &config,
+                    storage_mode,
+                    storage.get_claude_settings_dir().map(|s| s.as_str()),
+                )?;
+
+                println!("Switched to configuration '{}'", alias_name);
+
+                let prompt_str = if prompt.is_empty() {
+                    None
+                } else {
+                    Some(prompt.join(" "))
+                };
+
+                launch_claude_with_env(env_config, prompt_str.as_deref())?;
             }
         }
     } else {

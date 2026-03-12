@@ -207,4 +207,17 @@ pub enum Commands {
         #[arg(default_value = "fish")]
         shell: String,
     },
+    /// Switch to a configuration and optionally send a prompt to Claude
+    ///
+    /// Quickly switches to the specified configuration and launches Claude.
+    /// Any additional arguments after the alias name are joined and sent as a prompt.
+    #[command(trailing_var_arg = true)]
+    Use {
+        /// Configuration alias name to switch to
+        alias_name: String,
+
+        /// Prompt to send to Claude (all remaining arguments)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        prompt: Vec<String>,
+    },
 }
