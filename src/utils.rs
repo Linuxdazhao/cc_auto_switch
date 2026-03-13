@@ -2,8 +2,6 @@ use anyhow::{Context, Result};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
 
 /// Get the path to the configuration storage file
 ///
@@ -106,10 +104,7 @@ pub fn execute_claude_command(skip_permissions: bool) -> Result<()> {
 
 /// Launch Claude CLI with proper delay
 pub fn launch_claude() -> Result<()> {
-    println!("\nWaiting 0.5 seconds before launching Claude...");
-    thread::sleep(Duration::from_millis(500));
-
-    println!("Launching Claude CLI...");
+    println!("\nLaunching Claude CLI...");
     let mut child = Command::new("claude")
         .arg("--dangerously-skip-permissions")
         .stdin(Stdio::inherit())

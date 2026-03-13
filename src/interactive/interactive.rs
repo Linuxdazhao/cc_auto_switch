@@ -12,8 +12,6 @@ use crossterm::{
 };
 use std::io::{self, Write};
 use std::process::Command;
-use std::thread;
-use std::time::Duration;
 
 /// Calculate display width of a character
 /// Returns 2 for wide characters (CJK), 1 for others
@@ -980,10 +978,7 @@ fn handle_selection_action(
 
 /// Launch Claude CLI with environment variables and exec to replace current process
 pub fn launch_claude_with_env(env_config: EnvironmentConfig, prompt: Option<&str>) -> Result<()> {
-    println!("\nWaiting 0.5 seconds before launching Claude...");
-    thread::sleep(Duration::from_millis(500));
-
-    println!("Launching Claude CLI...");
+    println!("\nLaunching Claude CLI...");
 
     // Set environment variables for current process
     for (key, value) in env_config.as_env_tuples() {

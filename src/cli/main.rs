@@ -640,6 +640,14 @@ pub fn run() -> Result<()> {
                 )?;
 
                 println!("Switched to configuration '{}'", alias_name);
+                println!(
+                    "  URL:   {}",
+                    config.url
+                );
+                println!(
+                    "  Token: {}",
+                    crate::cli::display_utils::format_token_for_display(&config.token)
+                );
 
                 let prompt_str = if prompt.is_empty() {
                     None
