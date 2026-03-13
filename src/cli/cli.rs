@@ -211,10 +211,20 @@ pub enum Commands {
     ///
     /// Quickly switches to the specified configuration and launches Claude.
     /// Any additional arguments after the alias name are joined and sent as a prompt.
+    /// Use --resume to resume a previous Claude session by ID.
+    /// Use --continue to continue the most recent Claude session.
     #[command(trailing_var_arg = true)]
     Use {
         /// Configuration alias name to switch to
         alias_name: String,
+
+        /// Resume a previous Claude session by ID
+        #[arg(long, short = 'r')]
+        resume: Option<String>,
+
+        /// Continue the most recent Claude session
+        #[arg(long, short = 'c')]
+        r#continue: bool,
 
         /// Prompt to send to Claude (all remaining arguments)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]

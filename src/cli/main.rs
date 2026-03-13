@@ -618,6 +618,8 @@ pub fn run() -> Result<()> {
             }
             Commands::Use {
                 alias_name,
+                resume,
+                r#continue,
                 prompt,
             } => {
                 let config = storage
@@ -655,7 +657,12 @@ pub fn run() -> Result<()> {
                     Some(prompt.join(" "))
                 };
 
-                launch_claude_with_env(env_config, prompt_str.as_deref())?;
+                launch_claude_with_env(
+                    env_config,
+                    prompt_str.as_deref(),
+                    resume.as_deref(),
+                    r#continue,
+                )?;
             }
         }
     } else {

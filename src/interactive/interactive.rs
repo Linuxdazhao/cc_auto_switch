@@ -818,7 +818,7 @@ fn handle_simple_interactive_menu(
                 settings.remove_anthropic_env();
                 settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                return launch_claude_with_env(EnvironmentConfig::empty(), None);
+                return launch_claude_with_env(EnvironmentConfig::empty(), None, None, false);
             }
             "e" => {
                 // Edit functionality for simple menu
@@ -905,7 +905,7 @@ fn handle_simple_single_page_menu(
             settings.remove_anthropic_env();
             settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-            launch_claude_with_env(EnvironmentConfig::empty(), None)
+            launch_claude_with_env(EnvironmentConfig::empty(), None, None, false)
         }
         Ok(num) if num >= 2 && num <= configs.len() + 1 => {
             let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
@@ -940,7 +940,7 @@ fn handle_selection_action(
         settings.remove_anthropic_env();
         settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-        launch_claude_with_env(EnvironmentConfig::empty(), None)
+        launch_claude_with_env(EnvironmentConfig::empty(), None, None, false)
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
         let config_index = selected_index - 1; // -1 because official is at index 0
@@ -968,7 +968,7 @@ fn handle_selection_action(
             storage.get_claude_settings_dir().map(|s| s.as_str()),
         )?;
 
-        launch_claude_with_env(env_config, None)
+        launch_claude_with_env(env_config, None, None, false)
     } else {
         // Exit
         println!("\nExiting...");
@@ -977,7 +977,12 @@ fn handle_selection_action(
 }
 
 /// Launch Claude CLI with environment variables and exec to replace current process
-pub fn launch_claude_with_env(env_config: EnvironmentConfig, prompt: Option<&str>) -> Result<()> {
+pub fn launch_claude_with_env(
+    env_config: EnvironmentConfig,
+    prompt: Option<&str>,
+    resume: Option<&str>,
+    continue_session: bool,
+) -> Result<()> {
     println!("\nLaunching Claude CLI...");
 
     // Set environment variables for current process
@@ -993,6 +998,12 @@ pub fn launch_claude_with_env(env_config: EnvironmentConfig, prompt: Option<&str
         use std::os::unix::process::CommandExt;
         let mut command = Command::new("claude");
         command.arg("--dangerously-skip-permissions");
+        if let Some(session_id) = resume {
+            command.args(["--resume", session_id]);
+        }
+        if continue_session {
+            command.arg("--continue");
+        }
         if let Some(p) = prompt {
             command.arg(p);
         }
@@ -1007,6 +1018,12 @@ pub fn launch_claude_with_env(env_config: EnvironmentConfig, prompt: Option<&str
         use std::process::Stdio;
         let mut command = Command::new("claude");
         command.arg("--dangerously-skip-permissions");
+        if let Some(session_id) = resume {
+            command.args(["--resume", session_id]);
+        }
+        if continue_session {
+            command.arg("--continue");
+        }
         if let Some(p) = prompt {
             command.arg(p);
         }

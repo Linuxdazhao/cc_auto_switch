@@ -65,6 +65,7 @@ brew install cc-switch
 | `cc-switch add <name>` | Add new configuration |
 | `cc-switch list` | Show all configurations (JSON or plain text) |
 | `cc-switch remove <name...>` | Delete one or more configurations |
+| `cc-switch use <name>` | Quick switch and launch Claude |
 | `cc-switch completion <shell>` | Generate shell completion scripts |
 | `cc-switch` | Enter interactive mode |
 
@@ -80,6 +81,23 @@ cc-switch
 # - N/P: Next/Previous page (when >9 configs)
 # - R: Reset to default Claude
 # - E: Exit
+```
+
+### Quick Switch (use command)
+```bash
+# Switch to a configuration and launch Claude
+cc-switch use work
+
+# Switch and send a prompt
+cc-switch use work "Write a Python script for me"
+
+# Switch and resume a previous session
+cc-switch use work --resume c8439f36-44a9-4d85-9e88-de35e004fdd4
+cc-switch use work -r c8439f36-44a9-4d85-9e88-de35e004fdd4
+
+# Switch and continue the most recent session
+cc-switch use work --continue
+cc-switch use work -c
 ```
 
 ### Add with Full Configuration

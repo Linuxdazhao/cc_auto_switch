@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use cc_switch::cli::main::*;
     use cc_switch::cli::{Cli, Commands};
     use cc_switch::config::{ConfigStorage, Configuration, EnvironmentConfig};
     use clap::Parser;

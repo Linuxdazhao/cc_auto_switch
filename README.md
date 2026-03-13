@@ -63,6 +63,7 @@ brew install cc-switch
 | `cc-switch add <名称>` | 添加新配置 |
 | `cc-switch list` | 显示所有配置（JSON 或纯文本） |
 | `cc-switch remove <名称...>` | 删除一个或多个配置 |
+| `cc-switch use <名称>` | 快速切换配置并启动 Claude |
 | `cc-switch completion <shell>` | 生成 Shell 补全脚本 |
 | `cc-switch` | 进入交互模式 |
 
@@ -78,6 +79,23 @@ cc-switch
 # - N/P：下一页/上一页（当配置 >9 个时）
 # - R：重置为默认 Claude
 # - E：退出
+```
+
+### 快速切换（use 命令）
+```bash
+# 切换到指定配置并启动 Claude
+cc-switch use work
+
+# 切换并发送提示词
+cc-switch use work "帮我写一个 Python 脚本"
+
+# 切换并恢复之前的会话
+cc-switch use work --resume c8439f36-44a9-4d85-9e88-de35e004fdd4
+cc-switch use work -r c8439f36-44a9-4d85-9e88-de35e004fdd4
+
+# 切换并继续最近的会话
+cc-switch use work --continue
+cc-switch use work -c
 ```
 
 ### 完整配置添加
