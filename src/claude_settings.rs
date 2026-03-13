@@ -193,8 +193,8 @@ impl ClaudeSettings {
             }
             StorageMode::Config => {
                 // Config mode: Write Anthropic settings to env field with UPPERCASE names
-                // Check for conflicts with system environment variables and settings.json
-                // Report errors and exit if configurable fields are found
+                // Check for conflicts with system environment variables (not settings.json)
+                // settings.json env field is managed by this tool, so it's expected to have values
 
                 // Get all environment variable names that can be set by configurations
                 let anthropic_env_fields = Configuration::get_env_field_names();
@@ -202,40 +202,33 @@ impl ClaudeSettings {
                 let mut conflicts = Vec::new();
 
                 // Check system environment variables for Anthropic variables
+                // This is the real conflict - user may have set these in their shell
                 for field in &anthropic_env_fields {
                     if std::env::var(field).is_ok() {
                         conflicts.push(format!("system env: {}", field));
                     }
                 }
 
-                // Check env field in settings.json for Anthropic variables
-                for field in &anthropic_env_fields {
-                    if self.env.contains_key(*field) {
-                        conflicts.push(format!("settings.json env field: {}", field));
-                    }
-                }
-
                 // If conflicts found, report error and exit
                 if !conflicts.is_empty() {
                     eprintln!("❌ Conflict detected in config mode:");
-                    eprintln!("   Found existing Anthropic configuration:");
+                    eprintln!("   Found existing Anthropic configuration in system environment:");
                     for conflict in &conflicts {
                         eprintln!("   - {}", conflict);
                     }
                     eprintln!();
                     eprintln!(
-                        "   Config mode cannot work when Anthropic environment variables are already set."
+                        "   Config mode cannot work when Anthropic environment variables are set in system env."
                     );
                     eprintln!("   Please:");
                     eprintln!("   1. Unset system environment variables, or");
-                    eprintln!("   2. Use 'env' mode instead, or");
-                    eprintln!("   3. Manually clean settings.json");
+                    eprintln!("   2. Use 'env' mode instead");
                     return Err(anyhow::anyhow!(
-                        "Config mode conflict: Anthropic environment variables already exist"
+                        "Config mode conflict: Anthropic environment variables exist in system env"
                     ));
                 }
 
-                // Apply the new configuration to env field
+                // Apply the new configuration to env field (overwrite existing values)
                 self.switch_to_config(config);
 
                 // Add the additional fields that switch_to_config doesn't handle
