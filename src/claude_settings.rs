@@ -118,6 +118,47 @@ impl ClaudeSettings {
                 small_fast_model.clone(),
             );
         }
+
+        // Set additional configuration values that should not be removed
+        if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+            self.env.insert(
+                "ANTHROPIC_MAX_THINKING_TOKENS".to_string(),
+                max_thinking_tokens.to_string(),
+            );
+        }
+
+        if let Some(timeout) = config.api_timeout_ms {
+            self.env
+                .insert("API_TIMEOUT_MS".to_string(), timeout.to_string());
+        }
+
+        if let Some(flag) = config.claude_code_disable_nonessential_traffic {
+            self.env.insert(
+                "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                flag.to_string(),
+            );
+        }
+
+        if let Some(model) = &config.anthropic_default_sonnet_model
+            && !model.is_empty()
+        {
+            self.env
+                .insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), model.clone());
+        }
+
+        if let Some(model) = &config.anthropic_default_opus_model
+            && !model.is_empty()
+        {
+            self.env
+                .insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), model.clone());
+        }
+
+        if let Some(model) = &config.anthropic_default_haiku_model
+            && !model.is_empty()
+        {
+            self.env
+                .insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
+        }
     }
 
     /// Remove Anthropic environment variables

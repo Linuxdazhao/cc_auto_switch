@@ -664,7 +664,12 @@ fn handle_full_interactive_menu(
                     // Clean up terminal before processing selection
                     cleanup_terminal(stdout);
 
-                    return handle_selection_action(&configs.iter().collect::<Vec<_>>(), 0, storage, storage_mode);
+                    return handle_selection_action(
+                        &configs.iter().collect::<Vec<_>>(),
+                        0,
+                        storage,
+                        storage_mode,
+                    );
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') => {
                     // Only allow editing if a config is selected (not official or exit)
@@ -691,7 +696,11 @@ fn handle_full_interactive_menu(
                                 Ok(_) => {
                                     // Configuration was saved successfully, reload configs
                                     if let Ok(reloaded_storage) = ConfigStorage::load() {
-                                        *configs = reloaded_storage.configurations.values().cloned().collect();
+                                        *configs = reloaded_storage
+                                            .configurations
+                                            .values()
+                                            .cloned()
+                                            .collect();
                                         configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
                                         // Keep selection within bounds
                                         if *selected_index > configs.len() + 1 {

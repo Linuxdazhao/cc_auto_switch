@@ -26,6 +26,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         }
     }
 
@@ -553,6 +555,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -713,6 +717,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let json = serde_json::to_string_pretty(&config).expect("Should serialize to pretty JSON");
@@ -785,6 +791,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -933,6 +941,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
         storage.add_configuration(config);
 
@@ -956,6 +966,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -986,6 +998,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1015,6 +1029,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let result = storage.update_configuration("nonexistent", new_config);
@@ -1039,6 +1055,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
         storage.add_configuration(config2);
 
@@ -1055,6 +1073,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1084,6 +1104,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -1108,6 +1130,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: Some("MiniMax-M2".to_string()),
             anthropic_default_opus_model: Some("MiniMax-M2".to_string()),
             anthropic_default_haiku_model: Some("MiniMax-M2".to_string()),
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         assert_eq!(config.api_timeout_ms, Some(3000000));
@@ -1140,6 +1164,8 @@ mod config_edit_tests {
             anthropic_default_sonnet_model: Some("MiniMax-M2".to_string()),
             anthropic_default_opus_model: Some("MiniMax-M2".to_string()),
             anthropic_default_haiku_model: Some("MiniMax-M2".to_string()),
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -1200,6 +1226,8 @@ mod claude_settings_tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         }
     }
 
@@ -1214,7 +1242,10 @@ mod claude_settings_tests {
         // Create ClaudeSettings with Anthropic env fields (should be auto-cleaned)
         let mut env = BTreeMap::new();
         env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), "old-token".to_string());
-        env.insert("ANTHROPIC_BASE_URL".to_string(), "https://old-url.com".to_string());
+        env.insert(
+            "ANTHROPIC_BASE_URL".to_string(),
+            "https://old-url.com".to_string(),
+        );
 
         let mut settings = ClaudeSettings {
             env,
@@ -1333,10 +1364,14 @@ mod claude_settings_tests {
         let original_base_url = std::env::var("ANTHROPIC_BASE_URL").ok();
         let original_model = std::env::var("ANTHROPIC_MODEL").ok();
         let original_small_fast_model = std::env::var("ANTHROPIC_SMALL_FAST_MODEL").ok();
-        let original_disable_traffic = std::env::var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC").ok();
+        let original_disable_traffic =
+            std::env::var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC").ok();
         let original_sonnet = std::env::var("ANTHROPIC_DEFAULT_SONNET_MODEL").ok();
         let original_opus = std::env::var("ANTHROPIC_DEFAULT_OPUS_MODEL").ok();
         let original_haiku = std::env::var("ANTHROPIC_DEFAULT_HAIKU_MODEL").ok();
+        let original_experimental_teams =
+            std::env::var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS").ok();
+        let original_disable_1m_context = std::env::var("CLAUDE_CODE_DISABLE_1M_CONTEXT").ok();
         unsafe {
             std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
             std::env::remove_var("ANTHROPIC_BASE_URL");
@@ -1346,6 +1381,8 @@ mod claude_settings_tests {
             std::env::remove_var("ANTHROPIC_DEFAULT_SONNET_MODEL");
             std::env::remove_var("ANTHROPIC_DEFAULT_OPUS_MODEL");
             std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
+            std::env::remove_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
+            std::env::remove_var("CLAUDE_CODE_DISABLE_1M_CONTEXT");
         }
 
         // Switch to Config mode
@@ -1396,6 +1433,16 @@ mod claude_settings_tests {
                 std::env::set_var("ANTHROPIC_DEFAULT_HAIKU_MODEL", haiku);
             } else {
                 std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
+            }
+            if let Some(experimental) = original_experimental_teams {
+                std::env::set_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", experimental);
+            } else {
+                std::env::remove_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
+            }
+            if let Some(disable_1m) = original_disable_1m_context {
+                std::env::set_var("CLAUDE_CODE_DISABLE_1M_CONTEXT", disable_1m);
+            } else {
+                std::env::remove_var("CLAUDE_CODE_DISABLE_1M_CONTEXT");
             }
         }
 

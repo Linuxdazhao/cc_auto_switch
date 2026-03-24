@@ -17,6 +17,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         }
     }
 
@@ -40,6 +42,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         }
     }
 
@@ -236,6 +240,8 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);

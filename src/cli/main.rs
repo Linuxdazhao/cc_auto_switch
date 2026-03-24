@@ -434,6 +434,8 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         anthropic_default_sonnet_model: final_anthropic_default_sonnet_model,
         anthropic_default_opus_model: final_anthropic_default_opus_model,
         anthropic_default_haiku_model: final_anthropic_default_haiku_model,
+        claude_code_experimental_agent_teams: None,
+        claude_code_disable_1m_context: None,
     };
 
     storage.add_configuration(config);
@@ -632,9 +634,8 @@ pub fn run() -> Result<()> {
                 let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
 
                 // Update settings.json with the configuration
-                let mut settings = ClaudeSettings::load(
-                    storage.get_claude_settings_dir().map(|s| s.as_str()),
-                )?;
+                let mut settings =
+                    ClaudeSettings::load(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
                 settings.switch_to_config_with_mode(
                     &config,
                     storage_mode,
@@ -642,10 +643,7 @@ pub fn run() -> Result<()> {
                 )?;
 
                 println!("Switched to configuration '{}'", alias_name);
-                println!(
-                    "  URL:   {}",
-                    config.url
-                );
+                println!("  URL:   {}", config.url);
                 println!(
                     "  Token: {}",
                     crate::cli::display_utils::format_token_for_display(&config.token)

@@ -60,6 +60,12 @@ pub struct Configuration {
     /// Default Haiku model name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anthropic_default_haiku_model: Option<String>,
+    /// Enable experimental agent teams flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_experimental_agent_teams: Option<u32>,
+    /// Disable 1M context limit flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_disable_1m_context: Option<u32>,
 }
 
 impl Configuration {
@@ -77,6 +83,8 @@ impl Configuration {
             "ANTHROPIC_MAX_THINKING_TOKENS",
             "API_TIMEOUT_MS",
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT",
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
@@ -104,12 +112,14 @@ mod tests {
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT",
         ];
 
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 10 fields"
+            "Should have exactly 12 fields"
         );
 
         for expected_field in expected_fields {
@@ -204,6 +214,8 @@ mod tests {
             anthropic_default_sonnet_model: Some("new_sonnet".to_string()),
             anthropic_default_opus_model: Some("new_opus".to_string()),
             anthropic_default_haiku_model: Some("new_haiku".to_string()),
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
         };
 
         // Switch to new configuration
@@ -227,7 +239,84 @@ mod tests {
             Some(&"new_fast_model".to_string())
         );
 
-        // Verify fields not set in the config are removed (not just left with old values)
+        // Verify additional fields are set correctly when provided in config
+        assert_eq!(
+            settings.env.get("ANTHROPIC_MAX_THINKING_TOKENS"),
+            Some(&"50000".to_string())
+        );
+        assert_eq!(
+            settings.env.get("API_TIMEOUT_MS"),
+            Some(&"300000".to_string())
+        );
+        assert_eq!(
+            settings.env.get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+            Some(&"1".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_DEFAULT_SONNET_MODEL"),
+            Some(&"new_sonnet".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_DEFAULT_OPUS_MODEL"),
+            Some(&"new_opus".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"),
+            Some(&"new_haiku".to_string())
+        );
+    }
+
+    #[test]
+    fn test_switch_to_config_removes_optional_fields_when_not_provided() {
+        let mut settings = ClaudeSettings::default();
+
+        // Add all possible environment variables with old values
+        let env_fields = Configuration::get_env_field_names();
+        for field in &env_fields {
+            settings
+                .env
+                .insert(field.to_string(), "old_value".to_string());
+        }
+
+        // Create a test configuration without optional fields
+        let config = Configuration {
+            alias_name: "test".to_string(),
+            token: "new_token".to_string(),
+            url: "https://api.new.com".to_string(),
+            model: Some("new_model".to_string()),
+            small_fast_model: Some("new_fast_model".to_string()),
+            max_thinking_tokens: None,
+            api_timeout_ms: None,
+            claude_code_disable_nonessential_traffic: None,
+            anthropic_default_sonnet_model: None,
+            anthropic_default_opus_model: None,
+            anthropic_default_haiku_model: None,
+            claude_code_experimental_agent_teams: None,
+            claude_code_disable_1m_context: None,
+        };
+
+        // Switch to new configuration
+        settings.switch_to_config(&config);
+
+        // Verify the required fields are set correctly
+        assert_eq!(
+            settings.env.get("ANTHROPIC_AUTH_TOKEN"),
+            Some(&"new_token".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_BASE_URL"),
+            Some(&"https://api.new.com".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_MODEL"),
+            Some(&"new_model".to_string())
+        );
+        assert_eq!(
+            settings.env.get("ANTHROPIC_SMALL_FAST_MODEL"),
+            Some(&"new_fast_model".to_string())
+        );
+
+        // Verify optional fields are removed when not provided in config
         assert!(!settings.env.contains_key("ANTHROPIC_MAX_THINKING_TOKENS"));
         assert!(!settings.env.contains_key("API_TIMEOUT_MS"));
         assert!(
