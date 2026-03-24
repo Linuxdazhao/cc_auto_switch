@@ -257,14 +257,16 @@ impl ClaudeSettings {
             StorageMode::Env => {
                 // Env mode: Check for conflicts with existing configurable fields
                 // Automatically remove them from settings.json if found
+                // Note: User preference fields are preserved (not cleared)
 
-                // Get all environment variable names that can be set by configurations
-                let anthropic_env_fields = Configuration::get_env_field_names();
+                // Get environment variable names that should be cleared
+                // This excludes user preference fields like DISABLE_NONESSENTIAL_TRAFFIC
+                let clearable_env_fields = Configuration::get_clearable_env_field_names();
 
                 let mut removed_fields = Vec::new();
 
                 // Check and remove Anthropic variables from env field
-                for field in &anthropic_env_fields {
+                for field in &clearable_env_fields {
                     if self.env.remove(*field).is_some() {
                         removed_fields.push(field.to_string());
                     }

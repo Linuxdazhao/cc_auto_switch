@@ -1481,4 +1481,108 @@ mod claude_settings_tests {
         // Note: anthropicAuthToken in 'other' field is preserved since it's not in 'env'
         // The 'other' field is for Claude's own internal settings and we don't modify it
     }
+
+    #[test]
+    fn test_switch_to_env_mode_preserves_user_preference_fields() {
+        let temp_dir = create_test_temp_dir();
+        let settings_path = temp_dir.path().join("settings.json");
+
+        // Create a test configuration
+        let config = create_test_config("test-config", "sk-ant-test", "https://api.test.com");
+
+        // Create ClaudeSettings with user preference fields that should be preserved
+        let mut env = BTreeMap::new();
+        env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), "old-token".to_string());
+        env.insert(
+            "ANTHROPIC_BASE_URL".to_string(),
+            "https://old-url.com".to_string(),
+        );
+        // User preference fields - should be preserved
+        env.insert(
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+            "1".to_string(),
+        );
+        env.insert(
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS".to_string(),
+            "1".to_string(),
+        );
+        env.insert(
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT".to_string(),
+            "1".to_string(),
+        );
+
+        let mut settings = ClaudeSettings {
+            env,
+            other: BTreeMap::new(),
+        };
+
+        // Switch to Env mode
+        let result = settings.switch_to_config_with_mode(
+            &config,
+            StorageMode::Env,
+            Some(temp_dir.path().to_str().unwrap()),
+        );
+
+        // Verify the operation succeeded
+        assert!(
+            result.is_ok(),
+            "Switch to Env mode should succeed"
+        );
+
+        // Read the saved file and verify user preference fields are preserved
+        let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
+        let saved_settings: ClaudeSettings =
+            serde_json::from_str(&content).expect("Failed to parse saved settings");
+
+        // Verify Anthropic config fields were removed
+        assert!(
+            !saved_settings.env.contains_key("ANTHROPIC_AUTH_TOKEN"),
+            "ANTHROPIC_AUTH_TOKEN should be removed from env field"
+        );
+        assert!(
+            !saved_settings.env.contains_key("ANTHROPIC_BASE_URL"),
+            "ANTHROPIC_BASE_URL should be removed from env field"
+        );
+
+        // Verify user preference fields are preserved
+        assert!(
+            saved_settings
+                .env
+                .contains_key("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC should be preserved"
+        );
+        assert_eq!(
+            saved_settings
+                .env
+                .get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+            Some(&"1".to_string()),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC value should be preserved"
+        );
+
+        assert!(
+            saved_settings
+                .env
+                .contains_key("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"),
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be preserved"
+        );
+        assert_eq!(
+            saved_settings
+                .env
+                .get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"),
+            Some(&"1".to_string()),
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS value should be preserved"
+        );
+
+        assert!(
+            saved_settings
+                .env
+                .contains_key("CLAUDE_CODE_DISABLE_1M_CONTEXT"),
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT should be preserved"
+        );
+        assert_eq!(
+            saved_settings.env.get("CLAUDE_CODE_DISABLE_1M_CONTEXT"),
+            Some(&"1".to_string()),
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT value should be preserved"
+        );
+    }
 }

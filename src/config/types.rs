@@ -73,7 +73,7 @@ impl Configuration {
     ///
     /// Returns a vector of all UPPERCASE environment variable names
     /// that can be set by this configuration, used for conflict detection
-    /// in env mode.
+    /// in config mode.
     pub fn get_env_field_names() -> Vec<&'static str> {
         vec![
             "ANTHROPIC_AUTH_TOKEN",
@@ -88,6 +88,29 @@ impl Configuration {
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        ]
+    }
+
+    /// Get environment variable names that should be cleared in env mode
+    ///
+    /// Returns a vector of UPPERCASE environment variable names that are
+    /// configuration-specific and should be cleared from settings.json when
+    /// switching in env mode. User preference fields are excluded.
+    pub fn get_clearable_env_field_names() -> Vec<&'static str> {
+        vec![
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_MODEL",
+            "ANTHROPIC_SMALL_FAST_MODEL",
+            "ANTHROPIC_MAX_THINKING_TOKENS",
+            "API_TIMEOUT_MS",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            // User preference fields are NOT included:
+            // - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+            // - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
+            // - CLAUDE_CODE_DISABLE_1M_CONTEXT
         ]
     }
 }
@@ -137,6 +160,54 @@ mod tests {
                 &field.to_uppercase(),
                 "Field {} should be uppercase",
                 field
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_clearable_env_field_names() {
+        let fields = Configuration::get_clearable_env_field_names();
+
+        // Verify clearable fields (excludes user preference fields)
+        let expected_fields = vec![
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_MODEL",
+            "ANTHROPIC_SMALL_FAST_MODEL",
+            "ANTHROPIC_MAX_THINKING_TOKENS",
+            "API_TIMEOUT_MS",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        ];
+
+        // User preference fields should NOT be in clearable list
+        let excluded_fields = vec![
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+            "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+        ];
+
+        assert_eq!(
+            fields.len(),
+            expected_fields.len(),
+            "Should have exactly 9 clearable fields"
+        );
+
+        for expected_field in expected_fields {
+            assert!(
+                fields.contains(&expected_field),
+                "Missing clearable field: {}",
+                expected_field
+            );
+        }
+
+        // Verify excluded fields are NOT present
+        for excluded_field in excluded_fields {
+            assert!(
+                !fields.contains(&excluded_field),
+                "User preference field {} should NOT be in clearable list",
+                excluded_field
             );
         }
     }
