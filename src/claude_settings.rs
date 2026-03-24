@@ -5,6 +5,42 @@ use std::fs;
 use crate::config::types::{ClaudeSettings, Configuration, StorageMode};
 use crate::utils::get_claude_settings_path;
 
+/// Remove trailing commas from JSON content to make it more lenient
+///
+/// Handles trailing commas before `}` and `]` characters, which are common
+/// in hand-edited JSON files but not valid in standard JSON.
+fn strip_trailing_commas(json: &str) -> String {
+    // Simple approach: remove commas that appear before closing braces/brackets
+    // This handles the most common case of trailing commas
+    let mut result = String::with_capacity(json.len());
+    let chars: Vec<char> = json.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let c = chars[i];
+
+        // Check if this is a comma followed by optional whitespace and then } or ]
+        if c == ',' {
+            // Look ahead to see if the next non-whitespace char is } or ]
+            let mut j = i + 1;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+
+            if j < chars.len() && (chars[j] == '}' || chars[j] == ']') {
+                // Skip this trailing comma
+                i += 1;
+                continue;
+            }
+        }
+
+        result.push(c);
+        i += 1;
+    }
+
+    result
+}
+
 impl ClaudeSettings {
     /// Load Claude settings from disk
     ///
@@ -34,8 +70,28 @@ impl ClaudeSettings {
         let mut settings: ClaudeSettings = if content.trim().is_empty() {
             ClaudeSettings::default()
         } else {
-            serde_json::from_str(&content)
-                .with_context(|| "Failed to parse Claude settings JSON")?
+            // Strip trailing commas to handle lenient JSON
+            let cleaned_content = strip_trailing_commas(&content);
+
+            // Try to parse the cleaned content first
+            match serde_json::from_str(&cleaned_content) {
+                Ok(s) => s,
+                Err(e) => {
+                    // Provide helpful error message with the actual parse error
+                    let error_msg = format!(
+                        "Failed to parse Claude settings JSON at {}:\n  {}\n\n\
+                         This usually means the JSON file has invalid syntax.\n\
+                         Common issues:\n\
+                         - Trailing commas (e.g., {{\"key\": \"value\",}})\n\
+                         - Missing quotes around keys or values\n\
+                         - Unescaped special characters in strings\n\n\
+                         Please fix the JSON syntax in the file.",
+                        path.display(),
+                        e
+                    );
+                    return Err(anyhow::anyhow!("{}", error_msg));
+                }
+            }
         };
 
         // Ensure env field exists (handle case where it might be missing from JSON)
@@ -318,5 +374,78 @@ impl ClaudeSettings {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_trailing_commas_simple() {
+        let input = r#"{"a": 1,}"#;
+        let expected = r#"{"a": 1}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_nested_object() {
+        let input = r#"{"env": {"KEY": "value",},}"#;
+        let expected = r#"{"env": {"KEY": "value"}}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_array() {
+        let input = r#"{"items": [1, 2, 3,],}"#;
+        let expected = r#"{"items": [1, 2, 3]}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_multiline() {
+        let input = r#"{
+  "env": {
+    "KEY": "value",
+  },
+}"#;
+        let expected = r#"{
+  "env": {
+    "KEY": "value"
+  }
+}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_no_trailing() {
+        let input = r#"{"a": 1, "b": 2}"#;
+        assert_eq!(strip_trailing_commas(input), input);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_complex() {
+        let input = r#"{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "token",
+    "ANTHROPIC_BASE_URL": "https://api.example.com",
+  },
+  "model": "claude-3-opus",
+}"#;
+        let expected = r#"{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "token",
+    "ANTHROPIC_BASE_URL": "https://api.example.com"
+  },
+  "model": "claude-3-opus"
+}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_strip_trailing_commas_preserves_inner_commas() {
+        let input = r#"{"a": 1, "b": 2, "c": 3,}"#;
+        let expected = r#"{"a": 1, "b": 2, "c": 3}"#;
+        assert_eq!(strip_trailing_commas(input), expected);
     }
 }
