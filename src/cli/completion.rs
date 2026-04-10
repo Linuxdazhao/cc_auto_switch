@@ -154,7 +154,7 @@ pub fn generate_completion(shell: &str) -> Result<()> {
 /// List available configuration aliases for shell completion
 ///
 /// Outputs all stored configuration aliases, one per line
-/// Also includes 'cc' as a special alias for resetting to default
+/// Also includes 'cc' and 'official' as special aliases for resetting to default Claude
 /// For contexts where user types 'cc-switch use c' or similar, 'current' is prioritized first
 ///
 /// # Errors
@@ -162,8 +162,9 @@ pub fn generate_completion(shell: &str) -> Result<()> {
 pub fn list_aliases_for_completion() -> Result<()> {
     let storage = ConfigStorage::load()?;
 
-    // Always include 'cc' for reset functionality
+    // Always include 'cc' and 'official' for reset functionality
     println!("cc");
+    println!("official");
 
     // Prioritize 'current' first if it exists - this ensures when user types 'cc-switch use c'
     // or 'cs use c', the 'current' configuration appears first in completion

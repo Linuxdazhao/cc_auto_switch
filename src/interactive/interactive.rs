@@ -1965,6 +1965,9 @@ fn edit_field_alias(config: &mut Configuration) -> Result<()> {
         if input == "cc" {
             anyhow::bail!("错误: 'cc' 是保留名称");
         }
+        if input == "official" {
+            anyhow::bail!("错误: 'official' 是保留名称");
+        }
         Ok(())
     };
 
