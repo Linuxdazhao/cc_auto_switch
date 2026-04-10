@@ -624,6 +624,24 @@ pub fn run() -> Result<()> {
                 r#continue,
                 prompt,
             } => {
+                // Handle special reset aliases
+                if alias_name == "cc" || alias_name == "official" {
+                    println!("Using official Claude configuration");
+
+                    let mut settings =
+                        ClaudeSettings::load(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+                    settings.remove_anthropic_env();
+                    settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+
+                    launch_claude_with_env(
+                        EnvironmentConfig::empty(),
+                        None,
+                        None,
+                        r#continue,
+                    )?;
+                    return Ok(());
+                }
+
                 let config = storage
                     .configurations
                     .get(&alias_name)
