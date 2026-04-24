@@ -150,6 +150,27 @@ pub enum Commands {
         )]
         anthropic_default_haiku_model: Option<String>,
 
+        /// CLAUDE_CODE_SUBAGENT_MODEL value (model for subagents)
+        #[arg(
+            long = "subagent-model",
+            help = "Subagent model name (optional)"
+        )]
+        claude_code_subagent_model: Option<String>,
+
+        /// CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK flag
+        #[arg(
+            long = "disable-nonstreaming-fallback",
+            help = "Disable non-streaming fallback flag (optional)"
+        )]
+        claude_code_disable_nonstreaming_fallback: Option<u32>,
+
+        /// CLAUDE_CODE_EFFORT_LEVEL value
+        #[arg(
+            long = "effort-level",
+            help = "Effort level for Claude Code (optional, e.g., 'max')"
+        )]
+        claude_code_effort_level: Option<String>,
+
         /// Force overwrite existing configuration
         #[arg(
             long = "force",

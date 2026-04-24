@@ -20,6 +20,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         }
     }
 
@@ -45,6 +48,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         }
     }
 
@@ -65,6 +71,9 @@ mod tests {
             anthropic_default_sonnet_model: None,
             anthropic_default_opus_model: None,
             anthropic_default_haiku_model: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
             force: false,
             interactive: false,
             token_arg: None,
@@ -160,6 +169,7 @@ mod tests {
                 anthropic_default_opus_model: _,
                 anthropic_default_haiku_model: _,
                 from_file: _,
+                ..
             }) => {
                 assert_eq!(alias_name.unwrap(), "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));

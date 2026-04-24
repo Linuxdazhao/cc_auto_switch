@@ -19,6 +19,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         }
     }
 
@@ -44,6 +47,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         }
     }
 
@@ -242,6 +248,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);

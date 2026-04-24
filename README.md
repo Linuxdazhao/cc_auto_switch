@@ -111,6 +111,19 @@ cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com \
   --default-opus-model claude-3-opus-20240229 \
   --default-haiku-model claude-3-haiku-20240307
 
+# 使用 DeepSeek API
+cc-switch add deepseek \
+  -t $DEEPSEEK_API_KEY \
+  -u https://api.deepseek.com/anthropic \
+  -m deepseek-v4-pro[1m] \
+  --default-opus-model deepseek-v4-pro \
+  --default-sonnet-model deepseek-v4-pro \
+  --default-haiku-model deepseek-v4-flash \
+  --subagent-model deepseek-v4-pro \
+  --disable-nonessential-traffic 1 \
+  --disable-nonstreaming-fallback 1 \
+  --effort-level max
+
 # 强制覆盖添加
 cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com -f
 
@@ -218,6 +231,9 @@ cc-switch 将配置存储在 `~/.cc-switch/configurations.json` 中，并更新 
 - `ANTHROPIC_DEFAULT_SONNET_MODEL` - 默认 Sonnet 模型（可选）
 - `ANTHROPIC_DEFAULT_OPUS_MODEL` - 默认 Opus 模型（可选）
 - `ANTHROPIC_DEFAULT_HAIKU_MODEL` - 默认 Haiku 模型（可选）
+- `CLAUDE_CODE_SUBAGENT_MODEL` - 子代理模型（可选）
+- `CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK` - 禁用非流式回退标志（可选）
+- `CLAUDE_CODE_EFFORT_LEVEL` - 努力级别（可选，如 'max'）
 
 ## 导入/导出
 

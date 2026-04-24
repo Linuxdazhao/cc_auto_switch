@@ -215,6 +215,27 @@ impl ClaudeSettings {
             self.env
                 .insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), model.clone());
         }
+
+        if let Some(model) = &config.claude_code_subagent_model
+            && !model.is_empty()
+        {
+            self.env
+                .insert("CLAUDE_CODE_SUBAGENT_MODEL".to_string(), model.clone());
+        }
+
+        if let Some(flag) = config.claude_code_disable_nonstreaming_fallback {
+            self.env.insert(
+                "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK".to_string(),
+                flag.to_string(),
+            );
+        }
+
+        if let Some(level) = &config.claude_code_effort_level
+            && !level.is_empty()
+        {
+            self.env
+                .insert("CLAUDE_CODE_EFFORT_LEVEL".to_string(), level.clone());
+        }
     }
 
     /// Remove Anthropic environment variables

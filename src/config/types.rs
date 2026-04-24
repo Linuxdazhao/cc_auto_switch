@@ -66,6 +66,15 @@ pub struct Configuration {
     /// Disable 1M context limit flag
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claude_code_disable_1m_context: Option<u32>,
+    /// Subagent model name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_subagent_model: Option<String>,
+    /// Disable non-streaming fallback flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_disable_nonstreaming_fallback: Option<u32>,
+    /// Effort level for Claude Code
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_effort_level: Option<String>,
 }
 
 impl Configuration {
@@ -85,6 +94,9 @@ impl Configuration {
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
             "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
             "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+            "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+            "CLAUDE_CODE_EFFORT_LEVEL",
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
@@ -107,10 +119,13 @@ impl Configuration {
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+            "CLAUDE_CODE_EFFORT_LEVEL",
             // User preference fields are NOT included:
             // - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
             // - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
             // - CLAUDE_CODE_DISABLE_1M_CONTEXT
+            // - CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK
         ]
     }
 }
@@ -137,12 +152,15 @@ mod tests {
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
             "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
             "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+            "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+            "CLAUDE_CODE_EFFORT_LEVEL",
         ];
 
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 12 fields"
+            "Should have exactly 15 fields"
         );
 
         for expected_field in expected_fields {
@@ -179,6 +197,8 @@ mod tests {
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            "CLAUDE_CODE_SUBAGENT_MODEL",
+            "CLAUDE_CODE_EFFORT_LEVEL",
         ];
 
         // User preference fields should NOT be in clearable list
@@ -186,12 +206,13 @@ mod tests {
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
             "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
             "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+            "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
         ];
 
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 9 clearable fields"
+            "Should have exactly 11 clearable fields"
         );
 
         for expected_field in expected_fields {
@@ -287,6 +308,9 @@ mod tests {
             anthropic_default_haiku_model: Some("new_haiku".to_string()),
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         };
 
         // Switch to new configuration
@@ -364,6 +388,9 @@ mod tests {
             anthropic_default_haiku_model: None,
             claude_code_experimental_agent_teams: None,
             claude_code_disable_1m_context: None,
+            claude_code_subagent_model: None,
+            claude_code_disable_nonstreaming_fallback: None,
+            claude_code_effort_level: None,
         };
 
         // Switch to new configuration
@@ -398,6 +425,13 @@ mod tests {
         assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_SONNET_MODEL"));
         assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_OPUS_MODEL"));
         assert!(!settings.env.contains_key("ANTHROPIC_DEFAULT_HAIKU_MODEL"));
+        assert!(!settings.env.contains_key("CLAUDE_CODE_SUBAGENT_MODEL"));
+        assert!(
+            !settings
+                .env
+                .contains_key("CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK")
+        );
+        assert!(!settings.env.contains_key("CLAUDE_CODE_EFFORT_LEVEL"));
     }
 }
 
@@ -489,6 +523,9 @@ pub struct AddCommandParams {
     pub anthropic_default_sonnet_model: Option<String>,
     pub anthropic_default_opus_model: Option<String>,
     pub anthropic_default_haiku_model: Option<String>,
+    pub claude_code_subagent_model: Option<String>,
+    pub claude_code_disable_nonstreaming_fallback: Option<u32>,
+    pub claude_code_effort_level: Option<String>,
     pub force: bool,
     pub interactive: bool,
     pub token_arg: Option<String>,

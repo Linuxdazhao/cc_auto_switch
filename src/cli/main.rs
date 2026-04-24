@@ -34,7 +34,7 @@ fn parse_storage_mode(store_str: &str) -> Result<StorageMode> {
 /// * `file_path` - Path to the JSON configuration file
 ///
 /// # Returns
-/// Result containing a tuple of (alias_name, token, url, model, small_fast_model, max_thinking_tokens, api_timeout_ms, claude_code_disable_nonessential_traffic, anthropic_default_sonnet_model, anthropic_default_opus_model, anthropic_default_haiku_model)
+/// Result containing a tuple of configuration values
 ///
 /// # Errors
 /// Returns error if file cannot be read or parsed
@@ -52,6 +52,9 @@ fn parse_config_from_file(
     Option<u32>,
     Option<String>,
     Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<u32>,
     Option<String>,
 )> {
     // Read the file
@@ -131,6 +134,21 @@ fn parse_config_from_file(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let claude_code_subagent_model = env
+        .get("CLAUDE_CODE_SUBAGENT_MODEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let claude_code_disable_nonstreaming_fallback = env
+        .get("CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let claude_code_effort_level = env
+        .get("CLAUDE_CODE_EFFORT_LEVEL")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
     Ok((
         alias_name,
         token,
@@ -143,6 +161,9 @@ fn parse_config_from_file(
         anthropic_default_sonnet_model,
         anthropic_default_opus_model,
         anthropic_default_haiku_model,
+        claude_code_subagent_model,
+        claude_code_disable_nonstreaming_fallback,
+        claude_code_effort_level,
     ))
 }
 
@@ -171,6 +192,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
             file_sonnet_model,
             file_opus_model,
             file_haiku_model,
+            file_subagent_model,
+            file_disable_nonstreaming_fallback,
+            file_effort_level,
         ) = parse_config_from_file(file_path)?;
 
         // Use the file's alias name (ignoring the one provided via command line)
@@ -187,6 +211,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.anthropic_default_sonnet_model = file_sonnet_model;
         params.anthropic_default_opus_model = file_opus_model;
         params.anthropic_default_haiku_model = file_haiku_model;
+        params.claude_code_subagent_model = file_subagent_model;
+        params.claude_code_disable_nonstreaming_fallback = file_disable_nonstreaming_fallback;
+        params.claude_code_effort_level = file_effort_level;
 
         println!(
             "Configuration '{}' will be imported from file",
@@ -405,6 +432,65 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.anthropic_default_haiku_model
     };
 
+    // Determine subagent model value
+    let final_claude_code_subagent_model = if params.interactive {
+        if params.claude_code_subagent_model.is_some() {
+            eprintln!(
+                "Warning: Subagent model provided via flags will be ignored in interactive mode"
+            );
+        }
+        let model_input =
+            read_input("Enter subagent model name (optional, press enter to skip): ")?;
+        if model_input.is_empty() {
+            None
+        } else {
+            Some(model_input)
+        }
+    } else {
+        params.claude_code_subagent_model
+    };
+
+    // Determine disable non-streaming fallback flag value
+    let final_claude_code_disable_nonstreaming_fallback = if params.interactive {
+        if params.claude_code_disable_nonstreaming_fallback.is_some() {
+            eprintln!(
+                "Warning: Disable non-streaming fallback flag provided via flags will be ignored in interactive mode"
+            );
+        }
+        let flag_input = read_input(
+            "Enter disable non-streaming fallback flag (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if flag_input.is_empty() {
+            None
+        } else if let Ok(flag) = flag_input.parse::<u32>() {
+            if flag == 0 { None } else { Some(flag) }
+        } else {
+            eprintln!("Warning: Invalid disable non-streaming fallback flag value, skipping");
+            None
+        }
+    } else {
+        params.claude_code_disable_nonstreaming_fallback
+    };
+
+    // Determine effort level value
+    let final_claude_code_effort_level = if params.interactive {
+        if params.claude_code_effort_level.is_some() {
+            eprintln!(
+                "Warning: Effort level provided via flags will be ignored in interactive mode"
+            );
+        }
+        let level_input = read_input(
+            "Enter effort level (optional, press enter to skip): ",
+        )?;
+        if level_input.is_empty() {
+            None
+        } else {
+            Some(level_input)
+        }
+    } else {
+        params.claude_code_effort_level
+    };
+
     // Validate token format with flexible API provider support
     let is_anthropic_official = final_url.contains("api.anthropic.com");
     if is_anthropic_official {
@@ -434,6 +520,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         anthropic_default_sonnet_model: final_anthropic_default_sonnet_model,
         anthropic_default_opus_model: final_anthropic_default_opus_model,
         anthropic_default_haiku_model: final_anthropic_default_haiku_model,
+        claude_code_subagent_model: final_claude_code_subagent_model,
+        claude_code_disable_nonstreaming_fallback: final_claude_code_disable_nonstreaming_fallback,
+        claude_code_effort_level: final_claude_code_effort_level,
         claude_code_experimental_agent_teams: None,
         claude_code_disable_1m_context: None,
     };
@@ -516,6 +605,9 @@ pub fn run() -> Result<()> {
                 anthropic_default_sonnet_model,
                 anthropic_default_opus_model,
                 anthropic_default_haiku_model,
+                claude_code_subagent_model,
+                claude_code_disable_nonstreaming_fallback,
+                claude_code_effort_level,
                 force,
                 interactive,
                 token_arg,
@@ -546,6 +638,9 @@ pub fn run() -> Result<()> {
                     anthropic_default_sonnet_model,
                     anthropic_default_opus_model,
                     anthropic_default_haiku_model,
+                    claude_code_subagent_model,
+                    claude_code_disable_nonstreaming_fallback,
+                    claude_code_effort_level,
                     force,
                     interactive,
                     token_arg,
@@ -602,6 +697,17 @@ pub fn run() -> Result<()> {
                                 info.push_str(&format!(
                                     ", max_thinking_tokens={max_thinking_tokens}"
                                 ));
+                            }
+                            if let Some(subagent_model) = &config.claude_code_subagent_model {
+                                info.push_str(&format!(", subagent_model={subagent_model}"));
+                            }
+                            if let Some(flag) = config.claude_code_disable_nonstreaming_fallback {
+                                info.push_str(&format!(
+                                    ", disable_nonstreaming_fallback={flag}"
+                                ));
+                            }
+                            if let Some(effort_level) = &config.claude_code_effort_level {
+                                info.push_str(&format!(", effort_level={effort_level}"));
                             }
                             println!("  {alias_name}: {info}");
                         }

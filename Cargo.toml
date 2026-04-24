@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2024"
 description = "A CLI tool for managing multiple Claude API configurations and automatically switching between them"
 license = "MIT"
@@ -29,7 +29,8 @@ crossterm = "0.29.0"
 all-features = true
 
 [profile.dev]
-incremental = true # 以较小的步骤编译您的二进制文件。
+incremental = false
+debug = 0
 
 [profile.release]
 codegen-units = 1 # 允许 LLVM 执行更好的优化。

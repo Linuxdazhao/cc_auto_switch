@@ -1166,6 +1166,9 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     let default_sonnet_model_label = "Default Sonnet Model:";
     let default_opus_model_label = "Default Opus Model:";
     let default_haiku_model_label = "Default Haiku Model:";
+    let subagent_model_label = "Subagent Model:";
+    let disable_nonstreaming_fallback_label = "Disable Nonstreaming Fallback:";
+    let effort_level_label = "Effort Level:";
 
     // Find the widest label for alignment
     let max_label_width = [
@@ -1179,6 +1182,9 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
         default_sonnet_model_label,
         default_opus_model_label,
         default_haiku_model_label,
+        subagent_model_label,
+        disable_nonstreaming_fallback_label,
+        effort_level_label,
     ]
     .iter()
     .map(|label| text_display_width(label))
@@ -1319,6 +1325,44 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
             haiku_model.yellow()
         );
         lines.push(haiku_line);
+    }
+
+    // Format subagent model if available
+    if let Some(subagent_model) = &config.claude_code_subagent_model {
+        let subagent_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(subagent_model_label, max_label_width, TextAlignment::Left, ' '),
+            subagent_model.yellow()
+        );
+        lines.push(subagent_line);
+    }
+
+    // Format disable non-streaming fallback if available
+    if let Some(disable_flag) = config.claude_code_disable_nonstreaming_fallback {
+        let flag_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                disable_nonstreaming_fallback_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", disable_flag).yellow()
+        );
+        lines.push(flag_line);
+    }
+
+    // Format effort level if available
+    if let Some(effort_level) = &config.claude_code_effort_level {
+        let effort_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(effort_level_label, max_label_width, TextAlignment::Left, ' '),
+            effort_level.yellow()
+        );
+        lines.push(effort_line);
     }
 
     lines
@@ -1741,7 +1785,7 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
 
         // Get user input for field selection
         println!("\n{}", "提示: 可使用大小写字母".dimmed());
-        print!("请选择要编辑的字段 (1-9, A-B), 或输入 S 保存, Q 返回上一级菜单: ");
+        print!("请选择要编辑的字段 (1-9, A-E), 或输入 S 保存, Q 返回上一级菜单: ");
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -1761,6 +1805,9 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
             "9" => edit_field_anthropic_default_sonnet_model(&mut editing_config)?,
             "10" | "a" | "A" => edit_field_anthropic_default_opus_model(&mut editing_config)?,
             "11" | "b" | "B" => edit_field_anthropic_default_haiku_model(&mut editing_config)?,
+            "12" | "c" | "C" => edit_field_claude_code_subagent_model(&mut editing_config)?,
+            "13" | "d" | "D" => edit_field_claude_code_disable_nonstreaming_fallback(&mut editing_config)?,
+            "14" | "e" | "E" => edit_field_claude_code_effort_level(&mut editing_config)?,
             "s" | "S" => {
                 // Save changes
                 return save_configuration_changes(&original_alias, &editing_config);
@@ -1853,6 +1900,33 @@ fn display_edit_menu(config: &Configuration) {
         "B. 默认 Haiku 模型 (ANTHROPIC_DEFAULT_HAIKU_MODEL): {}",
         config
             .anthropic_default_haiku_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "C. 子代理模型 (CLAUDE_CODE_SUBAGENT_MODEL): {}",
+        config
+            .claude_code_subagent_model
+            .as_deref()
+            .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "D. 禁用非流式回退 (CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK): {}",
+        config
+            .claude_code_disable_nonstreaming_fallback
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "E. 努力级别 (CLAUDE_CODE_EFFORT_LEVEL): {}",
+        config
+            .claude_code_effort_level
             .as_deref()
             .unwrap_or("[未设置]")
             .green()
@@ -2078,6 +2152,39 @@ fn edit_field_anthropic_default_haiku_model(config: &mut Configuration) -> Resul
         config.anthropic_default_haiku_model.as_deref(),
     )? {
         config.anthropic_default_haiku_model = result;
+    }
+    Ok(())
+}
+
+/// Edit claude_code_subagent_model field
+fn edit_field_claude_code_subagent_model(config: &mut Configuration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "子代理模型",
+        config.claude_code_subagent_model.as_deref(),
+    )? {
+        config.claude_code_subagent_model = result;
+    }
+    Ok(())
+}
+
+/// Edit claude_code_disable_nonstreaming_fallback field
+fn edit_field_claude_code_disable_nonstreaming_fallback(config: &mut Configuration) -> Result<()> {
+    if let Some(result) = edit_optional_u32_field(
+        "禁用非流式回退标志",
+        config.claude_code_disable_nonstreaming_fallback,
+    )? {
+        config.claude_code_disable_nonstreaming_fallback = result;
+    }
+    Ok(())
+}
+
+/// Edit claude_code_effort_level field
+fn edit_field_claude_code_effort_level(config: &mut Configuration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "努力级别",
+        config.claude_code_effort_level.as_deref(),
+    )? {
+        config.claude_code_effort_level = result;
     }
     Ok(())
 }
