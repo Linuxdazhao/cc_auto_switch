@@ -256,8 +256,10 @@ pub enum Commands {
         prompt: Vec<String>,
     },
     /// Manage Codex (OpenAI CLI) configurations
-    #[command(subcommand)]
-    Codex(CodexCommands),
+    Codex {
+        #[command(subcommand)]
+        command: Option<CodexCommands>,
+    },
 }
 
 /// Available subcommands for Codex configuration management
