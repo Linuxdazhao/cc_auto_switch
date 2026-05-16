@@ -22,6 +22,13 @@ EXAMPLES:
     cc-switch current  # Interactive mode to view and switch configurations
     cc-switch  # Enter interactive mode (same as 'current' without arguments)
 
+CODEX CONFIGURATIONS:
+    cc-switch codex add work --from-file ~/.codex/auth.json
+    cc-switch codex add personal -i  # Interactive mode
+    cc-switch codex list
+    cc-switch codex use work  # Switch and launch Codex
+    cc-switch codex remove work
+
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
     cc-switch alias fish       # Generates aliases for eval
@@ -250,5 +257,44 @@ pub enum Commands {
         /// Prompt to send to Claude (all remaining arguments)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         prompt: Vec<String>,
+    },
+    /// Manage Codex (OpenAI CLI) configurations
+    #[command(subcommand)]
+    Codex(CodexCommands),
+}
+
+/// Available subcommands for Codex configuration management
+#[derive(Subcommand)]
+pub enum CodexCommands {
+    /// Add a new Codex (OpenAI CLI) configuration
+    Add {
+        #[arg(help = "Configuration alias name")]
+        alias_name: String,
+        #[arg(long = "api-key", help = "OpenAI API key (optional)")]
+        api_key: Option<String>,
+        #[arg(long = "force", short = 'f', help = "Overwrite existing configuration")]
+        force: bool,
+        #[arg(long = "interactive", short = 'i', help = "Enter configuration values interactively")]
+        interactive: bool,
+        #[arg(long = "from-file", help = "Import from existing auth.json file")]
+        from_file: Option<String>,
+    },
+    List {
+        #[arg(long = "plain", short = 'p')]
+        plain: bool,
+    },
+    #[command(trailing_var_arg = true)]
+    Use {
+        alias_name: String,
+        #[arg(long = "continue", short = 'c')]
+        r#continue: bool,
+        #[arg(long = "resume", short = 'r')]
+        resume: Option<String>,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        prompt: Vec<String>,
+    },
+    Remove {
+        #[arg(required = true)]
+        alias_names: Vec<String>,
     },
 }

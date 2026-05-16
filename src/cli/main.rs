@@ -786,6 +786,9 @@ pub fn run() -> Result<()> {
                     r#continue,
                 )?;
             }
+            Commands::Codex(_) => {
+                todo!("Codex subcommand not yet implemented")
+            }
         }
     } else {
         // No command provided, show interactive configuration selection
