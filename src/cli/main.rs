@@ -688,8 +688,16 @@ pub fn run() -> Result<()> {
                     println!("Successfully removed {removed_count} configuration(s)");
                 }
             }
-            Commands::List { plain } => {
-                if plain {
+            Commands::List { plain, name } => {
+                if name {
+                    if storage.configurations.is_empty() {
+                        println!("No configurations stored");
+                    } else {
+                        for (alias_name, config) in &storage.configurations {
+                            println!("{}: {}", alias_name, config.url);
+                        }
+                    }
+                } else if plain {
                     // Text output when -p flag is used
                     if storage.configurations.is_empty() {
                         println!("No configurations stored");
@@ -807,8 +815,8 @@ pub fn run() -> Result<()> {
                         &mut storage,
                     )?;
                 }
-                Some(crate::cli::CodexCommands::List { plain }) => {
-                    handle_codex_list(plain, &storage)?;
+                Some(crate::cli::CodexCommands::List { plain, name }) => {
+                    handle_codex_list(plain, name, &storage)?;
                 }
                 Some(crate::cli::CodexCommands::Use {
                     alias_name,

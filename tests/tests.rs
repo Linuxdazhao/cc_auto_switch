@@ -386,7 +386,7 @@ mod tests {
         let args = vec!["cc-switch", "list"];
         let cli = Cli::try_parse_from(args).unwrap();
 
-        if let Some(Commands::List { plain: _ }) = cli.command {
+        if let Some(Commands::List { plain: _, .. }) = cli.command {
             // Test passed
         } else {
             panic!("Expected List command");

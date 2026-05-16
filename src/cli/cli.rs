@@ -226,6 +226,9 @@ pub enum Commands {
         /// Output in plain text format (default is JSON)
         #[arg(long = "plain", short = 'p')]
         plain: bool,
+        /// Show only name and URL
+        #[arg(long = "name", short = 'n')]
+        name: bool,
     },
     /// Generate shell completion scripts
     ///
@@ -289,6 +292,8 @@ pub enum CodexCommands {
     List {
         #[arg(long = "plain", short = 'p')]
         plain: bool,
+        #[arg(long = "name", short = 'n', help = "Show only name and auth mode")]
+        name: bool,
     },
     #[command(trailing_var_arg = true)]
     Use {

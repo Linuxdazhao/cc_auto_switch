@@ -220,8 +220,11 @@ cc-switch codex add work --from-file ~/.codex/auth.json
 ## Shell 集成
 
 ### 生成补全
+
+> **升级后请重新生成补全脚本**，以获取新子命令（如 `codex`）的补全支持。
+
 ```bash
-# Fish（推荐）
+# Fish（推荐，支持动态别名补全）
 cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
 
 # Zsh
@@ -313,24 +316,6 @@ Codex 配置存储在 `~/.codex/auth.json`，支持两种认证模式：
 - `OPENAI_API_KEY` - API 密钥
 
 详细文档请查看 [Codex 配置管理](docs/codex.md)。
-
-## 导入/导出
-
-### 从 JSON 导入
-```bash
-# 从 JSON 文件导入配置
-# 文件名（不含扩展名）成为别名
-cc-switch add --from-file my-work-config.json
-
-# 期望的 JSON 格式：
-# {
-#   "env": {
-#     "ANTHROPIC_AUTH_TOKEN": "sk-ant-xxx",
-#     "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
-#     "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
-#   }
-# }
-```
 
 ## 开发
 

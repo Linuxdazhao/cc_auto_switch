@@ -162,7 +162,7 @@ fn parse_interactive_codex_config(alias_name: &str) -> Result<CodexConfiguration
 }
 
 /// List Codex configurations
-pub fn handle_codex_list(plain: bool, storage: &ConfigStorage) -> Result<()> {
+pub fn handle_codex_list(plain: bool, name: bool, storage: &ConfigStorage) -> Result<()> {
     let configs = storage.codex_configurations.as_ref();
 
     if configs.is_none() || configs.unwrap().is_empty() {
@@ -170,7 +170,11 @@ pub fn handle_codex_list(plain: bool, storage: &ConfigStorage) -> Result<()> {
         return Ok(());
     }
 
-    if plain {
+    if name {
+        for (alias, config) in configs.unwrap() {
+            println!("{}: {}", alias, config.auth_mode);
+        }
+    } else if plain {
         for (alias, config) in configs.unwrap() {
             println!("{}", alias);
             println!("  Auth Mode: {}", config.auth_mode);
