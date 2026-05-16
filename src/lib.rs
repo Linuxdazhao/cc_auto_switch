@@ -4,11 +4,14 @@
 //! multiple Claude API configurations.
 
 pub mod cli;
+pub mod codex;
 pub mod config;
 pub mod interactive;
 
 pub mod claude_settings;
 pub mod utils;
+
+pub use codex::CodexConfiguration;
 
 // Re-export commonly used types and functions for easier importing
 pub use crate::cli::completion::{
