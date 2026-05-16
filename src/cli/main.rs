@@ -1,5 +1,8 @@
 use crate::cli::completion::{generate_completion, list_aliases_for_completion};
 use crate::cli::{Cli, Commands};
+use crate::codex::{
+    handle_codex_add, handle_codex_list, handle_codex_remove, handle_codex_use,
+};
 use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
 use crate::interactive::{
@@ -479,9 +482,7 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
                 "Warning: Effort level provided via flags will be ignored in interactive mode"
             );
         }
-        let level_input = read_input(
-            "Enter effort level (optional, press enter to skip): ",
-        )?;
+        let level_input = read_input("Enter effort level (optional, press enter to skip): ")?;
         if level_input.is_empty() {
             None
         } else {
@@ -702,9 +703,7 @@ pub fn run() -> Result<()> {
                                 info.push_str(&format!(", subagent_model={subagent_model}"));
                             }
                             if let Some(flag) = config.claude_code_disable_nonstreaming_fallback {
-                                info.push_str(&format!(
-                                    ", disable_nonstreaming_fallback={flag}"
-                                ));
+                                info.push_str(&format!(", disable_nonstreaming_fallback={flag}"));
                             }
                             if let Some(effort_level) = &config.claude_code_effort_level {
                                 info.push_str(&format!(", effort_level={effort_level}"));
@@ -734,17 +733,13 @@ pub fn run() -> Result<()> {
                 if alias_name == "cc" || alias_name == "official" {
                     println!("Using official Claude configuration");
 
-                    let mut settings =
-                        ClaudeSettings::load(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
+                    let mut settings = ClaudeSettings::load(
+                        storage.get_claude_settings_dir().map(|s| s.as_str()),
+                    )?;
                     settings.remove_anthropic_env();
                     settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                    launch_claude_with_env(
-                        EnvironmentConfig::empty(),
-                        None,
-                        None,
-                        r#continue,
-                    )?;
+                    launch_claude_with_env(EnvironmentConfig::empty(), None, None, r#continue)?;
                     return Ok(());
                 }
 
@@ -786,8 +781,32 @@ pub fn run() -> Result<()> {
                     r#continue,
                 )?;
             }
-            Commands::Codex(_) => {
-                todo!("Codex subcommand not yet implemented")
+            Commands::Codex(codex_cmd) => {
+                match codex_cmd {
+                    crate::cli::CodexCommands::Add {
+                        alias_name,
+                        api_key,
+                        force,
+                        interactive,
+                        from_file,
+                    } => {
+                        handle_codex_add(alias_name, api_key, force, interactive, from_file, &mut storage)?;
+                    }
+                    crate::cli::CodexCommands::List { plain } => {
+                        handle_codex_list(plain, &storage)?;
+                    }
+                    crate::cli::CodexCommands::Use {
+                        alias_name,
+                        r#continue,
+                        resume,
+                        prompt,
+                    } => {
+                        handle_codex_use(alias_name, r#continue, resume, prompt, &mut storage)?;
+                    }
+                    crate::cli::CodexCommands::Remove { alias_names } => {
+                        handle_codex_remove(alias_names, &mut storage)?;
+                    }
+                }
             }
         }
     } else {
