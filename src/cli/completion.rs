@@ -326,8 +326,5 @@ complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-
         eprintln!("Warning: Could not write cx.fish: {e}");
     }
 
-    println!(
-        "\n{}",
-        format!("Created completion file: {}", cx_path.display()).green()
-    );
+    eprintln!("\nCreated completion file: {}", cx_path.display());
 }
