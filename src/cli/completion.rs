@@ -272,6 +272,30 @@ fn generate_fish_completion(app: &mut clap::Command) {
         "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current' -d 'Subcommand'"
     );
 
+    // Add completion for the 'cx' alias (cc-switch codex)
+    println!("\n# Completion for the 'cx' alias (cc-switch codex)");
+    println!(
+        "complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+
+    // Add completion for the 'csd' alias (also cc-switch codex)
+    println!("\n# Completion for the 'csd' alias (cc-switch codex)");
+    println!(
+        "complete -c csd -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'"
+    );
+    println!(
+        "complete -c csd -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+    println!(
+        "complete -c csd -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
     println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
