@@ -16,14 +16,17 @@ pub fn generate_aliases(shell: &str) -> Result<()> {
         "fish" => {
             println!("alias cs='cc-switch'");
             println!("alias ccd='claude --dangerously-skip-permissions'");
+            println!("alias cx='cc-switch codex'");
         }
         "zsh" => {
             println!("alias cs='cc-switch'");
             println!("alias ccd='claude --dangerously-skip-permissions'");
+            println!("alias cx='cc-switch codex'");
         }
         "bash" => {
             println!("alias cs='cc-switch'");
             println!("alias ccd='claude --dangerously-skip-permissions'");
+            println!("alias cx='cc-switch codex'");
         }
         _ => {
             anyhow::bail!(
@@ -185,6 +188,28 @@ pub fn list_aliases_for_completion() -> Result<()> {
     Ok(())
 }
 
+/// List available Codex configuration aliases for shell completion
+///
+/// Outputs all stored Codex configuration aliases, one per line
+///
+/// # Errors
+/// Returns error if loading configurations fails
+pub fn list_codex_aliases_for_completion() -> Result<()> {
+    let storage = ConfigStorage::load()?;
+
+    // Output all stored Codex aliases in alphabetical order
+    if let Some(ref configs) = storage.codex_configurations {
+        let mut aliases: Vec<String> = configs.keys().cloned().collect();
+        aliases.sort();
+
+        for alias_name in aliases {
+            println!("{alias_name}");
+        }
+    }
+
+    Ok(())
+}
+
 /// Generate custom fish completion with dynamic alias completion
 ///
 /// # Arguments
@@ -212,6 +237,15 @@ fn generate_fish_completion(app: &mut clap::Command) {
     println!("# Custom completion for remove subcommand with dynamic aliases");
     println!(
         "complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'"
+    );
+
+    // Add custom completion for codex subcommand
+    println!("\n# Custom completion for codex subcommand with dynamic aliases");
+    println!(
+        "complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
     );
 
     // Add useful aliases that can be eval'd

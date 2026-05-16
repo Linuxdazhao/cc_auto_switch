@@ -1,4 +1,4 @@
-use crate::cli::completion::{generate_completion, list_aliases_for_completion};
+use crate::cli::completion::{generate_completion, list_aliases_for_completion, list_codex_aliases_for_completion};
 use crate::cli::{Cli, Commands};
 use crate::codex::{handle_codex_add, handle_codex_interactive, handle_codex_list, handle_codex_remove, handle_codex_use};
 use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
@@ -558,6 +558,12 @@ pub fn run() -> Result<()> {
     // Handle --list-aliases flag for completion
     if cli.list_aliases {
         list_aliases_for_completion()?;
+        return Ok(());
+    }
+
+    // Handle --list-codex-aliases flag for completion
+    if cli.list_codex_aliases {
+        list_codex_aliases_for_completion()?;
         return Ok(());
     }
 

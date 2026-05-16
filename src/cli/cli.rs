@@ -57,6 +57,10 @@ pub struct Cli {
     #[arg(long = "list-aliases", hide = true)]
     pub list_aliases: bool,
 
+    /// List available Codex configuration aliases (for shell completion)
+    #[arg(long = "list-codex-aliases", hide = true)]
+    pub list_codex_aliases: bool,
+
     /// Migrate old config path (~/.cc_auto_switch/configurations.json) to new path
     #[arg(
         long = "migrate",
