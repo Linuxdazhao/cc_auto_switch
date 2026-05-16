@@ -284,11 +284,10 @@ fn handle_main_menu_interactive(stdout: &mut io::Stdout, storage: &ConfigStorage
                     KeyCode::Up => {
                         selected_index = selected_index.saturating_sub(1);
                     }
-                    KeyCode::Down => {
-                        if selected_index < menu_items.len() - 1 {
-                            selected_index += 1;
-                        }
+                    KeyCode::Down if selected_index < menu_items.len() - 1 => {
+                        selected_index += 1;
                     }
+                    KeyCode::Down => {}
                     KeyCode::Enter => {
                         // Execute terminal cleanup here
                         cleanup_terminal(stdout);
@@ -602,27 +601,28 @@ fn handle_full_interactive_menu(
                 KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
                     *selected_index = selected_index.saturating_sub(1);
                 }
-                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
-                    if *selected_index < configs.len() + 1 {
-                        *selected_index += 1;
-                    }
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J')
+                    if *selected_index < configs.len() + 1 =>
+                {
+                    *selected_index += 1;
                 }
-                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N') => {
-                    if total_pages > 1 && current_page < total_pages - 1 {
-                        current_page += 1;
-                        // Reset selection to first item of new page
-                        let new_page_start_idx = current_page * PAGE_SIZE;
-                        *selected_index = new_page_start_idx + 1; // +1 because official is at index 0
-                    }
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {}
+                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N')
+                    if total_pages > 1 && current_page < total_pages - 1 =>
+                {
+                    current_page += 1;
+                    let new_page_start_idx = current_page * PAGE_SIZE;
+                    *selected_index = new_page_start_idx + 1;
                 }
-                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P') => {
-                    if total_pages > 1 && current_page > 0 {
-                        current_page -= 1;
-                        // Reset selection to first item of new page
-                        let new_page_start_idx = current_page * PAGE_SIZE;
-                        *selected_index = new_page_start_idx + 1; // +1 because official is at index 0
-                    }
+                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N') => {}
+                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P')
+                    if total_pages > 1 && current_page > 0 =>
+                {
+                    current_page -= 1;
+                    let new_page_start_idx = current_page * PAGE_SIZE;
+                    *selected_index = new_page_start_idx + 1;
                 }
+                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P') => {}
                 KeyCode::Enter => {
                     // Clean up terminal before processing selection
                     cleanup_terminal(stdout);
@@ -671,62 +671,45 @@ fn handle_full_interactive_menu(
                         storage_mode,
                     );
                 }
-                KeyCode::Char('e') | KeyCode::Char('E') => {
-                    // Only allow editing if a config is selected (not official or exit)
-                    if *selected_index > 0 && *selected_index <= configs.len() {
-                        // Clean up terminal before entering edit mode
-                        cleanup_terminal(stdout);
-
-                        let config_index = *selected_index - 1; // -1 because official is at index 0
-
-                        // Try to edit the configuration
-                        let edit_result = handle_config_edit(&configs[config_index]);
-
-                        // Re-enter alternate screen and raw mode before continuing
-                        if execute!(
-                            stdout,
-                            terminal::EnterAlternateScreen,
-                            terminal::Clear(terminal::ClearType::All)
-                        )
-                        .is_ok()
-                            && terminal::enable_raw_mode().is_ok()
-                        {
-                            // Check if edit was successful (saved) or if user cancelled
-                            match edit_result {
-                                Ok(_) => {
-                                    // Configuration was saved successfully, reload configs
-                                    if let Ok(reloaded_storage) = ConfigStorage::load() {
-                                        *configs = reloaded_storage
-                                            .configurations
-                                            .values()
-                                            .cloned()
-                                            .collect();
-                                        configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
-                                        // Keep selection within bounds
-                                        if *selected_index > configs.len() + 1 {
-                                            *selected_index = configs.len() + 1;
-                                        }
+                KeyCode::Char('e') | KeyCode::Char('E')
+                    if *selected_index > 0 && *selected_index <= configs.len() =>
+                {
+                    cleanup_terminal(stdout);
+                    let config_index = *selected_index - 1;
+                    let edit_result = handle_config_edit(&configs[config_index]);
+                    if execute!(
+                        stdout,
+                        terminal::EnterAlternateScreen,
+                        terminal::Clear(terminal::ClearType::All)
+                    )
+                    .is_ok()
+                        && terminal::enable_raw_mode().is_ok()
+                    {
+                        match edit_result {
+                            Ok(_) => {
+                                if let Ok(reloaded_storage) = ConfigStorage::load() {
+                                    *configs =
+                                        reloaded_storage.configurations.values().cloned().collect();
+                                    configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
+                                    if *selected_index > configs.len() + 1 {
+                                        *selected_index = configs.len() + 1;
                                     }
-                                    // Continue the loop to display updated configs
+                                }
+                                continue;
+                            }
+                            Err(e) => {
+                                if e.downcast_ref::<EditModeError>()
+                                    == Some(&EditModeError::ReturnToMenu)
+                                {
                                     continue;
                                 }
-                                Err(e) => {
-                                    // Check if this is a "return to menu" error (user cancelled)
-                                    if e.downcast_ref::<EditModeError>()
-                                        == Some(&EditModeError::ReturnToMenu)
-                                    {
-                                        // User cancelled edit, just continue the loop
-                                        continue;
-                                    }
-                                    // For other errors, propagate them up
-                                    cleanup_terminal(stdout);
-                                    return Err(e);
-                                }
+                                cleanup_terminal(stdout);
+                                return Err(e);
                             }
                         }
                     }
-                    // Invalid selection - ignore silently
                 }
+                KeyCode::Char('e') | KeyCode::Char('E') => {}
                 KeyCode::Char('q') | KeyCode::Char('Q') => {
                     // Clean up terminal before processing selection
                     cleanup_terminal(stdout);

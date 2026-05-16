@@ -1,7 +1,7 @@
-use crate::codex::{CodexConfiguration, write_auth_json};
 use crate::cli::display_utils::{
     TextAlignment, get_terminal_width, pad_text_to_width, text_display_width,
 };
+use crate::codex::{CodexConfiguration, write_auth_json};
 use crate::config::types::ConfigStorage;
 use crate::interactive::interactive::{
     BorderDrawing, EditModeError, cleanup_terminal, edit_optional_string_field, edit_string_field,
@@ -29,7 +29,9 @@ pub fn handle_codex_interactive_selection(storage: &ConfigStorage) -> Result<()>
     let configs_map = match &storage.codex_configurations {
         Some(configs) if !configs.is_empty() => configs,
         _ => {
-            println!("No Codex configurations available. Use 'cc-switch codex add' to create configurations first.");
+            println!(
+                "No Codex configurations available. Use 'cc-switch codex add' to create configurations first."
+            );
             return Ok(());
         }
     };
@@ -51,11 +53,8 @@ pub fn handle_codex_interactive_selection(storage: &ConfigStorage) -> Result<()>
         )
         .is_ok()
         {
-            let result = handle_codex_full_interactive_menu(
-                &mut stdout,
-                &mut configs,
-                &mut selected_index,
-            );
+            let result =
+                handle_codex_full_interactive_menu(&mut stdout, &mut configs, &mut selected_index);
 
             // Always restore terminal
             let _ = execute!(stdout, terminal::LeaveAlternateScreen);
@@ -145,7 +144,12 @@ fn format_codex_config_details(config: &CodexConfiguration, indent: &str) -> Vec
         lines.push(format!(
             "{}{} {}",
             indent,
-            pad_text_to_width(last_refresh_label, max_label_width, TextAlignment::Left, ' '),
+            pad_text_to_width(
+                last_refresh_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
             last_refresh.dimmed()
         ));
     }
@@ -316,27 +320,28 @@ fn handle_codex_full_interactive_menu(
                 KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
                     *selected_index = selected_index.saturating_sub(1);
                 }
-                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
-                    // configs.len() is the Exit option; cannot go beyond it
-                    if *selected_index < configs.len() {
-                        *selected_index += 1;
-                    }
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J')
+                    if *selected_index < configs.len() =>
+                {
+                    *selected_index += 1;
                 }
-                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N') => {
-                    if total_pages > 1 && current_page < total_pages - 1 {
-                        current_page += 1;
-                        // Reset selection to first item of new page
-                        let new_page_start_idx = current_page * PAGE_SIZE;
-                        *selected_index = new_page_start_idx;
-                    }
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {}
+                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N')
+                    if total_pages > 1 && current_page < total_pages - 1 =>
+                {
+                    current_page += 1;
+                    let new_page_start_idx = current_page * PAGE_SIZE;
+                    *selected_index = new_page_start_idx;
                 }
-                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P') => {
-                    if total_pages > 1 && current_page > 0 {
-                        current_page -= 1;
-                        let new_page_start_idx = current_page * PAGE_SIZE;
-                        *selected_index = new_page_start_idx;
-                    }
+                KeyCode::PageDown | KeyCode::Char('n') | KeyCode::Char('N') => {}
+                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P')
+                    if total_pages > 1 && current_page > 0 =>
+                {
+                    current_page -= 1;
+                    let new_page_start_idx = current_page * PAGE_SIZE;
+                    *selected_index = new_page_start_idx;
                 }
+                KeyCode::PageUp | KeyCode::Char('p') | KeyCode::Char('P') => {}
                 KeyCode::Enter => {
                     cleanup_terminal(stdout);
                     return handle_codex_selection_action(configs, *selected_index);
@@ -354,52 +359,43 @@ fn handle_codex_full_interactive_menu(
                         return handle_codex_selection_action(configs, actual_config_index);
                     }
                 }
-                KeyCode::Char('e') | KeyCode::Char('E') => {
-                    if *selected_index < configs.len() {
-                        cleanup_terminal(stdout);
-
-                        let edit_result =
-                            handle_codex_config_edit(&configs[*selected_index]);
-
-                        if execute!(
-                            stdout,
-                            terminal::EnterAlternateScreen,
-                            terminal::Clear(terminal::ClearType::All)
-                        )
-                        .is_ok()
-                            && terminal::enable_raw_mode().is_ok()
-                        {
-                            match edit_result {
-                                Ok(_) => {
-                                    if let Ok(reloaded_storage) = ConfigStorage::load() {
-                                        if let Some(ref map) =
-                                            reloaded_storage.codex_configurations
-                                        {
-                                            *configs = map.values().cloned().collect();
-                                            configs.sort_by(|a, b| {
-                                                a.alias_name.cmp(&b.alias_name)
-                                            });
-                                        }
-                                        if *selected_index > configs.len() {
-                                            *selected_index =
-                                                configs.len().saturating_sub(1);
-                                        }
+                KeyCode::Char('e') | KeyCode::Char('E') if *selected_index < configs.len() => {
+                    cleanup_terminal(stdout);
+                    let edit_result = handle_codex_config_edit(&configs[*selected_index]);
+                    if execute!(
+                        stdout,
+                        terminal::EnterAlternateScreen,
+                        terminal::Clear(terminal::ClearType::All)
+                    )
+                    .is_ok()
+                        && terminal::enable_raw_mode().is_ok()
+                    {
+                        match edit_result {
+                            Ok(_) => {
+                                if let Ok(reloaded_storage) = ConfigStorage::load() {
+                                    if let Some(ref map) = reloaded_storage.codex_configurations {
+                                        *configs = map.values().cloned().collect();
+                                        configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
                                     }
+                                    if *selected_index > configs.len() {
+                                        *selected_index = configs.len().saturating_sub(1);
+                                    }
+                                }
+                                continue;
+                            }
+                            Err(e) => {
+                                if e.downcast_ref::<EditModeError>()
+                                    == Some(&EditModeError::ReturnToMenu)
+                                {
                                     continue;
                                 }
-                                Err(e) => {
-                                    if e.downcast_ref::<EditModeError>()
-                                        == Some(&EditModeError::ReturnToMenu)
-                                    {
-                                        continue;
-                                    }
-                                    cleanup_terminal(stdout);
-                                    return Err(e);
-                                }
+                                cleanup_terminal(stdout);
+                                return Err(e);
                             }
                         }
                     }
                 }
+                KeyCode::Char('e') | KeyCode::Char('E') => {}
                 KeyCode::Char('q') | KeyCode::Char('Q') => {
                     cleanup_terminal(stdout);
                     return handle_codex_selection_action(configs, configs.len());
@@ -574,8 +570,8 @@ fn launch_codex_from_interactive() -> Result<()> {
 
     #[cfg(not(unix))]
     {
-        use std::process::Stdio;
         use anyhow::Context;
+        use std::process::Stdio;
         let mut command = Command::new("codex");
         command
             .stdin(Stdio::inherit())
@@ -755,7 +751,10 @@ fn edit_codex_field_auth_mode(config: &mut CodexConfiguration) -> Result<()> {
             config.auth_mode = input;
             println!("认证模式已更新为: {}", config.auth_mode.green());
         } else {
-            println!("{}", "错误: 无效认证模式，请使用 'chatgpt' 或 'apikey'".red());
+            println!(
+                "{}",
+                "错误: 无效认证模式，请使用 'chatgpt' 或 'apikey'".red()
+            );
         }
     }
     Ok(())
@@ -763,10 +762,8 @@ fn edit_codex_field_auth_mode(config: &mut CodexConfiguration) -> Result<()> {
 
 /// Edit openai_api_key field for Codex
 fn edit_codex_field_openai_api_key(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "API密钥",
-        config.openai_api_key.as_deref(),
-    )? {
+    if let Some(result) = edit_optional_string_field("API密钥", config.openai_api_key.as_deref())?
+    {
         config.openai_api_key = result;
     }
     Ok(())
@@ -774,10 +771,7 @@ fn edit_codex_field_openai_api_key(config: &mut CodexConfiguration) -> Result<()
 
 /// Edit id_token field for Codex
 fn edit_codex_field_id_token(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "ID令牌",
-        config.id_token.as_deref(),
-    )? {
+    if let Some(result) = edit_optional_string_field("ID令牌", config.id_token.as_deref())? {
         config.id_token = result;
     }
     Ok(())
@@ -785,10 +779,8 @@ fn edit_codex_field_id_token(config: &mut CodexConfiguration) -> Result<()> {
 
 /// Edit access_token field for Codex
 fn edit_codex_field_access_token(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "访问令牌",
-        config.access_token.as_deref(),
-    )? {
+    if let Some(result) = edit_optional_string_field("访问令牌", config.access_token.as_deref())?
+    {
         config.access_token = result;
     }
     Ok(())
@@ -796,10 +788,8 @@ fn edit_codex_field_access_token(config: &mut CodexConfiguration) -> Result<()> 
 
 /// Edit refresh_token field for Codex
 fn edit_codex_field_refresh_token(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "刷新令牌",
-        config.refresh_token.as_deref(),
-    )? {
+    if let Some(result) = edit_optional_string_field("刷新令牌", config.refresh_token.as_deref())?
+    {
         config.refresh_token = result;
     }
     Ok(())
@@ -807,10 +797,7 @@ fn edit_codex_field_refresh_token(config: &mut CodexConfiguration) -> Result<()>
 
 /// Edit account_id field for Codex
 fn edit_codex_field_account_id(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "账户ID",
-        config.account_id.as_deref(),
-    )? {
+    if let Some(result) = edit_optional_string_field("账户ID", config.account_id.as_deref())? {
         config.account_id = result;
     }
     Ok(())
@@ -818,10 +805,9 @@ fn edit_codex_field_account_id(config: &mut CodexConfiguration) -> Result<()> {
 
 /// Edit last_refresh field for Codex
 fn edit_codex_field_last_refresh(config: &mut CodexConfiguration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "上次刷新时间",
-        config.last_refresh.as_deref(),
-    )? {
+    if let Some(result) =
+        edit_optional_string_field("上次刷新时间", config.last_refresh.as_deref())?
+    {
         config.last_refresh = result;
     }
     Ok(())
@@ -835,7 +821,9 @@ fn save_codex_configuration_changes(
     let mut storage = ConfigStorage::load()?;
 
     if original_alias != new_config.alias_name
-        && storage.get_codex_configuration(&new_config.alias_name).is_some()
+        && storage
+            .get_codex_configuration(&new_config.alias_name)
+            .is_some()
     {
         println!("\n{}", "别名冲突!".red().bold());
         println!("配置 '{}' 已存在", new_config.alias_name.yellow());
