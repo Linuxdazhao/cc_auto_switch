@@ -1,8 +1,6 @@
 use crate::cli::completion::{generate_completion, list_aliases_for_completion};
 use crate::cli::{Cli, Commands};
-use crate::codex::{
-    handle_codex_add, handle_codex_list, handle_codex_remove, handle_codex_use,
-};
+use crate::codex::{handle_codex_add, handle_codex_list, handle_codex_remove, handle_codex_use};
 use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
 use crate::interactive::{
@@ -781,33 +779,38 @@ pub fn run() -> Result<()> {
                     r#continue,
                 )?;
             }
-            Commands::Codex(codex_cmd) => {
-                match codex_cmd {
-                    crate::cli::CodexCommands::Add {
+            Commands::Codex(codex_cmd) => match codex_cmd {
+                crate::cli::CodexCommands::Add {
+                    alias_name,
+                    api_key,
+                    force,
+                    interactive,
+                    from_file,
+                } => {
+                    handle_codex_add(
                         alias_name,
                         api_key,
                         force,
                         interactive,
                         from_file,
-                    } => {
-                        handle_codex_add(alias_name, api_key, force, interactive, from_file, &mut storage)?;
-                    }
-                    crate::cli::CodexCommands::List { plain } => {
-                        handle_codex_list(plain, &storage)?;
-                    }
-                    crate::cli::CodexCommands::Use {
-                        alias_name,
-                        r#continue,
-                        resume,
-                        prompt,
-                    } => {
-                        handle_codex_use(alias_name, r#continue, resume, prompt, &mut storage)?;
-                    }
-                    crate::cli::CodexCommands::Remove { alias_names } => {
-                        handle_codex_remove(alias_names, &mut storage)?;
-                    }
+                        &mut storage,
+                    )?;
                 }
-            }
+                crate::cli::CodexCommands::List { plain } => {
+                    handle_codex_list(plain, &storage)?;
+                }
+                crate::cli::CodexCommands::Use {
+                    alias_name,
+                    r#continue,
+                    resume,
+                    prompt,
+                } => {
+                    handle_codex_use(alias_name, r#continue, resume, prompt, &mut storage)?;
+                }
+                crate::cli::CodexCommands::Remove { alias_names } => {
+                    handle_codex_remove(alias_names, &mut storage)?;
+                }
+            },
         }
     } else {
         // No command provided, show interactive configuration selection

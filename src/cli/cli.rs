@@ -158,10 +158,7 @@ pub enum Commands {
         anthropic_default_haiku_model: Option<String>,
 
         /// CLAUDE_CODE_SUBAGENT_MODEL value (model for subagents)
-        #[arg(
-            long = "subagent-model",
-            help = "Subagent model name (optional)"
-        )]
+        #[arg(long = "subagent-model", help = "Subagent model name (optional)")]
         claude_code_subagent_model: Option<String>,
 
         /// CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK flag
@@ -274,7 +271,11 @@ pub enum CodexCommands {
         api_key: Option<String>,
         #[arg(long = "force", short = 'f', help = "Overwrite existing configuration")]
         force: bool,
-        #[arg(long = "interactive", short = 'i', help = "Enter configuration values interactively")]
+        #[arg(
+            long = "interactive",
+            short = 'i',
+            help = "Enter configuration values interactively"
+        )]
         interactive: bool,
         #[arg(long = "from-file", help = "Import from existing auth.json file")]
         from_file: Option<String>,

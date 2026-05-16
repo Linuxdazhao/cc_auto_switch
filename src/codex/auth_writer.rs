@@ -56,12 +56,10 @@ fn write_auth_json_to_path(config: &CodexConfiguration, auth_path: &PathBuf) -> 
     if let Some(parent) = auth_path.parent()
         && !parent.exists()
     {
-        fs::create_dir_all(parent)
-            .map_err(|e| anyhow!("Failed to create directory: {}", e))?;
+        fs::create_dir_all(parent).map_err(|e| anyhow!("Failed to create directory: {}", e))?;
     }
 
-    fs::write(auth_path, json_string)
-        .map_err(|e| anyhow!("Failed to write auth.json: {}", e))?;
+    fs::write(auth_path, json_string).map_err(|e| anyhow!("Failed to write auth.json: {}", e))?;
 
     Ok(())
 }

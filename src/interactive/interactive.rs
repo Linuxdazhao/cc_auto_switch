@@ -1332,7 +1332,12 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
         let subagent_line = format!(
             "{}{} {}",
             indent,
-            pad_text_to_width(subagent_model_label, max_label_width, TextAlignment::Left, ' '),
+            pad_text_to_width(
+                subagent_model_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
             subagent_model.yellow()
         );
         lines.push(subagent_line);
@@ -1359,7 +1364,12 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
         let effort_line = format!(
             "{}{} {}",
             indent,
-            pad_text_to_width(effort_level_label, max_label_width, TextAlignment::Left, ' '),
+            pad_text_to_width(
+                effort_level_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
             effort_level.yellow()
         );
         lines.push(effort_line);
@@ -1806,7 +1816,9 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
             "10" | "a" | "A" => edit_field_anthropic_default_opus_model(&mut editing_config)?,
             "11" | "b" | "B" => edit_field_anthropic_default_haiku_model(&mut editing_config)?,
             "12" | "c" | "C" => edit_field_claude_code_subagent_model(&mut editing_config)?,
-            "13" | "d" | "D" => edit_field_claude_code_disable_nonstreaming_fallback(&mut editing_config)?,
+            "13" | "d" | "D" => {
+                edit_field_claude_code_disable_nonstreaming_fallback(&mut editing_config)?
+            }
             "14" | "e" | "E" => edit_field_claude_code_effort_level(&mut editing_config)?,
             "s" | "S" => {
                 // Save changes
@@ -2158,10 +2170,9 @@ fn edit_field_anthropic_default_haiku_model(config: &mut Configuration) -> Resul
 
 /// Edit claude_code_subagent_model field
 fn edit_field_claude_code_subagent_model(config: &mut Configuration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "子代理模型",
-        config.claude_code_subagent_model.as_deref(),
-    )? {
+    if let Some(result) =
+        edit_optional_string_field("子代理模型", config.claude_code_subagent_model.as_deref())?
+    {
         config.claude_code_subagent_model = result;
     }
     Ok(())
@@ -2180,10 +2191,9 @@ fn edit_field_claude_code_disable_nonstreaming_fallback(config: &mut Configurati
 
 /// Edit claude_code_effort_level field
 fn edit_field_claude_code_effort_level(config: &mut Configuration) -> Result<()> {
-    if let Some(result) = edit_optional_string_field(
-        "努力级别",
-        config.claude_code_effort_level.as_deref(),
-    )? {
+    if let Some(result) =
+        edit_optional_string_field("努力级别", config.claude_code_effort_level.as_deref())?
+    {
         config.claude_code_effort_level = result;
     }
     Ok(())

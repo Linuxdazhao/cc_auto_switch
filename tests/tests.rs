@@ -1566,10 +1566,7 @@ mod claude_settings_tests {
         );
 
         // Verify the operation succeeded
-        assert!(
-            result.is_ok(),
-            "Switch to Env mode should succeed"
-        );
+        assert!(result.is_ok(), "Switch to Env mode should succeed");
 
         // Read the saved file and verify user preference fields are preserved
         let content = fs::read_to_string(&settings_path).expect("Failed to read settings file");
