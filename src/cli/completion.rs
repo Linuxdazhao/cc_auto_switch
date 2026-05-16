@@ -2,6 +2,7 @@ use crate::config::ConfigStorage;
 use anyhow::Result;
 use clap::CommandFactory;
 use colored::*;
+use std::fs;
 use std::io::stdout;
 
 /// Generate shell aliases for eval
@@ -284,23 +285,49 @@ fn generate_fish_completion(app: &mut clap::Command) {
         "complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
     );
 
-    // Add completion for the 'csd' alias (also cc-switch codex)
-    println!("\n# Completion for the 'csd' alias (cc-switch codex)");
-    println!(
-        "complete -c csd -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'"
-    );
-    println!(
-        "complete -c csd -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
-    );
-    println!(
-        "complete -c csd -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
-    );
-
     println!("\n# Fish completion generated successfully");
     println!("# Add this to your ~/.config/fish/completions/cc-switch.fish");
     println!("# Then restart your shell or run 'source ~/.config/fish/config.fish'");
     println!(
         "{}",
         "# Aliases 'cs' and 'ccd' have been added for convenience".green()
+    );
+
+    // Generate separate completion file for cx function
+    // Fish doesn't auto-load completions for functions, so we create a dedicated file
+    generate_cx_completion_file();
+}
+
+/// Generate separate completion file for cx fish function
+///
+/// Fish doesn't automatically load completion files for functions, only for commands.
+/// This creates ~/.config/fish/completions/cx.fish
+fn generate_cx_completion_file() {
+    // Fish uses ~/.config/fish/completions on all platforms (including macOS)
+    let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("~"));
+    let completions_dir = home.join(".config").join("fish").join("completions");
+
+    if !completions_dir.exists()
+        && let Err(e) = fs::create_dir_all(&completions_dir)
+    {
+        eprintln!("Warning: Could not create completions directory: {e}");
+        return;
+    }
+
+    let cx_content = r#"# Completion for 'cx' alias (cc-switch codex)
+complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'
+complete -c cx -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
+complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
+"#;
+
+    let cx_path = completions_dir.join("cx.fish");
+
+    if let Err(e) = fs::write(&cx_path, cx_content) {
+        eprintln!("Warning: Could not write cx.fish: {e}");
+    }
+
+    println!(
+        "\n{}",
+        format!("Created completion file: {}", cx_path.display()).green()
     );
 }
