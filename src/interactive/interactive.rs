@@ -1764,7 +1764,7 @@ mod pagination_tests {
 
 /// Error type for handling edit mode navigation
 #[derive(Debug, PartialEq)]
-enum EditModeError {
+pub(crate) enum EditModeError {
     ReturnToMenu,
 }
 
@@ -1953,7 +1953,7 @@ fn display_edit_menu(config: &Configuration) {
 }
 
 /// Helper function to edit a string field
-fn edit_string_field(
+pub(crate) fn edit_string_field(
     field_name: &str,
     current_value: &str,
     validator: impl Fn(&str) -> Result<()>,
@@ -1977,10 +1977,10 @@ fn edit_string_field(
 }
 
 /// Type alias for optional string field result
-type OptionalStringResult = Result<Option<Option<String>>>;
+pub(crate) type OptionalStringResult = Result<Option<Option<String>>>;
 
 /// Helper function to edit an optional string field (can be cleared)
-fn edit_optional_string_field(
+pub(crate) fn edit_optional_string_field(
     field_name: &str,
     current_value: Option<&str>,
 ) -> OptionalStringResult {

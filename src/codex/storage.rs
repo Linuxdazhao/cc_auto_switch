@@ -27,6 +27,35 @@ impl ConfigStorage {
             false
         }
     }
+
+    /// Update a Codex configuration by old alias name
+    ///
+    /// If the alias changed, removes the old entry and inserts the new one.
+    /// Returns error if the old configuration doesn't exist.
+    pub fn update_codex_configuration(
+        &mut self,
+        old_alias: &str,
+        new_config: CodexConfiguration,
+    ) -> anyhow::Result<()> {
+        let map = self
+            .codex_configurations
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("No Codex configurations in storage"))?;
+
+        if !map.contains_key(old_alias) {
+            return Err(anyhow::anyhow!(
+                "Codex configuration '{}' not found",
+                old_alias
+            ));
+        }
+
+        if old_alias != new_config.alias_name {
+            map.remove(old_alias);
+        }
+
+        map.insert(new_config.alias_name.clone(), new_config);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

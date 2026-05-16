@@ -4,7 +4,7 @@ use crate::cli::display_utils::{
 };
 use crate::config::types::ConfigStorage;
 use crate::interactive::interactive::{
-    BorderDrawing, cleanup_terminal,
+    BorderDrawing, EditModeError, cleanup_terminal, edit_optional_string_field, edit_string_field,
 };
 use anyhow::Result;
 use colored::*;
@@ -212,7 +212,7 @@ fn handle_codex_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓/jk导航，1-9快选，N/P翻页，Q-退出，Enter确认",
+                        "↑↓/jk导航，1-9快选，N/P翻页，E编辑，Q-退出，Enter确认",
                         CONFIG_MENU_WIDTH
                     )
                     .green()
@@ -222,7 +222,7 @@ fn handle_codex_full_interactive_menu(
                 "\r{}",
                 border
                     .draw_middle_line(
-                        "↑↓/jk导航，1-9快选，Q-退出，Enter确认，Esc取消",
+                        "↑↓/jk导航，1-9快选，E编辑，Q-退出，Enter确认，Esc取消",
                         CONFIG_MENU_WIDTH
                     )
                     .green()
@@ -352,6 +352,52 @@ fn handle_codex_full_interactive_menu(
                         let actual_config_index = start_idx + (digit - 1);
                         cleanup_terminal(stdout);
                         return handle_codex_selection_action(configs, actual_config_index);
+                    }
+                }
+                KeyCode::Char('e') | KeyCode::Char('E') => {
+                    if *selected_index < configs.len() {
+                        cleanup_terminal(stdout);
+
+                        let edit_result =
+                            handle_codex_config_edit(&configs[*selected_index]);
+
+                        if execute!(
+                            stdout,
+                            terminal::EnterAlternateScreen,
+                            terminal::Clear(terminal::ClearType::All)
+                        )
+                        .is_ok()
+                            && terminal::enable_raw_mode().is_ok()
+                        {
+                            match edit_result {
+                                Ok(_) => {
+                                    if let Ok(reloaded_storage) = ConfigStorage::load() {
+                                        if let Some(ref map) =
+                                            reloaded_storage.codex_configurations
+                                        {
+                                            *configs = map.values().cloned().collect();
+                                            configs.sort_by(|a, b| {
+                                                a.alias_name.cmp(&b.alias_name)
+                                            });
+                                        }
+                                        if *selected_index > configs.len() {
+                                            *selected_index =
+                                                configs.len().saturating_sub(1);
+                                        }
+                                    }
+                                    continue;
+                                }
+                                Err(e) => {
+                                    if e.downcast_ref::<EditModeError>()
+                                        == Some(&EditModeError::ReturnToMenu)
+                                    {
+                                        continue;
+                                    }
+                                    cleanup_terminal(stdout);
+                                    return Err(e);
+                                }
+                            }
+                        }
                     }
                 }
                 KeyCode::Char('q') | KeyCode::Char('Q') => {
@@ -547,6 +593,271 @@ fn launch_codex_from_interactive() -> Result<()> {
         }
         Ok(())
     }
+}
+
+/// Format a token/key for display (truncate long values)
+fn format_key_for_display(key: &str) -> String {
+    if key.len() > 8 {
+        format!("{}...", &key[..8])
+    } else {
+        key.to_string()
+    }
+}
+
+/// Handle Codex configuration editing with interactive field selection
+fn handle_codex_config_edit(config: &CodexConfiguration) -> Result<()> {
+    println!("\n{}", "Codex 配置编辑模式".green().bold());
+    println!("{}", "===================".green());
+    println!("正在编辑配置: {}", config.alias_name.cyan().bold());
+    println!();
+
+    let mut editing_config = config.clone();
+    let original_alias = config.alias_name.clone();
+
+    loop {
+        display_codex_edit_menu(&editing_config);
+
+        println!("\n{}", "提示: 可使用大小写字母".dimmed());
+        print!("请选择要编辑的字段 (1-8), 或输入 S 保存, Q 返回上一级菜单: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim();
+
+        match input {
+            "1" => edit_codex_field_alias(&mut editing_config)?,
+            "2" => edit_codex_field_auth_mode(&mut editing_config)?,
+            "3" => edit_codex_field_openai_api_key(&mut editing_config)?,
+            "4" => edit_codex_field_id_token(&mut editing_config)?,
+            "5" => edit_codex_field_access_token(&mut editing_config)?,
+            "6" => edit_codex_field_refresh_token(&mut editing_config)?,
+            "7" => edit_codex_field_account_id(&mut editing_config)?,
+            "8" => edit_codex_field_last_refresh(&mut editing_config)?,
+            "s" | "S" => {
+                return save_codex_configuration_changes(&original_alias, &editing_config);
+            }
+            "q" | "Q" => {
+                println!("\n{}", "返回上一级菜单".blue());
+                return Err(EditModeError::ReturnToMenu.into());
+            }
+            _ => {
+                println!("{}", "无效选择，请重试".red());
+            }
+        }
+    }
+}
+
+/// Display the Codex edit menu with current field values
+fn display_codex_edit_menu(config: &CodexConfiguration) {
+    println!("\n{}", "当前配置值:".blue().bold());
+    println!("{}", "─────────────────────────".blue());
+
+    println!("1. 别名 (alias_name): {}", config.alias_name.green());
+
+    println!(
+        "2. 认证模式 (auth_mode): {}",
+        if config.auth_mode == "apikey" {
+            "apikey".green()
+        } else {
+            "chatgpt".green()
+        }
+    );
+
+    println!(
+        "3. API密钥 (OPENAI_API_KEY): {}",
+        config
+            .openai_api_key
+            .as_deref()
+            .map(format_key_for_display)
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "4. ID令牌 (id_token): {}",
+        config
+            .id_token
+            .as_deref()
+            .map(format_key_for_display)
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "5. 访问令牌 (access_token): {}",
+        config
+            .access_token
+            .as_deref()
+            .map(format_key_for_display)
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "6. 刷新令牌 (refresh_token): {}",
+        config
+            .refresh_token
+            .as_deref()
+            .map(format_key_for_display)
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "7. 账户ID (account_id): {}",
+        config.account_id.as_deref().unwrap_or("[未设置]").green()
+    );
+
+    println!(
+        "8. 上次刷新 (last_refresh): {}",
+        config.last_refresh.as_deref().unwrap_or("[未设置]").green()
+    );
+
+    println!("{}", "─────────────────────────".blue());
+    println!(
+        "S. {} | Q. {}",
+        "保存更改".green().bold(),
+        "返回上一级菜单".blue()
+    );
+}
+
+/// Edit alias field for Codex
+fn edit_codex_field_alias(config: &mut CodexConfiguration) -> Result<()> {
+    let validator = |input: &str| -> Result<()> {
+        if input.contains(char::is_whitespace) {
+            anyhow::bail!("错误: 别名不能包含空白字符");
+        }
+        Ok(())
+    };
+
+    match edit_string_field("别名", &config.alias_name, validator) {
+        Ok(Some(new_value)) => config.alias_name = new_value,
+        Ok(None) => {}
+        Err(e) => println!("{}", e.to_string().red()),
+    }
+    Ok(())
+}
+
+/// Edit auth_mode field for Codex
+fn edit_codex_field_auth_mode(config: &mut CodexConfiguration) -> Result<()> {
+    println!("\n编辑认证模式:");
+    println!("当前值: {}", config.auth_mode.cyan());
+    print!("新值 (chatgpt/apikey, 回车保持不变): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let input = input.trim().to_lowercase();
+
+    if !input.is_empty() {
+        if input == "chatgpt" || input == "apikey" {
+            config.auth_mode = input;
+            println!("认证模式已更新为: {}", config.auth_mode.green());
+        } else {
+            println!("{}", "错误: 无效认证模式，请使用 'chatgpt' 或 'apikey'".red());
+        }
+    }
+    Ok(())
+}
+
+/// Edit openai_api_key field for Codex
+fn edit_codex_field_openai_api_key(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "API密钥",
+        config.openai_api_key.as_deref(),
+    )? {
+        config.openai_api_key = result;
+    }
+    Ok(())
+}
+
+/// Edit id_token field for Codex
+fn edit_codex_field_id_token(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "ID令牌",
+        config.id_token.as_deref(),
+    )? {
+        config.id_token = result;
+    }
+    Ok(())
+}
+
+/// Edit access_token field for Codex
+fn edit_codex_field_access_token(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "访问令牌",
+        config.access_token.as_deref(),
+    )? {
+        config.access_token = result;
+    }
+    Ok(())
+}
+
+/// Edit refresh_token field for Codex
+fn edit_codex_field_refresh_token(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "刷新令牌",
+        config.refresh_token.as_deref(),
+    )? {
+        config.refresh_token = result;
+    }
+    Ok(())
+}
+
+/// Edit account_id field for Codex
+fn edit_codex_field_account_id(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "账户ID",
+        config.account_id.as_deref(),
+    )? {
+        config.account_id = result;
+    }
+    Ok(())
+}
+
+/// Edit last_refresh field for Codex
+fn edit_codex_field_last_refresh(config: &mut CodexConfiguration) -> Result<()> {
+    if let Some(result) = edit_optional_string_field(
+        "上次刷新时间",
+        config.last_refresh.as_deref(),
+    )? {
+        config.last_refresh = result;
+    }
+    Ok(())
+}
+
+/// Save Codex configuration changes to disk and handle alias conflicts
+fn save_codex_configuration_changes(
+    original_alias: &str,
+    new_config: &CodexConfiguration,
+) -> Result<()> {
+    let mut storage = ConfigStorage::load()?;
+
+    if original_alias != new_config.alias_name
+        && storage.get_codex_configuration(&new_config.alias_name).is_some()
+    {
+        println!("\n{}", "别名冲突!".red().bold());
+        println!("配置 '{}' 已存在", new_config.alias_name.yellow());
+        print!("是否覆盖现有配置? (y/N): ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+
+        if input != "y" && input != "yes" {
+            println!("{}", "编辑已取消".yellow());
+            return Ok(());
+        }
+    }
+
+    storage.update_codex_configuration(original_alias, new_config.clone())?;
+    storage.save()?;
+
+    println!("\n{}", "Codex 配置已成功保存!".green().bold());
+
+    Ok(())
 }
 
 #[cfg(test)]

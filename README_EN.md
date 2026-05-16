@@ -3,17 +3,13 @@
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A CLI tool for managing multiple Claude API configurations and automatically switching between them**
+**A CLI tool for managing multiple Claude / Codex configurations and automatically switching between them.**
 
-Easily switch between different Claude API accounts, environments, or projects without manually editing configuration files.
-
-## Why?
-
-When working with Claude API across different projects or environments, you often need to switch API tokens and settings. cc-switch makes this painless:
+When working with Claude API or OpenAI Codex CLI across different projects or environments, you often need to switch API tokens and settings. cc-switch makes this painless:
 
 - Store multiple configurations with memorable names
 - Switch instantly between them
-- Launch Claude with the right environment variables automatically
+- Launch Claude / Codex with the right environment variables automatically
 - Keep your API keys organized and secure
 - Import/export configurations from JSON files
 - Full interactive mode with keyboard navigation
@@ -24,25 +20,30 @@ When working with Claude API across different projects or environments, you ofte
 # Install
 cargo install cc-switch
 
+# ===== Claude Configurations =====
+
 # Add your first configuration
 cc-switch add work sk-ant-work-xxx https://api.anthropic.com
-
-# Add another one
-cc-switch add personal sk-ant-personal-xxx https://api.anthropic.com
 
 # Switch to work configuration
 cc-switch
 # Then select 'work' from the interactive menu
 
-# Switch to personal configuration
-cc-switch
-# Then select 'personal' from the interactive menu
+# ===== Codex Configurations =====
+
+# Import from existing auth.json
+cc-switch codex add work --from-file ~/.codex/auth.json
+
+# Switch to work configuration and launch Codex
+cc-switch codex use work
+
+# Enter Codex interactive mode
+cc-switch codex
+# Then select 'work' from the interactive menu
 
 # See all configurations
-cc-switch list
-
-# Enter interactive mode (same as above)
-cc-switch
+cc-switch list        # Claude configurations
+cc-switch codex list  # Codex configurations
 ```
 
 ## Installation
@@ -60,27 +61,50 @@ brew install cc-switch
 
 ## Main Commands
 
+### Claude Configuration Management
+
 | Command | What it does |
 |---------|--------------|
 | `cc-switch add <name>` | Add new configuration |
 | `cc-switch list` | Show all configurations (JSON or plain text) |
 | `cc-switch remove <name...>` | Delete one or more configurations |
 | `cc-switch use <name>` | Quick switch and launch Claude |
-| `cc-switch completion <shell>` | Generate shell completion scripts |
 | `cc-switch` | Enter interactive mode |
+
+### Codex Configuration Management
+
+| Command | What it does |
+|---------|--------------|
+| `cc-switch codex add <name>` | Add new configuration |
+| `cc-switch codex list` | Show all configurations |
+| `cc-switch codex remove <name...>` | Delete configurations |
+| `cc-switch codex use <name>` | Switch and launch Codex |
+| `cc-switch codex` | Enter interactive mode |
+
+For detailed documentation, see [Codex Configuration Management](docs/codex.md).
+
+### Common Commands
+
+| Command | What it does |
+|---------|--------------|
+| `cc-switch completion <shell>` | Generate shell completion scripts |
 
 ## Advanced Usage
 
 ### Interactive Mode
 ```bash
-# Enter interactive mode (no arguments needed)
+# Claude interactive mode
 cc-switch
+
+# Codex interactive mode
+cc-switch codex
 
 # Navigate with:
 # - ↑↓ arrows or 1-9 keys: Select configuration
 # - N/P: Next/Previous page (when >9 configs)
-# - R: Reset to default Claude
-# - E: Exit
+# - R: Reset to default Claude (Claude mode only)
+# - E: Edit configuration
+# - Q: Exit
 ```
 
 ### Quick Switch (use command)
@@ -154,6 +178,26 @@ cc-switch remove work personal test-config
 cc-switch --migrate
 ```
 
+## Codex Configuration Management
+
+`cc-switch codex` manages multiple OpenAI Codex CLI authentication configurations.
+
+```bash
+# Import from existing auth.json
+cc-switch codex add work --from-file ~/.codex/auth.json
+
+# Interactive creation
+cc-switch codex add personal -i
+
+# Enter interactive mode (TUI)
+cc-switch codex
+
+# Switch configuration and launch Codex
+cc-switch codex use work
+```
+
+For detailed documentation, see [docs/codex.md](docs/codex.md).
+
 ## Shell Integration
 
 ### Generate Completions
@@ -181,32 +225,44 @@ cc-switch completion powershell
 # Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
+echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
 
 # Zsh
 echo "alias cs='cc-switch'" >> ~/.zshrc
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+echo "alias cx='cc-switch codex'" >> ~/.zshrc
 
 # Bash
 echo "alias cs='cc-switch'" >> ~/.bashrc
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
+echo "alias cx='cc-switch codex'" >> ~/.bashrc
 
 # Now you can use:
 cs              # Instead of cc-switch (enters interactive mode)
 ccd             # Quick Claude launch
+cx              # Enter Codex interactive mode
 ```
 
 ## How it Works
 
-cc-switch stores your configurations in `~/.cc-switch/configurations.json` and updates Claude's `settings.json` file with the appropriate environment variables. This means:
+cc-switch stores configurations in `~/.claude/cc_auto_switch_setting.json`:
+
+**Claude configurations**: Updates Claude's `settings.json` file with the appropriate environment variables.
+
+**Codex configurations**: Writes to `~/.codex/auth.json` file, which Codex CLI reads for authentication.
+
+This means:
 
 - ✅ No global configuration changes
 - ✅ Complete isolation between configurations
 - ✅ Safe and secure API key management
-- ✅ Works with any Claude installation
-- ✅ Preserves other Claude settings
-- ✅ Supports custom Claude settings directory
+- ✅ Works with any Claude / Codex installation
+- ✅ Preserves other settings
+- ✅ Supports custom settings directory
 
 ## Environment Variables
+
+### Claude Configurations
 
 The tool sets these environment variables when switching configuration:
 
@@ -220,10 +276,28 @@ The tool sets these environment variables when switching configuration:
 - `ANTHROPIC_DEFAULT_SONNET_MODEL` - Default Sonnet model (optional)
 - `ANTHROPIC_DEFAULT_OPUS_MODEL` - Default Opus model (optional)
 - `ANTHROPIC_DEFAULT_HAIKU_MODEL` - Default Haiku model (optional)
+- `CLAUDE_CODE_SUBAGENT_MODEL` - Subagent model (optional)
+- `CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK` - Disable non-streaming fallback flag (optional)
+- `CLAUDE_CODE_EFFORT_LEVEL` - Effort level (optional, e.g., 'max')
+
+### Codex Configurations
+
+Codex configurations are stored in `~/.codex/auth.json`, supporting two authentication modes:
+
+**chatgpt mode (OAuth)**:
+- `id_token` - ID token
+- `access_token` - Access token
+- `refresh_token` - Refresh token
+- `account_id` - Account ID
+
+**apikey mode**:
+- `OPENAI_API_KEY` - API key
+
+For detailed documentation, see [Codex Configuration Management](docs/codex.md).
 
 ## Import/Export
 
-### Import from JSON
+### Claude Configurations from JSON
 ```bash
 # Import configuration from JSON file
 # The filename (without extension) becomes the alias name
@@ -238,6 +312,14 @@ cc-switch add --from-file my-work-config.json
 #   }
 # }
 ```
+
+### Codex Configurations from auth.json
+```bash
+# Import from existing auth.json
+cc-switch codex add work --from-file ~/.codex/auth.json
+```
+
+For detailed documentation, see [Codex Configuration Management](docs/codex.md).
 
 ## Development
 

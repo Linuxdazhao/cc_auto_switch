@@ -3,15 +3,13 @@
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**[English README](README_EN.md) | 中文文档**
+**一个 CLI 工具，用于管理多个 Claude / Codex 配置并在它们之间自动切换。**
 
-一个 CLI 工具，用于管理多个 Claude API 配置并在它们之间自动切换。
-
-在不同项目或环境中使用 Claude API 时，经常需要切换 API 令牌和设置。cc-switch 让这个过程变得轻松：
+在不同项目或环境中使用 Claude API 或 OpenAI Codex CLI 时，经常需要切换 API 令牌和设置。cc-switch 让这个过程变得轻松：
 
 - 用易记的名称存储多个配置
 - 在它们之间即时切换
-- 自动启动带有正确环境变量的 Claude
+- 自动启动带有正确环境变量的 Claude / Codex
 - 保持 API 密钥的安全和组织
 - 从 JSON 文件导入/导出配置
 - 完整的交互模式，支持键盘导航
@@ -22,25 +20,30 @@
 # 安装
 cargo install cc-switch
 
+# ===== Claude 配置 =====
+
 # 添加你的第一个配置
 cc-switch add work sk-ant-work-xxx https://api.anthropic.com
-
-# 添加另一个配置
-cc-switch add personal sk-ant-personal-xxx https://api.anthropic.com
 
 # 切换到工作配置
 cc-switch
 # 然后从交互菜单中选择 'work'
 
-# 切换到个人配置
-cc-switch
-# 然后从交互菜单中选择 'personal'
+# ===== Codex 配置 =====
+
+# 从现有 auth.json 导入
+cc-switch codex add work --from-file ~/.codex/auth.json
+
+# 切换到工作配置并启动 Codex
+cc-switch codex use work
+
+# 进入 Codex 交互模式
+cc-switch codex
+# 然后从交互菜单中选择 'work'
 
 # 查看所有配置
-cc-switch list
-
-# 进入交互模式（同上）
-cc-switch
+cc-switch list        # Claude 配置
+cc-switch codex list  # Codex 配置
 ```
 
 ## 安装
@@ -58,27 +61,50 @@ brew install cc-switch
 
 ## 主要命令
 
+### Claude 配置管理
+
 | 命令 | 作用 |
 |------|------|
 | `cc-switch add <名称>` | 添加新配置 |
 | `cc-switch list` | 显示所有配置（JSON 或纯文本） |
 | `cc-switch remove <名称...>` | 删除一个或多个配置 |
 | `cc-switch use <名称>` | 快速切换配置并启动 Claude |
-| `cc-switch completion <shell>` | 生成 Shell 补全脚本 |
 | `cc-switch` | 进入交互模式 |
+
+### Codex 配置管理
+
+| 命令 | 作用 |
+|------|------|
+| `cc-switch codex add <名称>` | 添加新配置 |
+| `cc-switch codex list` | 显示所有配置 |
+| `cc-switch codex remove <名称...>` | 删除配置 |
+| `cc-switch codex use <名称>` | 切换配置并启动 Codex |
+| `cc-switch codex` | 进入交互模式 |
+
+详细文档请查看 [Codex 配置管理](docs/codex.md)。
+
+### 通用命令
+
+| 命令 | 作用 |
+|------|------|
+| `cc-switch completion <shell>` | 生成 Shell 补全脚本 |
 
 ## 高级用法
 
 ### 交互模式
 ```bash
-# 进入交互模式（无需参数）
+# Claude 交互模式
 cc-switch
+
+# Codex 交互模式
+cc-switch codex
 
 # 导航操作：
 # - ↑↓ 箭头或 1-9 键：选择配置
 # - N/P：下一页/上一页（当配置 >9 个时）
-# - R：重置为默认 Claude
-# - E：退出
+# - R：重置为默认 Claude（仅 Claude 模式）
+# - E：编辑配置
+# - Q：退出
 ```
 
 ### 快速切换（use 命令）
@@ -165,6 +191,32 @@ cc-switch remove work personal test-config
 cc-switch --migrate
 ```
 
+## 导入/导出
+
+### Claude 配置从 JSON 导入
+```bash
+# 从 JSON 文件导入配置
+# 文件名（不含扩展名）成为别名
+cc-switch add --from-file my-work-config.json
+
+# 期望的 JSON 格式：
+# {
+#   "env": {
+#     "ANTHROPIC_AUTH_TOKEN": "sk-ant-xxx",
+#     "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+#     "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
+#   }
+# }
+```
+
+### Codex 配置从 auth.json 导入
+```bash
+# 从现有 auth.json 导入
+cc-switch codex add work --from-file ~/.codex/auth.json
+```
+
+详细文档请查看 [Codex 配置管理](docs/codex.md)。
+
 ## Shell 集成
 
 ### 生成补全
@@ -192,32 +244,44 @@ cc-switch completion powershell
 # Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
+echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
 
 # Zsh
 echo "alias cs='cc-switch'" >> ~/.zshrc
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+echo "alias cx='cc-switch codex'" >> ~/.zshrc
 
 # Bash
 echo "alias cs='cc-switch'" >> ~/.bashrc
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
+echo "alias cx='cc-switch codex'" >> ~/.bashrc
 
 # 现在可以使用：
 cs              # 代替 cc-switch（进入交互模式）
 ccd             # 快速启动 Claude
+cx              # 进入 Codex 交互模式
 ```
 
 ## 工作原理
 
-cc-switch 将配置存储在 `~/.cc-switch/configurations.json` 中，并更新 Claude 的 `settings.json` 文件，设置适当的环境变量。这意味着：
+cc-switch 将配置存储在 `~/.claude/cc_auto_switch_setting.json` 中：
+
+**Claude 配置**：更新 Claude 的 `settings.json` 文件，设置适当的环境变量。
+
+**Codex 配置**：写入 `~/.codex/auth.json` 文件，Codex CLI 从该文件读取认证信息。
+
+这意味着：
 
 - ✅ 不修改全局配置
 - ✅ 配置之间完全隔离
 - ✅ 安全的 API 密钥管理
-- ✅ 适用于任何 Claude 安装
-- ✅ 保留其他 Claude 设置
-- ✅ 支持自定义 Claude 设置目录
+- ✅ 适用于任何 Claude / Codex 安装
+- ✅ 保留其他设置
+- ✅ 支持自定义设置目录
 
 ## 环境变量
+
+### Claude 配置
 
 工具在切换配置时设置以下环境变量：
 
@@ -234,6 +298,21 @@ cc-switch 将配置存储在 `~/.cc-switch/configurations.json` 中，并更新 
 - `CLAUDE_CODE_SUBAGENT_MODEL` - 子代理模型（可选）
 - `CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK` - 禁用非流式回退标志（可选）
 - `CLAUDE_CODE_EFFORT_LEVEL` - 努力级别（可选，如 'max'）
+
+### Codex 配置
+
+Codex 配置存储在 `~/.codex/auth.json`，支持两种认证模式：
+
+**chatgpt 模式（OAuth）**：
+- `id_token` - 身份令牌
+- `access_token` - 访问令牌
+- `refresh_token` - 刷新令牌
+- `account_id` - 账户 ID
+
+**apikey 模式**：
+- `OPENAI_API_KEY` - API 密钥
+
+详细文档请查看 [Codex 配置管理](docs/codex.md)。
 
 ## 导入/导出
 
