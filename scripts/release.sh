@@ -62,7 +62,16 @@ cargo test
 
 if [ $? -eq 0 ]; then
     echo "✅ Tests passed"
-    
+
+    # Create tag
+    git tag "v$new_version"
+    echo "✅ Created tag v$new_version"
+
+    # Push main and the specific tag separately (avoids old tag conflicts)
+    git push origin main
+    git push origin "v$new_version"
+    echo "✅ Pushed main and tag v$new_version"
+
     # Publish to crates.io
     echo "🚀 Publishing to crates.io..."
     ./scripts/publish.sh
