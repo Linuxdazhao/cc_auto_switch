@@ -55,7 +55,7 @@ pub fn handle_codex_add(
 }
 
 /// Parse an existing auth.json file into a CodexConfiguration
-fn parse_auth_json_file(file_path: &str, alias_name: &str) -> Result<CodexConfiguration> {
+pub fn parse_auth_json_file(file_path: &str, alias_name: &str) -> Result<CodexConfiguration> {
     let content = fs::read_to_string(file_path)
         .map_err(|e| anyhow!("Failed to read auth.json file '{}': {}", file_path, e))?;
 
@@ -64,7 +64,12 @@ fn parse_auth_json_file(file_path: &str, alias_name: &str) -> Result<CodexConfig
 
     let auth_mode = json["auth_mode"]
         .as_str()
-        .ok_or_else(|| anyhow!("Missing 'auth_mode' field in auth.json file '{}'", file_path))?
+        .ok_or_else(|| {
+            anyhow!(
+                "Missing 'auth_mode' field in auth.json file '{}'",
+                file_path
+            )
+        })?
         .to_string();
 
     let openai_api_key = json["OPENAI_API_KEY"].as_str().map(|s| s.to_string());
