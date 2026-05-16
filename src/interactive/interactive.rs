@@ -15,7 +15,7 @@ use std::process::Command;
 
 /// Calculate display width of a character
 /// Returns 2 for wide characters (CJK), 1 for others
-fn char_display_width(c: char) -> usize {
+pub(crate) fn char_display_width(c: char) -> usize {
     match c as u32 {
         0x00..=0x7F => 1,
         0x80..=0x2FF => 1,
@@ -32,7 +32,7 @@ fn char_display_width(c: char) -> usize {
 }
 
 /// Truncate text to fit within available width, considering character display width
-fn truncate_text_to_width(text: &str, available_width: usize) -> (String, usize) {
+pub(crate) fn truncate_text_to_width(text: &str, available_width: usize) -> (String, usize) {
     let mut current_width = 0;
     let truncated: String = text
         .chars()
@@ -51,20 +51,20 @@ fn truncate_text_to_width(text: &str, available_width: usize) -> (String, usize)
 }
 
 /// Clean up terminal state by leaving alternate screen and disabling raw mode
-fn cleanup_terminal(stdout: &mut io::Stdout) {
+pub(crate) fn cleanup_terminal(stdout: &mut io::Stdout) {
     let _ = execute!(stdout, terminal::LeaveAlternateScreen);
     let _ = terminal::disable_raw_mode();
 }
 
 /// Border drawing utilities for terminal compatibility
-struct BorderDrawing {
+pub(crate) struct BorderDrawing {
     /// Check if terminal supports Unicode box drawing characters
     pub unicode_supported: bool,
 }
 
 impl BorderDrawing {
     /// Create new border drawing utility
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let unicode_supported = Self::detect_unicode_support();
         Self { unicode_supported }
     }
@@ -92,7 +92,7 @@ impl BorderDrawing {
     }
 
     /// Draw top border with title
-    fn draw_top_border(&self, title: &str, width: usize) -> String {
+    pub(crate) fn draw_top_border(&self, title: &str, width: usize) -> String {
         if self.unicode_supported {
             let title_padded = format!(" {title} ");
             let title_len = text_display_width(&title_padded);
@@ -135,7 +135,7 @@ impl BorderDrawing {
     }
 
     /// Draw middle border line with text
-    fn draw_middle_line(&self, text: &str, width: usize) -> String {
+    pub(crate) fn draw_middle_line(&self, text: &str, width: usize) -> String {
         let text_len = text_display_width(text);
         // Account for borders: "║ " (1+1) + " ║" (1+1) = 4 characters
         let available_width = width.saturating_sub(4);
@@ -162,7 +162,7 @@ impl BorderDrawing {
     }
 
     /// Draw bottom border
-    fn draw_bottom_border(&self, width: usize) -> String {
+    pub(crate) fn draw_bottom_border(&self, width: usize) -> String {
         if self.unicode_supported {
             format!("╚{}╝", "═".repeat(width - 2))
         } else {

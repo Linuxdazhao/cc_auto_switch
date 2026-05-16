@@ -1,6 +1,5 @@
 use crate::codex::{CodexConfiguration, write_auth_json};
 use crate::config::{ConfigStorage, validate_alias_name};
-use crate::interactive::read_input;
 use anyhow::{Result, anyhow};
 use std::fs;
 use std::process::Command;
@@ -285,65 +284,5 @@ pub fn handle_codex_remove(alias_names: Vec<String>, storage: &mut ConfigStorage
 
 /// Enter interactive mode for Codex configuration selection
 pub fn handle_codex_interactive(storage: &ConfigStorage) -> Result<()> {
-    let configs = match &storage.codex_configurations {
-        Some(configs) if !configs.is_empty() => configs,
-        _ => {
-            println!("No Codex configurations available. Use 'cc-switch codex add' to create configurations first.");
-            return Ok(());
-        }
-    };
-
-    // Collect and sort configurations
-    let mut sorted_configs: Vec<_> = configs.values().collect();
-    sorted_configs.sort_by(|a, b| a.alias_name.cmp(&b.alias_name));
-
-    println!("Available Codex configurations:\n");
-
-    for (i, config) in sorted_configs.iter().enumerate() {
-        let auth_info = if config.auth_mode == "apikey" {
-            if let Some(ref key) = config.openai_api_key {
-                format!("apikey: {}...", &key[..8.min(key.len())])
-            } else {
-                "apikey: <none>".to_string()
-            }
-        } else {
-            format!("chatgpt (account: {})",
-                config.account_id.as_deref().unwrap_or("unknown"))
-        };
-
-        println!("  {}. {} - {}", i + 1, config.alias_name, auth_info);
-    }
-
-    println!("\nSelect a configuration (1-{}), or 'q' to quit: ", sorted_configs.len());
-
-    let input = read_input("")?;
-    let input = input.trim();
-
-    if input.eq_ignore_ascii_case("q") || input.is_empty() {
-        println!("Selection cancelled");
-        return Ok(());
-    }
-
-    match input.parse::<usize>() {
-        Ok(n) if n >= 1 && n <= sorted_configs.len() => {
-            let config = sorted_configs[n - 1];
-            println!("\nSwitching to Codex configuration: {}", config.alias_name);
-
-            // Write auth.json
-            write_auth_json(config)?;
-
-            println!("  Auth mode: {}", config.auth_mode);
-            if let Some(ref account_id) = config.account_id {
-                println!("  Account ID: {}", account_id);
-            }
-
-            // Launch codex
-            launch_codex(false, None, Vec::new())?;
-        }
-        _ => {
-            println!("Invalid selection");
-        }
-    }
-
-    Ok(())
+    crate::interactive::handle_codex_interactive_selection(storage)
 }
