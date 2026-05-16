@@ -270,11 +270,21 @@ fn generate_fish_completion(app: &mut clap::Command) {
     // Add completion for cs alias subcommands (but NOT configuration aliases at top level)
     println!("\n# Completion for 'cs' alias subcommands");
     println!(
-        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current' -d 'Subcommand'"
+        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex' -d 'Subcommand'"
+    );
+
+    // Add completion for cs list subcommand flags
+    println!("\n# Completion for 'cs list' subcommand");
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from list' -l plain -s p -d 'Plain text output'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from list' -l name -s n -d 'Show only name and URL'"
     );
 
     // Add completion for the 'cx' alias (cc-switch codex)
     println!("\n# Completion for the 'cx' alias (cc-switch codex)");
+    println!("complete -c cx -f");
     println!(
         "complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'"
     );
@@ -283,6 +293,18 @@ fn generate_fish_completion(app: &mut clap::Command) {
     );
     println!(
         "complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only name and auth mode'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'"
+    );
+    println!(
+        "complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from JSON file' -r"
     );
 
     println!("\n# Fish completion generated successfully");
@@ -315,9 +337,15 @@ fn generate_cx_completion_file() {
     }
 
     let cx_content = r#"# Completion for 'cx' alias (cc-switch codex)
+# cx is a fish function; disable file completion by default
+complete -c cx -f
 complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'
 complete -c cx -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
 complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
+complete -c cx -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'
+complete -c cx -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only name and auth mode'
+complete -c cx -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'
+complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from JSON file' -r
 "#;
 
     let cx_path = completions_dir.join("cx.fish");
