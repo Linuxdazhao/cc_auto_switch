@@ -2,8 +2,9 @@
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue)](#安装)
 
-**一个 CLI 工具，用于管理多个 Claude / Codex 配置并在它们之间自动切换。**
+**一个 CLI 工具，用于管理多个 Claude / Codex 配置并在它们之间自动切换。全平台支持：Linux、macOS、Windows（x86_64 + ARM64）。**
 
 在不同项目或环境中使用 Claude API 或 OpenAI Codex CLI 时，经常需要切换 API 令牌和设置。cc-switch 让这个过程变得轻松：
 
@@ -13,6 +14,7 @@
 - 保持 API 密钥的安全和组织
 - 从 JSON 文件导入/导出配置
 - 完整的交互模式，支持键盘导航
+- 全平台支持：Linux、macOS、Windows（x86_64 + ARM64），自动处理 Windows 上 npm 安装的 `claude.cmd` / `codex.cmd` shim
 
 ## 快速开始
 
