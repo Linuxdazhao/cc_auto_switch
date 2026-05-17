@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+use crate::platform::resolve_npm_cli;
+
 /// Get the path to the configuration storage file
 ///
 /// Returns `~/.claude/cc_auto_switch_setting.json`
@@ -77,7 +79,7 @@ pub fn read_sensitive_input(prompt: &str) -> Result<String> {
 /// # Arguments
 /// * `skip_permissions` - Whether to add --dangerously-skip-permissions flag
 pub fn execute_claude_command(skip_permissions: bool) -> Result<()> {
-    let mut command = Command::new("claude");
+    let mut command = Command::new(resolve_npm_cli("claude"));
     if skip_permissions {
         command.arg("--dangerously-skip-permissions");
     }
@@ -105,7 +107,7 @@ pub fn execute_claude_command(skip_permissions: bool) -> Result<()> {
 /// Launch Claude CLI with proper delay
 pub fn launch_claude() -> Result<()> {
     println!("\nLaunching Claude CLI...");
-    let mut child = Command::new("claude")
+    let mut child = Command::new(resolve_npm_cli("claude"))
         .arg("--dangerously-skip-permissions")
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
