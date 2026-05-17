@@ -6,6 +6,7 @@ use crate::config::types::ConfigStorage;
 use crate::interactive::interactive::{
     BorderDrawing, EditModeError, cleanup_terminal, edit_optional_string_field, edit_string_field,
 };
+use crate::platform::resolve_npm_cli;
 use anyhow::Result;
 use colored::*;
 use crossterm::{
@@ -563,7 +564,7 @@ fn launch_codex_from_interactive() -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let mut command = Command::new("codex");
+        let mut command = Command::new(resolve_npm_cli("codex"));
         let error = command.exec();
         anyhow::bail!("Failed to exec codex: {}", error);
     }
@@ -572,7 +573,7 @@ fn launch_codex_from_interactive() -> Result<()> {
     {
         use anyhow::Context;
         use std::process::Stdio;
-        let mut command = Command::new("codex");
+        let mut command = Command::new(resolve_npm_cli("codex"));
         command
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())

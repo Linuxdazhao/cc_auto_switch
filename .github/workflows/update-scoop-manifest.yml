@@ -1,0 +1,142 @@
+name: Update Scoop Manifest
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., 0.1.18)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  update-manifest:
+    name: Update Scoop Manifest
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Wait for Windows release assets
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BASE_URL="https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v${VERSION}"
+          FILES=(
+            "cc-switch-x86_64-pc-windows-msvc.zip"
+            "cc-switch-aarch64-pc-windows-msvc.zip"
+          )
+          MAX_ATTEMPTS=60
+          SLEEP_TIME=10
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt/$MAX_ATTEMPTS..."
+            all_available=true
+            for file in "${FILES[@]}"; do
+              if ! curl -sSL --fail --head "${BASE_URL}/${file}" > /dev/null 2>&1; then
+                echo "  not yet: $file"
+                all_available=false
+                break
+              fi
+            done
+            if [ "$all_available" = true ]; then
+              echo "All Windows assets are live."
+              break
+            fi
+            if [ $attempt -eq $MAX_ATTEMPTS ]; then
+              echo "ERROR: Windows assets did not become available within timeout."
+              exit 1
+            fi
+            sleep $SLEEP_TIME
+          done
+
+      - name: Download and calculate checksums
+        id: checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BASE_URL="https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v${VERSION}"
+
+          calculate_sha() {
+            local filename=$1
+            local max_retries=3
+            local retry=0
+            while [ $retry -lt $max_retries ]; do
+              if curl -sSL --fail --max-time 60 \
+                     --retry 3 --retry-delay 5 --retry-max-time 300 \
+                     "${BASE_URL}/${filename}" -o "${filename}"; then
+                if [ -s "${filename}" ]; then
+                  local sha=$(sha256sum "${filename}" | cut -d' ' -f1)
+                  echo "$sha"
+                  rm -f "${filename}"
+                  return 0
+                fi
+              fi
+              retry=$((retry + 1))
+              sleep 10
+            done
+            return 1
+          }
+
+          X64_SHA=$(calculate_sha "cc-switch-x86_64-pc-windows-msvc.zip") || exit 1
+          ARM64_SHA=$(calculate_sha "cc-switch-aarch64-pc-windows-msvc.zip") || exit 1
+
+          echo "x64_sha=$X64_SHA" >> $GITHUB_OUTPUT
+          echo "arm64_sha=$ARM64_SHA" >> $GITHUB_OUTPUT
+          echo "=== Computed SHA256 ==="
+          echo "x86_64: $X64_SHA"
+          echo "arm64:  $ARM64_SHA"
+
+      - name: Checkout Scoop bucket repository
+        uses: actions/checkout@v4
+        with:
+          repository: Linuxdazhao/scoop-cc-switch
+          token: ${{ secrets.SCOOP_BUCKET_TOKEN || secrets.GITHUB_TOKEN }}
+          path: scoop-cc-switch
+
+      - name: Render manifest
+        run: |
+          cd scoop-cc-switch
+          mkdir -p bucket
+          cp ../.github/workflows/scoop-manifest-template.json bucket/cc-switch.json
+          sed -i "s/__VERSION__/${{ steps.version.outputs.version }}/g" bucket/cc-switch.json
+          sed -i "s/__X64_SHA__/${{ steps.checksums.outputs.x64_sha }}/g" bucket/cc-switch.json
+          sed -i "s/__ARM64_SHA__/${{ steps.checksums.outputs.arm64_sha }}/g" bucket/cc-switch.json
+          echo "=== Rendered manifest ==="
+          cat bucket/cc-switch.json
+
+      - name: Commit and push
+        run: |
+          cd scoop-cc-switch
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/cc-switch.json
+          if git diff --staged --quiet; then
+            echo "Manifest unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "Update cc-switch to v${{ steps.version.outputs.version }}
+
+          - Update version to ${{ steps.version.outputs.version }}
+          - Update SHA256 checksums for x64 and arm64
+
+          🤖 Auto-updated by GitHub Actions"
+          git push origin main

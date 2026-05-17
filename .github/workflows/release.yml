@@ -23,15 +23,27 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             artifact_name: cc-switch-x86_64-unknown-linux-gnu.tar.gz
+            binary_name: cc-switch
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             artifact_name: cc-switch-aarch64-unknown-linux-gnu.tar.gz
+            binary_name: cc-switch
           - target: x86_64-apple-darwin
             os: macos-latest
             artifact_name: cc-switch-x86_64-apple-darwin.tar.gz
+            binary_name: cc-switch
           - target: aarch64-apple-darwin
             os: macos-latest
             artifact_name: cc-switch-aarch64-apple-darwin.tar.gz
+            binary_name: cc-switch
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: cc-switch-x86_64-pc-windows-msvc.zip
+            binary_name: cc-switch.exe
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: cc-switch-aarch64-pc-windows-msvc.zip
+            binary_name: cc-switch.exe
 
     steps:
     - uses: actions/checkout@v4
@@ -66,18 +78,44 @@ jobs:
       run: |
         cargo build --release --target ${{ matrix.target }}
 
-    - name: Package artifacts
+    - name: Package artifacts (Unix)
+      if: matrix.os != 'windows-latest'
+      shell: bash
       run: |
         mkdir -p dist/${{ matrix.target }}
-        cp target/${{ matrix.target }}/release/cc-switch dist/${{ matrix.target }}/cc-switch
+        cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} dist/${{ matrix.target }}/${{ matrix.binary_name }}
         cd dist/${{ matrix.target }}
-        tar -czf ../../${{ matrix.artifact_name }} cc-switch
+        tar -czf ../../${{ matrix.artifact_name }} ${{ matrix.binary_name }}
+
+    - name: Package artifacts (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        $stage = "dist/${{ matrix.target }}"
+        New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "$stage/${{ matrix.binary_name }}"
+        Compress-Archive -Path "$stage/${{ matrix.binary_name }}" -DestinationPath "${{ matrix.artifact_name }}" -Force
+
+    - name: Generate SHA256 sidecar (Unix)
+      if: matrix.os != 'windows-latest'
+      shell: bash
+      run: |
+        shasum -a 256 ${{ matrix.artifact_name }} | awk '{print $1}' > ${{ matrix.artifact_name }}.sha256
+
+    - name: Generate SHA256 sidecar (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        $hash = (Get-FileHash -Algorithm SHA256 "${{ matrix.artifact_name }}").Hash.ToLower()
+        Set-Content -Path "${{ matrix.artifact_name }}.sha256" -Value $hash -NoNewline
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}
+          ${{ matrix.artifact_name }}.sha256
 
   release:
     name: Create Release
@@ -100,6 +138,8 @@ jobs:
       with:
         files: |
           artifacts/**/*.tar.gz
+          artifacts/**/*.zip
+          artifacts/**/*.sha256
         draft: false
         prerelease: false
         generate_release_notes: true
@@ -115,10 +155,11 @@ jobs:
         echo "| Target | File |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
         
-        for artifact in artifacts/**/*.tar.gz; do
+        shopt -s nullglob globstar
+        for artifact in artifacts/**/*.tar.gz artifacts/**/*.zip; do
           if [ -f "$artifact" ]; then
             filename=$(basename "$artifact")
-            target_name=$(echo "$filename" | sed -E 's/\.tar\.gz$//')
+            target_name=$(echo "$filename" | sed -E 's/\.(tar\.gz|zip)$//')
             echo "| $target_name | $filename |" >> $GITHUB_STEP_SUMMARY
           fi
         done

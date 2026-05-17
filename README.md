@@ -48,16 +48,57 @@ cc-switch codex list  # Codex 配置
 
 ## 安装
 
-### Cargo（推荐）
+### Windows
+
+**方式 1 — Scoop（推荐，v0.1.18+）：**
+
+```powershell
+scoop bucket add cc-switch https://github.com/Linuxdazhao/scoop-cc-switch
+scoop install cc-switch
+```
+
+**方式 2 — Cargo：**
+
+```powershell
+cargo install cc-switch
+```
+
+**方式 3 — 预编译二进制：** 从 [Releases](https://github.com/Linuxdazhao/cc_auto_switch/releases) 下载对应架构的 `.zip`，将 `cc-switch.exe` 放到 PATH 中。
+
+### Linux
+
+**方式 1 — Homebrew（推荐）：**
+
+```bash
+# 简短形式可用，因 tap 仓库名为 `homebrew-cc-switch`
+brew install Linuxdazhao/cc-switch/cc-switch
+# 或显式：
+# brew tap Linuxdazhao/cc-switch && brew install cc-switch
+```
+
+**方式 2 — Cargo：**
+
 ```bash
 cargo install cc-switch
 ```
 
-### Homebrew
+**方式 3 — 预编译二进制：** 从 [Releases](https://github.com/Linuxdazhao/cc_auto_switch/releases) 下载对应架构的 `.tar.gz`。
+
+### macOS
+
+**方式 1 — Homebrew（推荐）：**
+
 ```bash
-brew tap Linuxdazhao/cc-switch
-brew install cc-switch
+brew install Linuxdazhao/cc-switch/cc-switch
 ```
+
+**方式 2 — Cargo：**
+
+```bash
+cargo install cc-switch
+```
+
+**方式 3 — 预编译二进制：** 从 [Releases](https://github.com/Linuxdazhao/cc_auto_switch/releases) 下载对应架构的 `.tar.gz`。
 
 ## 主要命令
 
@@ -223,6 +264,8 @@ cc-switch codex add work --from-file ~/.codex/auth.json
 
 > **升级后请重新生成补全脚本**，以获取新子命令（如 `codex`）的补全支持。
 
+#### Fish / Zsh / Bash
+
 ```bash
 # Fish（推荐，支持动态别名补全）
 cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
@@ -231,13 +274,39 @@ cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
 cc-switch completion zsh > ~/.zsh/completions/_cc-switch
 echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
 
-# Bash
+# Bash（含 Windows 上的 Git Bash）
 cc-switch completion bash > ~/.bash_completion.d/cc-switch
 echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
 
-# Elvish 或 PowerShell 也受支持
+# Elvish 也受支持
 cc-switch completion elvish
-cc-switch completion powershell
+```
+
+#### PowerShell（Windows）
+
+**不要**直接将补全脚本重定向到 `$PROFILE`——这会覆盖已有的别名、模块或主题配置。请写入独立文件后再从 `$PROFILE` 中 dot-source：
+
+```powershell
+$completionDir = Split-Path -Parent $PROFILE
+if (-not (Test-Path $completionDir)) { New-Item -ItemType Directory -Path $completionDir | Out-Null }
+$completionPath = Join-Path $completionDir 'cc-switch.completion.ps1'
+cc-switch completion powershell | Out-File -Encoding utf8 $completionPath
+
+$line = ". '$completionPath'"
+if (-not ((Test-Path $PROFILE) -and (Select-String -Path $PROFILE -Pattern ([regex]::Escape($line)) -Quiet))) {
+    Add-Content -Path $PROFILE -Value $line
+}
+```
+
+该脚本是幂等的，可以反复执行。
+
+#### CMD（Windows）
+
+CMD 没有补全机制，直接使用命令即可：
+
+```cmd
+cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
+cc-switch list
 ```
 
 ### 创建别名

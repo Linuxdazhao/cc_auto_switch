@@ -4,6 +4,7 @@ use crate::cli::display_utils::{
 };
 use crate::config::EnvironmentConfig;
 use crate::config::types::{ConfigStorage, Configuration};
+use crate::platform::resolve_npm_cli;
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -71,24 +72,7 @@ impl BorderDrawing {
 
     /// Detect if terminal supports Unicode characters
     fn detect_unicode_support() -> bool {
-        // Check environment variables that indicate Unicode support
-        if let Ok(term) = std::env::var("TERM") {
-            // Modern terminals that support Unicode
-            if term.contains("xterm") || term.contains("screen") || term == "tmux-256color" {
-                return true;
-            }
-        }
-
-        // Check locale settings
-        if let Ok(lang) = std::env::var("LANG")
-            && (lang.contains("UTF-8") || lang.contains("utf8"))
-        {
-            return true;
-        }
-
-        // Conservative fallback - assume Unicode is supported for better UX
-        // If issues arise, ASCII fallback will be manually triggered
-        true
+        crate::platform::unicode_support_enabled()
     }
 
     /// Draw top border with title
@@ -988,7 +972,7 @@ pub fn launch_claude_with_env(
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);
@@ -1008,7 +992,7 @@ pub fn launch_claude_with_env(
     #[cfg(not(unix))]
     {
         use std::process::Stdio;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);
@@ -1047,7 +1031,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         if skip_permissions {
             command.arg("--dangerously-skip-permissions");
         }
@@ -1061,7 +1045,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
     #[cfg(not(unix))]
     {
         use std::process::Stdio;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         if skip_permissions {
             command.arg("--dangerously-skip-permissions");
         }
