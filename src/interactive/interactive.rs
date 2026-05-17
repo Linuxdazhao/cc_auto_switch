@@ -4,6 +4,7 @@ use crate::cli::display_utils::{
 };
 use crate::config::EnvironmentConfig;
 use crate::config::types::{ConfigStorage, Configuration};
+use crate::platform::resolve_npm_cli;
 use anyhow::{Context, Result};
 use colored::*;
 use crossterm::{
@@ -988,7 +989,7 @@ pub fn launch_claude_with_env(
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);
@@ -1008,7 +1009,7 @@ pub fn launch_claude_with_env(
     #[cfg(not(unix))]
     {
         use std::process::Stdio;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);
@@ -1047,7 +1048,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         if skip_permissions {
             command.arg("--dangerously-skip-permissions");
         }
@@ -1061,7 +1062,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
     #[cfg(not(unix))]
     {
         use std::process::Stdio;
-        let mut command = Command::new("claude");
+        let mut command = Command::new(resolve_npm_cli("claude"));
         if skip_permissions {
             command.arg("--dangerously-skip-permissions");
         }
