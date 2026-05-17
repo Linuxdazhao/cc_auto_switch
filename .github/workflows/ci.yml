@@ -125,8 +125,17 @@ jobs:
           ./target/release/cc-switch.exe completion bash > /tmp/cc.bash
           bash -c "source /tmp/cc.bash"
 
-      - name: CRUD round-trip
-        shell: ${{ matrix.shell }}
+      - name: CRUD round-trip (PowerShell)
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: |
+          ./target/release/cc-switch.exe add ci-test -t sk-test -u https://example.com
+          ./target/release/cc-switch.exe list
+          ./target/release/cc-switch.exe remove ci-test
+
+      - name: CRUD round-trip (Bash)
+        if: matrix.shell == 'bash'
+        shell: bash
         run: |
           ./target/release/cc-switch.exe add ci-test -t sk-test -u https://example.com
           ./target/release/cc-switch.exe list
