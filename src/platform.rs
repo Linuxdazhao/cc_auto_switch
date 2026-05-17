@@ -48,8 +48,9 @@ pub fn resolve_npm_cli(name: &str) -> PathBuf {
 /// 3. On Windows: only enable Unicode if `WT_SESSION` is set (Windows
 ///    Terminal). Default to ASCII to avoid mojibake on legacy conhost / CMD
 ///    where the default codepage is not UTF-8.
-/// 4. On non-Windows: inspect `TERM` and `LANG` for known-good values; default
-///    to enabled.
+/// 4. On non-Windows: enabled by default. Modern Linux and macOS terminals
+///    universally support UTF-8; the `CC_SWITCH_ASCII=1` escape hatch above
+///    covers exceptions.
 pub fn unicode_support_enabled() -> bool {
     if std::env::var("CC_SWITCH_ASCII").is_ok_and(|v| v == "1") {
         return false;
@@ -65,18 +66,8 @@ pub fn unicode_support_enabled() -> bool {
 
     #[cfg(not(windows))]
     {
-        if let Ok(term) = std::env::var("TERM")
-            && (term.contains("xterm")
-                || term.contains("screen")
-                || term == "tmux-256color")
-        {
-            return true;
-        }
-        if let Ok(lang) = std::env::var("LANG")
-            && (lang.contains("UTF-8") || lang.contains("utf8"))
-        {
-            return true;
-        }
+        // Default to enabled — modern *nix terminals (Linux, macOS) universally
+        // support UTF-8. The CC_SWITCH_ASCII=1 escape hatch above covers exceptions.
         true
     }
 }

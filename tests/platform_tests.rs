@@ -8,8 +8,10 @@ use std::path::PathBuf;
 
 #[test]
 fn env_override_takes_precedence() {
-    // SAFETY: tests do not run in parallel within a single test binary by default
-    //         only when using cargo nextest. The env-var name is unique to this test.
+    // SAFETY: cargo test runs these in parallel threads within one process.
+    //         The env-var name FOOTESTBIN_BINARY is unique to this test, so the
+    //         set/remove won't race with other tests. set_var requires `unsafe`
+    //         under edition 2024 because it can race with library code reading env.
     unsafe {
         std::env::set_var("FOOTESTBIN_BINARY", "/custom/path/to/foo");
     }
