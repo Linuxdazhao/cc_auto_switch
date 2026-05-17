@@ -28,7 +28,7 @@ class CcSwitch < Formula
 
   test do
     assert_match "cc-switch", shell_output("#{bin}/cc-switch --help")
-    assert_match version.to_s, shell_output("#{bin}/cc-switch version")
+    assert_match version.to_s, shell_output("#{bin}/cc-switch --version")
   end
 
   def caveats
