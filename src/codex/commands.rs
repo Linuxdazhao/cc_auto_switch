@@ -1,5 +1,6 @@
 use crate::codex::{CodexConfiguration, write_auth_json};
 use crate::config::{ConfigStorage, validate_alias_name};
+use crate::platform::resolve_npm_cli;
 use anyhow::{Result, anyhow};
 use std::fs;
 use std::process::Command;
@@ -228,7 +229,7 @@ pub fn handle_codex_use(
 
 /// Launch Codex CLI with optional arguments
 fn launch_codex(continue_flag: bool, resume: Option<String>, prompt: Vec<String>) -> Result<()> {
-    let mut cmd = Command::new("codex");
+    let mut cmd = Command::new(resolve_npm_cli("codex"));
 
     if continue_flag {
         cmd.arg("--continue");
