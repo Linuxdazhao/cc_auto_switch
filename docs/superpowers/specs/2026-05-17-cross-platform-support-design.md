@@ -40,7 +40,7 @@ This spec outlines the implementation plan for adding comprehensive cross-platfo
 
 #### 1.1 Test Matrix
 
-Add `windows-latest` to the test job:
+Add `windows-latest` to the test job. Linux and macOS use default shell (bash), Windows tests all three shells:
 
 ```yaml
 jobs:
@@ -50,7 +50,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        shell: [bash, pwsh, cmd]  # Test all three shells on Windows
     steps:
       - uses: actions/checkout@v4
 
@@ -68,6 +67,33 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cargo test
+
+  test-windows-shells:
+    name: Test Windows shells (${{ matrix.shell }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        shell: [bash, pwsh, cmd]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests (Bash)
         if: matrix.shell == 'bash'
@@ -87,7 +113,20 @@ jobs:
 
 #### 1.2 Cache Path Fix
 
-The current cache paths use `~/.cargo/registry` which won't work on Windows. Use `actions/cache` with proper per-OS paths or use `$CARGO_HOME`.
+The current cache paths use `~/.cargo/registry` which won't work on Windows. Use platform-specific paths:
+
+```yaml
+- name: Cache cargo registry
+  uses: actions/cache@v3
+  with:
+    path: |
+      ${{ runner.os == 'Windows' && 'C:\Users\runneradmin\.cargo' || '~/.cargo' }}/registry
+      ${{ runner.os == 'Windows' && 'C:\Users\runneradmin\.cargo' || '~/.cargo' }}/git
+      target
+    key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+```
+
+Or use `$CARGO_HOME` environment variable which is set by the Rust toolchain action.
 
 #### 1.3 Cross-Build Matrix
 
