@@ -508,6 +508,35 @@ cargo test -- --nocapture
 - Large configuration lists paginated for responsiveness
 - Release build optimized with LTO and size optimization
 
+### Cross-Platform Binary Resolution
+
+On Windows, the `claude` and `codex` CLIs are typically installed via npm and
+ship as `.cmd` shims rather than `.exe`. `std::process::Command::new("claude")`
+does not always pick these up — its behavior depends on how PATHEXT is wired
+in the calling shell, which is inconsistent across PowerShell / CMD / Git Bash.
+
+To handle this uniformly, every `claude` or `codex` launch in the codebase
+goes through `crate::platform::resolve_npm_cli(name)` (see `src/platform.rs`).
+The resolver:
+
+1. Honors a `<NAME_UPPERCASE>_BINARY` env-var override (`CLAUDE_BINARY`,
+   `CODEX_BINARY`) — useful when users want to pin a specific installation
+   or test against a sibling binary.
+2. On Windows, probes `<name>.exe`, `<name>.cmd`, `<name>.ps1` via the `which`
+   crate.
+3. Falls back to the bare name on non-Windows or when probing finds nothing
+   — identical to the pre-resolver behavior.
+
+**When adding a new external CLI launch:** always go through the resolver.
+Never write `Command::new("some_cli")` directly for a binary that might be
+installed via npm.
+
+Terminal Unicode detection lives in the same module
+(`crate::platform::unicode_support_enabled`). On Windows it defaults to ASCII
+unless `WT_SESSION` is set (Windows Terminal), which prevents mojibake on
+legacy conhost / CMD. Users can override either way via `CC_SWITCH_ASCII=1`
+or `CC_SWITCH_UNICODE=1`.
+
 ## Key Dependencies
 
 - **anyhow**: Context-rich error handling
