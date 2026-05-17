@@ -1017,6 +1017,7 @@ pub fn launch_claude_with_env(
         if !status.success() {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
+        Ok(())
     }
 }
 
@@ -1066,6 +1067,7 @@ fn execute_claude_command(skip_permissions: bool) -> Result<()> {
         if !status.success() {
             anyhow::bail!("Claude CLI exited with error status: {}", status);
         }
+        Ok(())
     }
 }
 
