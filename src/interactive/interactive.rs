@@ -72,24 +72,7 @@ impl BorderDrawing {
 
     /// Detect if terminal supports Unicode characters
     fn detect_unicode_support() -> bool {
-        // Check environment variables that indicate Unicode support
-        if let Ok(term) = std::env::var("TERM") {
-            // Modern terminals that support Unicode
-            if term.contains("xterm") || term.contains("screen") || term == "tmux-256color" {
-                return true;
-            }
-        }
-
-        // Check locale settings
-        if let Ok(lang) = std::env::var("LANG")
-            && (lang.contains("UTF-8") || lang.contains("utf8"))
-        {
-            return true;
-        }
-
-        // Conservative fallback - assume Unicode is supported for better UX
-        // If issues arise, ASCII fallback will be manually triggered
-        true
+        crate::platform::unicode_support_enabled()
     }
 
     /// Draw top border with title
