@@ -61,7 +61,7 @@ pub fn unicode_support_enabled() -> bool {
 
     #[cfg(windows)]
     {
-        return std::env::var("WT_SESSION").is_ok();
+        std::env::var("WT_SESSION").is_ok()
     }
 
     #[cfg(not(windows))]
