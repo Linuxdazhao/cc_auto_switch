@@ -971,18 +971,13 @@ pub fn launch_claude_with_env(
 ) -> Result<()> {
     println!("\nLaunching Claude CLI...");
 
-    // Set environment variables for current process
-    for (key, value) in env_config.as_env_tuples() {
-        unsafe {
-            std::env::set_var(&key, &value);
-        }
-    }
-
     // On Unix systems, use exec to replace current process
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
         let mut command = Command::new(resolve_npm_cli("claude"));
+        // Explicitly pass environment variables to ensure they're inherited
+        command.envs(env_config.as_env_tuples());
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);
@@ -1003,6 +998,8 @@ pub fn launch_claude_with_env(
     {
         use std::process::Stdio;
         let mut command = Command::new(resolve_npm_cli("claude"));
+        // Explicitly pass environment variables to ensure they're inherited
+        command.envs(env_config.as_env_tuples());
         command.arg("--dangerously-skip-permissions");
         if let Some(session_id) = resume {
             command.args(["--resume", session_id]);

@@ -103,6 +103,7 @@ fn extract_original_cmd(script_content: &str) -> Option<String> {
 /// (bun or npm) and use the appropriate command.
 pub fn install(custom_dir: Option<&str>) -> Result<()> {
     let mut settings = ClaudeSettings::load(custom_dir)?;
+    let wrapper_path = get_wrapper_script_path()?;
 
     // Get current statusLine command, or detect available runner if none configured
     let has_existing = settings
@@ -112,13 +113,43 @@ pub fn install(custom_dir: Option<&str>) -> Result<()> {
         .is_some();
 
     let original_cmd = if has_existing {
-        settings
+        let current_cmd = settings
             .other
             .get("statusLine")
             .and_then(|v| v.get("command"))
             .and_then(|v| v.as_str())
             .unwrap_or(DEFAULT_STATUSLINE_CMD)
-            .to_string()
+            .to_string();
+
+        // Check if current command is the wrapper script itself (recursive installation)
+        if current_cmd.contains("cc_auto_switch_statusline.sh") {
+            // Try to extract original command from existing wrapper
+            if wrapper_path.exists()
+                && let Ok(existing) = fs::read_to_string(&wrapper_path)
+                && let Some(existing_cmd) = extract_original_cmd(&existing)
+            {
+                existing_cmd
+            } else {
+                // No existing wrapper or can't extract, detect package manager
+                match detect_statusline_runner() {
+                    Some(cmd) => {
+                        println!(
+                            "Detected package manager: {}",
+                            if cmd.contains("bun") { "bun" } else { "npm" }
+                        );
+                        cmd.to_string()
+                    }
+                    None => {
+                        anyhow::bail!(
+                            "No package manager found (bun or npm required for ccstatusline).\n\
+                             Please install bun or npm, then run: cc-switch statusline install"
+                        );
+                    }
+                }
+            }
+        } else {
+            current_cmd
+        }
     } else {
         // No existing statusLine, detect available package manager
         match detect_statusline_runner() {
@@ -139,7 +170,6 @@ pub fn install(custom_dir: Option<&str>) -> Result<()> {
     };
 
     // Check if already installed with same command
-    let wrapper_path = get_wrapper_script_path()?;
     if wrapper_path.exists()
         && let Ok(existing) = fs::read_to_string(&wrapper_path)
         && let Some(existing_cmd) = extract_original_cmd(&existing)
