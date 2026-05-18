@@ -916,6 +916,8 @@ fn handle_selection_action(
         settings.remove_anthropic_env();
         settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
+        crate::config::types::ClaudeSettings::write_current_alias("official")?;
+
         launch_claude_with_env(EnvironmentConfig::empty(), None, None, false)
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
@@ -943,6 +945,8 @@ fn handle_selection_action(
             storage_mode,
             storage.get_claude_settings_dir().map(|s| s.as_str()),
         )?;
+
+        crate::config::types::ClaudeSettings::write_current_alias(&selected_config.alias_name)?;
 
         launch_claude_with_env(env_config, None, None, false)
     } else {

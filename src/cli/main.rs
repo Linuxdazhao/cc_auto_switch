@@ -756,6 +756,8 @@ pub fn run() -> Result<()> {
                     settings.remove_anthropic_env();
                     settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
+                    ClaudeSettings::write_current_alias("official")?;
+
                     launch_claude_with_env(EnvironmentConfig::empty(), None, None, r#continue)?;
                     return Ok(());
                 }
@@ -777,6 +779,8 @@ pub fn run() -> Result<()> {
                     storage_mode,
                     storage.get_claude_settings_dir().map(|s| s.as_str()),
                 )?;
+
+                ClaudeSettings::write_current_alias(&alias_name)?;
 
                 println!("Switched to configuration '{}'", alias_name);
                 println!("  URL:   {}", config.url);
@@ -834,6 +838,17 @@ pub fn run() -> Result<()> {
                     handle_codex_interactive(&storage)?;
                 }
             },
+            Commands::Statusline { action } => {
+                let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+                match action {
+                    crate::cli::StatuslineAction::Install => {
+                        crate::statusline::install(custom_dir)?;
+                    }
+                    crate::cli::StatuslineAction::Uninstall => {
+                        crate::statusline::uninstall(custom_dir)?;
+                    }
+                }
+            }
         }
     } else {
         // No command provided, show interactive configuration selection

@@ -267,6 +267,29 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<CodexCommands>,
     },
+    /// Manage statusLine integration with Claude Code
+    ///
+    /// Installs a wrapper script that displays the current cc-switch alias name
+    /// in Claude Code's statusLine, alongside the original statusLine content.
+    ///
+    /// Usage:
+    ///   cc-switch statusline install    # Install/update the wrapper
+    ///   cc-switch statusline uninstall  # Remove the wrapper
+    #[command(name = "statusline")]
+    Statusline {
+        /// Action to perform (install or uninstall)
+        #[arg(value_enum, default_value = "install")]
+        action: StatuslineAction,
+    },
+}
+
+/// Actions for the statusline subcommand
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum StatuslineAction {
+    /// Install the statusLine wrapper script
+    Install,
+    /// Uninstall the statusLine wrapper script
+    Uninstall,
 }
 
 /// Available subcommands for Codex configuration management

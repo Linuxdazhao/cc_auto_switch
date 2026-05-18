@@ -398,6 +398,68 @@ impl ClaudeSettings {
 
         Ok(())
     }
+
+    /// Write the current active alias name to a file
+    ///
+    /// Stores the alias name in `~/.cc-switch/current_alias` so that
+    /// external tools (like statusLine scripts) can read the current configuration.
+    ///
+    /// # Arguments
+    /// * `alias` - The alias name to write
+    ///
+    /// # Errors
+    /// Returns error if the file cannot be written
+    pub fn write_current_alias(alias: &str) -> Result<()> {
+        let path = Self::get_current_alias_path()?;
+
+        // Create directory if it doesn't exist
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+        }
+
+        fs::write(&path, alias)
+            .with_context(|| format!("Failed to write current alias to {}", path.display()))?;
+
+        Ok(())
+    }
+
+    /// Read the current active alias name from file
+    ///
+    /// Returns `None` if the file doesn't exist or is empty.
+    pub fn read_current_alias() -> Option<String> {
+        let path = Self::get_current_alias_path().ok()?;
+        let content = fs::read_to_string(&path).ok()?;
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    }
+
+    /// Clear the current active alias file
+    ///
+    /// Removes the file if it exists. Does not error if file doesn't exist.
+    pub fn clear_current_alias() -> Result<()> {
+        let path = Self::get_current_alias_path()?;
+        if path.exists() {
+            fs::remove_file(&path)
+                .with_context(|| format!("Failed to remove {}", path.display()))?;
+        }
+        Ok(())
+    }
+
+    /// Get the path to the current alias file
+    ///
+    /// Returns `~/.claude/cc_auto_switch_current_alias`
+    fn get_current_alias_path() -> Result<std::path::PathBuf> {
+        let config_file = crate::config::get_config_storage_path()?;
+        let config_dir = config_file
+            .parent()
+            .context("Could not get config directory")?;
+        Ok(config_dir.join("cc_auto_switch_current_alias"))
+    }
 }
 
 #[cfg(test)]

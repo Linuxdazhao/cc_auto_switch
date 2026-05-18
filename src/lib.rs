@@ -10,6 +10,7 @@ pub mod interactive;
 
 pub mod claude_settings;
 pub mod platform;
+pub mod statusline;
 pub mod utils;
 
 pub use codex::CodexConfiguration;
