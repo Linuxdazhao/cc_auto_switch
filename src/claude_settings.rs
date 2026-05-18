@@ -276,9 +276,8 @@ impl ClaudeSettings {
     ) -> Result<()> {
         match mode {
             StorageMode::Env => {
-                // Env mode: Check for conflicts with existing configurable fields
-                // Automatically remove them from settings.json if found
-                // Note: User preference fields are preserved (not cleared)
+                // Env mode: Clean settings.json and use environment variables
+                // NOTE: This will affect existing Claude sessions
 
                 // Get environment variable names that should be cleared
                 // This excludes user preference fields like DISABLE_NONESSENTIAL_TRAFFIC

@@ -758,7 +758,12 @@ pub fn run() -> Result<()> {
 
                     ClaudeSettings::write_current_alias("official")?;
 
-                    launch_claude_with_env(EnvironmentConfig::empty(), None, None, r#continue)?;
+                    launch_claude_with_env(
+                        EnvironmentConfig::empty().with_alias("official"),
+                        None,
+                        None,
+                        r#continue,
+                    )?;
                     return Ok(());
                 }
 
@@ -768,7 +773,7 @@ pub fn run() -> Result<()> {
                     .ok_or_else(|| anyhow!("Configuration '{}' not found", alias_name))?
                     .clone();
 
-                let env_config = EnvironmentConfig::from_config(&config);
+                let env_config = EnvironmentConfig::from_config(&config).with_alias(&alias_name);
                 let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
 
                 // Update settings.json with the configuration

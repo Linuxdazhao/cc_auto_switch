@@ -918,12 +918,18 @@ fn handle_selection_action(
 
         crate::config::types::ClaudeSettings::write_current_alias("official")?;
 
-        launch_claude_with_env(EnvironmentConfig::empty(), None, None, false)
+        launch_claude_with_env(
+            EnvironmentConfig::empty().with_alias("official"),
+            None,
+            None,
+            false,
+        )
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
         let config_index = selected_index - 1; // -1 because official is at index 0
         let selected_config = configs[config_index].clone();
-        let env_config = EnvironmentConfig::from_config(&selected_config);
+        let env_config = EnvironmentConfig::from_config(&selected_config)
+            .with_alias(&selected_config.alias_name);
 
         println!(
             "\nSwitched to configuration '{}'",

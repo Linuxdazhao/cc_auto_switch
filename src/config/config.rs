@@ -125,6 +125,14 @@ impl EnvironmentConfig {
         }
     }
 
+    /// Add the current alias name as an environment variable
+    /// This is used by statusLine to display the alias per-session
+    pub fn with_alias(mut self, alias: &str) -> Self {
+        self.env_vars
+            .insert("CC_SWITCH_CURRENT_ALIAS".to_string(), alias.to_string());
+        self
+    }
+
     /// Get environment variables as a Vec of (key, value) tuples
     /// for use with Command::envs()
     pub fn as_env_tuples(&self) -> EnvVarTuples {

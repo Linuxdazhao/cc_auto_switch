@@ -62,7 +62,10 @@ fn generate_script(original_cmd: &str) -> String {
         r#"#!/usr/bin/env bash
 {marker}{encoded}
 alias_name=""
-if [ -f "$HOME/.claude/cc_auto_switch_current_alias" ]; then
+# Priority: environment variable (per-session) > file (global fallback)
+if [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
+  alias_name="$CC_SWITCH_CURRENT_ALIAS"
+elif [ -f "$HOME/.claude/cc_auto_switch_current_alias" ]; then
   alias_name=$(cat "$HOME/.claude/cc_auto_switch_current_alias" 2>/dev/null)
 fi
 if [ -n "$alias_name" ]; then
