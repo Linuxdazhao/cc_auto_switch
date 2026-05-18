@@ -6,9 +6,11 @@
 use anyhow::{Context, Result};
 use base64::Engine;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use crate::config::types::ClaudeSettings;
 
