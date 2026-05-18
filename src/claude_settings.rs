@@ -459,6 +459,53 @@ impl ClaudeSettings {
             .context("Could not get config directory")?;
         Ok(config_dir.join("cc_auto_switch_current_alias"))
     }
+
+    /// Write the current alias for a specific session (per-PID file)
+    ///
+    /// Creates `~/.claude/cc_auto_switch_alias_<PID>` for per-session isolation.
+    /// This allows multiple Claude sessions to display different aliases.
+    ///
+    /// # Arguments
+    /// * `alias` - The alias name to write
+    ///
+    /// # Errors
+    /// Returns error if the file cannot be written
+    pub fn write_current_alias_for_pid(alias: &str) -> Result<()> {
+        let pid = std::process::id();
+        let path = Self::get_current_alias_for_pid(pid)?;
+
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+        }
+
+        fs::write(&path, alias)
+            .with_context(|| format!("Failed to write current alias to {}", path.display()))?;
+
+        Ok(())
+    }
+
+    /// Clear the per-PID alias file
+    ///
+    /// Removes `~/.claude/cc_auto_switch_alias_<PID>` if it exists.
+    pub fn clear_current_alias_for_pid() -> Result<()> {
+        let pid = std::process::id();
+        let path = Self::get_current_alias_for_pid(pid)?;
+        if path.exists() {
+            fs::remove_file(&path)
+                .with_context(|| format!("Failed to remove {}", path.display()))?;
+        }
+        Ok(())
+    }
+
+    /// Get the path to the per-PID alias file
+    fn get_current_alias_for_pid(pid: u32) -> Result<std::path::PathBuf> {
+        let config_file = crate::config::get_config_storage_path()?;
+        let config_dir = config_file
+            .parent()
+            .context("Could not get config directory")?;
+        Ok(config_dir.join(format!("cc_auto_switch_alias_{}", pid)))
+    }
 }
 
 #[cfg(test)]
@@ -531,5 +578,36 @@ mod tests {
         let input = r#"{"a": 1, "b": 2, "c": 3,}"#;
         let expected = r#"{"a": 1, "b": 2, "c": 3}"#;
         assert_eq!(strip_trailing_commas(input), expected);
+    }
+
+    #[test]
+    fn test_per_pid_alias_write_and_clear() {
+        use std::process;
+
+        let pid = process::id();
+        let test_alias = "test-alias-123";
+
+        // Write per-PID alias
+        ClaudeSettings::write_current_alias_for_pid(test_alias).unwrap();
+
+        // Verify file exists and contains correct alias
+        let path = ClaudeSettings::get_current_alias_for_pid(pid).unwrap();
+        assert!(path.exists());
+        let content = fs::read_to_string(&path).unwrap();
+        assert_eq!(content, test_alias);
+
+        // Clear per-PID alias
+        ClaudeSettings::clear_current_alias_for_pid().unwrap();
+
+        // Verify file is removed
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_per_pid_alias_path_format() {
+        let pid = 12345u32;
+        let path = ClaudeSettings::get_current_alias_for_pid(pid).unwrap();
+        let filename = path.file_name().unwrap().to_str().unwrap();
+        assert_eq!(filename, "cc_auto_switch_alias_12345");
     }
 }

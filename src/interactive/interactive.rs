@@ -3,7 +3,7 @@ use crate::cli::display_utils::{
     text_display_width,
 };
 use crate::config::EnvironmentConfig;
-use crate::config::types::{ConfigStorage, Configuration};
+use crate::config::types::{ClaudeSettings, ConfigStorage, Configuration};
 use crate::platform::resolve_npm_cli;
 use anyhow::{Context, Result};
 use colored::*;
@@ -971,6 +971,13 @@ pub fn launch_claude_with_env(
 ) -> Result<()> {
     println!("\nLaunching Claude CLI...");
 
+    // Write per-PID alias file for statusLine isolation
+    // On Unix with exec, this file won't be cleaned up (orphan), but that's acceptable
+    // On non-Unix, we clean it after the process exits
+    if let Some(alias) = env_config.env_vars.get("CC_SWITCH_CURRENT_ALIAS") {
+        ClaudeSettings::write_current_alias_for_pid(alias)?;
+    }
+
     // On Unix systems, use exec to replace current process
     #[cfg(unix)]
     {
@@ -990,6 +997,8 @@ pub fn launch_claude_with_env(
         }
         let error = command.exec();
         // exec never returns on success, so if we get here, it failed
+        // Clean up per-PID file on exec failure
+        let _ = ClaudeSettings::clear_current_alias_for_pid();
         anyhow::bail!("Failed to exec claude: {}", error);
     }
 
@@ -1020,6 +1029,9 @@ pub fn launch_claude_with_env(
         )?;
 
         let status = child.wait()?;
+
+        // Clean up per-PID file after Claude exits
+        let _ = ClaudeSettings::clear_current_alias_for_pid();
 
         if !status.success() {
             anyhow::bail!("Claude CLI exited with error status: {}", status);

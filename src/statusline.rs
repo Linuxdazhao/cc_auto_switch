@@ -64,8 +64,11 @@ fn generate_script(original_cmd: &str) -> String {
         r#"#!/usr/bin/env bash
 {marker}{encoded}
 alias_name=""
-# Priority: environment variable (per-session) > file (global fallback)
-if [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
+# Priority: per-PID file (per-session) > env var (legacy) > global file (fallback)
+# $PPID is the Claude Code process PID, matching the per-PID file created by cc-switch
+if [ -f "$HOME/.claude/cc_auto_switch_alias_${{PPID}}" ]; then
+  alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{PPID}}" 2>/dev/null)
+elif [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
   alias_name="$CC_SWITCH_CURRENT_ALIAS"
 elif [ -f "$HOME/.claude/cc_auto_switch_current_alias" ]; then
   alias_name=$(cat "$HOME/.claude/cc_auto_switch_current_alias" 2>/dev/null)
