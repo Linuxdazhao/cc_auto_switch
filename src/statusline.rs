@@ -63,11 +63,45 @@ fn generate_script(original_cmd: &str) -> String {
     format!(
         r#"#!/usr/bin/env bash
 {marker}{encoded}
+
+# Traverse parent process chain to find the real Claude process
+# Claude Code spawns statusLine via an intermediate process, so $PPID is not
+# the Claude main process. We walk up the process tree to find a process
+# whose name contains 'claude' or 'node' and has a per-PID alias file.
+find_claude_pid() {{
+  local current_pid=$PPID
+  local max_depth=10
+  local depth=0
+
+  while [ $depth -lt $max_depth ] && [ $current_pid -gt 1 ]; do
+    local proc_info=$(ps -p $current_pid -o pid,ppid,comm 2>/dev/null | tail -1)
+    if [ -z "$proc_info" ]; then
+      break
+    fi
+
+    local pid=$(echo "$proc_info" | awk '{{print $1}}')
+    local ppid=$(echo "$proc_info" | awk '{{print $2}}')
+    local comm=$(echo "$proc_info" | awk '{{print $3}}')
+
+    # Check if this is claude or node (Claude Code runs on Node.js)
+    if [[ "$comm" == *"claude"* ]] || [[ "$comm" == *"node"* ]]; then
+      if [ -f "$HOME/.claude/cc_auto_switch_alias_${{pid}}" ]; then
+        echo $pid
+        return 0
+      fi
+    fi
+
+    current_pid=$ppid
+    depth=$((depth + 1))
+  done
+  return 1
+}}
+
 alias_name=""
-# Priority: per-PID file (per-session) > env var (legacy) > global file (fallback)
-# $PPID is the Claude Code process PID, matching the per-PID file created by cc-switch
-if [ -f "$HOME/.claude/cc_auto_switch_alias_${{PPID}}" ]; then
-  alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{PPID}}" 2>/dev/null)
+# Priority: find claude PID in process chain > env var (legacy) > global file (fallback)
+claude_pid=$(find_claude_pid)
+if [ -n "$claude_pid" ] && [ -f "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" ]; then
+  alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" 2>/dev/null)
 elif [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
   alias_name="$CC_SWITCH_CURRENT_ALIAS"
 elif [ -f "$HOME/.claude/cc_auto_switch_current_alias" ]; then

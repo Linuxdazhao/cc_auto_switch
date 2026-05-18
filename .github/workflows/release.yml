@@ -129,6 +129,62 @@ jobs:
       with:
         path: artifacts
 
+    - name: Generate Release Notes
+      id: notes
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+        # Build changelog
+        CHANGELOG="## What's Changed in $VERSION"
+        CHANGELOG="$CHANGELOG\n"
+
+        if [ -n "$PREV_TAG" ]; then
+          # Get commits between previous tag and current
+          FEAT_LOG=""
+          FIX_LOG=""
+          OTHER_LOG=""
+
+          while IFS= read -r line; do
+            hash=$(echo "$line" | cut -d' ' -f1)
+            msg=$(echo "$line" | cut -d' ' -f2-)
+
+            case "$msg" in
+              feat\(*\)*|feat:*)
+                FEAT_LOG="$FEAT_LOG\n- $msg (\`$hash\`)"
+                ;;
+              fix\(*\)*|fix:*)
+                FIX_LOG="$FIX_LOG\n- $msg (\`$hash\`)"
+                ;;
+              chore:*|chore\(*\)*)
+                # Skip chore commits (version bumps, lock updates)
+                ;;
+              *)
+                OTHER_LOG="$OTHER_LOG\n- $msg (\`$hash\`)"
+                ;;
+            esac
+          done < <(git log ${PREV_TAG}..HEAD --oneline --no-merges)
+
+          if [ -n "$FEAT_LOG" ]; then
+            CHANGELOG="$CHANGELOG\n### New Features\n$FEAT_LOG\n"
+          fi
+          if [ -n "$FIX_LOG" ]; then
+            CHANGELOG="$CHANGELOG\n### Bug Fixes\n$FIX_LOG\n"
+          fi
+          if [ -n "$OTHER_LOG" ]; then
+            CHANGELOG="$CHANGELOG\n### Other Changes\n$OTHER_LOG\n"
+          fi
+
+          CHANGELOG="$CHANGELOG\n**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION}"
+        else
+          CHANGELOG="$CHANGELOG\nInitial release."
+        fi
+
+        # Write to file for multiline body
+        echo -e "$CHANGELOG" > release_notes.md
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -138,7 +194,7 @@ jobs:
           artifacts/**/*.sha256
         draft: false
         prerelease: false
-        generate_release_notes: true
+        body_path: release_notes.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
