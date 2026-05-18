@@ -207,10 +207,16 @@ pub fn install(custom_dir: Option<&str>) -> Result<()> {
     println!("  Command: {}", wrapper_cmd);
     println!();
     println!("The current cc-switch alias name will now be displayed in the status line.");
-    println!();
-    println!("To customize ccstatusline configuration, run one of:");
-    println!("  bunx -y ccstatusline@latest --help");
-    println!("  npx -y ccstatusline@latest --help");
+
+    if has_existing {
+        println!();
+        println!("Existing statusLine configuration detected and preserved.");
+    } else {
+        println!();
+        println!("To customize ccstatusline configuration, run one of:");
+        println!("  bunx -y ccstatusline@latest --help");
+        println!("  npx -y ccstatusline@latest --help");
+    }
 
     Ok(())
 }
