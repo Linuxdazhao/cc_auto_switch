@@ -971,6 +971,9 @@ pub fn launch_claude_with_env(
 ) -> Result<()> {
     println!("\nLaunching Claude CLI...");
 
+    // Clean up orphaned alias files from terminated sessions
+    let _ = ClaudeSettings::cleanup_orphan_alias_files();
+
     // Write per-PID alias file for statusLine isolation
     // On Unix with exec, this file won't be cleaned up (orphan), but that's acceptable
     // On non-Unix, we clean it after the process exits

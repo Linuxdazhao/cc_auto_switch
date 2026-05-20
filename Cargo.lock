@@ -81,6 +81,7 @@ dependencies = [
  "colored",
  "crossterm",
  "dirs",
+ "libc",
  "serde",
  "serde_json",
  "tempfile",

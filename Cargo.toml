@@ -27,6 +27,9 @@ crossterm = "0.29.0"
 which = "7"
 base64 = "0.22.1"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [package.metadata.docs.rs]
 all-features = true
 

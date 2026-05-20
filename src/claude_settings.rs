@@ -5,6 +5,8 @@ use std::fs;
 use crate::config::types::{ClaudeSettings, Configuration, StorageMode};
 use crate::utils::get_claude_settings_path;
 
+const PER_PID_ALIAS_PREFIX: &str = "cc_auto_switch_alias_";
+
 /// Remove trailing commas from JSON content to make it more lenient
 ///
 /// Handles trailing commas before `}` and `]` characters, which are common
@@ -504,7 +506,44 @@ impl ClaudeSettings {
         let config_dir = config_file
             .parent()
             .context("Could not get config directory")?;
-        Ok(config_dir.join(format!("cc_auto_switch_alias_{}", pid)))
+        Ok(config_dir.join(format!("{PER_PID_ALIAS_PREFIX}{pid}")))
+    }
+
+    /// Clean up orphaned per-PID alias files
+    ///
+    /// Scans the config directory for alias files whose corresponding processes
+    /// have terminated, and removes them. This prevents file accumulation on
+    /// Unix systems where exec() replaces the process and cannot clean up.
+    pub fn cleanup_orphan_alias_files() -> Result<()> {
+        let config_file = crate::config::get_config_storage_path()?;
+        let config_dir = config_file
+            .parent()
+            .context("Could not get config directory")?;
+
+        for entry in fs::read_dir(config_dir)? {
+            let entry = entry?;
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+
+            if let Some(pid_str) = file_name_str.strip_prefix(PER_PID_ALIAS_PREFIX)
+                && let Ok(pid) = pid_str.parse::<u32>()
+                && !Self::is_process_running(pid)
+            {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn is_process_running(pid: u32) -> bool {
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+
+    #[cfg(not(unix))]
+    fn is_process_running(_pid: u32) -> bool {
+        false
     }
 }
 
