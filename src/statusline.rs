@@ -98,14 +98,20 @@ find_claude_pid() {{
 }}
 
 alias_name=""
-# Priority: find claude PID in process chain > env var (legacy) > global file (fallback)
-claude_pid=$(find_claude_pid)
-if [ -n "$claude_pid" ] && [ -f "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" ]; then
-  alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" 2>/dev/null)
-elif [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
+# Priority: env var (per-session, most reliable) > per-PID file (per-session)
+# The env var CC_SWITCH_CURRENT_ALIAS is set by cc-switch when launching Claude and inherited
+# by all child processes. It is the most reliable source because it is per-session and cannot
+# be contaminated by other sessions. The per-PID file is a fallback for sessions where the
+# env var is not available. The global file is NOT used as a fallback because it is shared
+# across all sessions and overwritten by every `cs use` invocation, which would cause
+# cross-session alias contamination.
+if [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
   alias_name="$CC_SWITCH_CURRENT_ALIAS"
-elif [ -f "$HOME/.claude/cc_auto_switch_current_alias" ]; then
-  alias_name=$(cat "$HOME/.claude/cc_auto_switch_current_alias" 2>/dev/null)
+else
+  claude_pid=$(find_claude_pid)
+  if [ -n "$claude_pid" ] && [ -f "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" ]; then
+    alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" 2>/dev/null)
+  fi
 fi
 if [ -n "$alias_name" ]; then
   printf '[%s] ' "$alias_name"
@@ -352,7 +358,7 @@ mod tests {
         assert!(script.contains("#!/usr/bin/env bash"));
         assert!(script.contains(MARKER_PREFIX));
         assert!(script.contains(cmd));
-        assert!(script.contains("cc_auto_switch_current_alias"));
+        assert!(script.contains("CC_SWITCH_CURRENT_ALIAS"));
     }
 
     #[test]
@@ -368,5 +374,60 @@ mod tests {
         let script = "#!/usr/bin/env bash\necho hello";
         let extracted = extract_original_cmd(script);
         assert_eq!(extracted, None);
+    }
+
+    #[test]
+    fn test_env_var_has_highest_priority_in_script() {
+        // The $CC_SWITCH_CURRENT_ALIAS env var is set per-session by cs use and
+        // inherited by the statusline subprocess. It must be checked BEFORE the
+        // per-PID file and global file lookups, because:
+        // 1. Per-PID files don't exist for sessions launched before the feature
+        // 2. find_claude_pid() can match the wrong claude process when many
+        //    sessions are running
+        // 3. The global file is overwritten by every cs use in any terminal,
+        //    which would change the alias shown in ALL running sessions
+        let cmd = "bunx -y ccstatusline@latest";
+        let script = generate_script(cmd);
+
+        // Find the position of the env var check and the per-PID file check
+        let env_var_pos = script
+            .find("CC_SWITCH_CURRENT_ALIAS")
+            .expect("Script must reference CC_SWITCH_CURRENT_ALIAS");
+        let find_claude_pid_call_pos = script
+            .find("$(find_claude_pid)")
+            .expect("Script must call find_claude_pid");
+
+        // The env var check must come BEFORE the find_claude_pid() call
+        assert!(
+            env_var_pos < find_claude_pid_call_pos,
+            "CC_SWITCH_CURRENT_ALIAS env var must be checked before find_claude_pid() \
+             to prevent cross-session alias contamination"
+        );
+    }
+
+    #[test]
+    fn test_global_file_not_used_as_fallback() {
+        // The global file cc_auto_switch_current_alias is shared across all sessions
+        // and overwritten by every `cs use` invocation. Using it as a fallback would
+        // cause cross-session alias contamination: running `cs use xxx` in one terminal
+        // would change the alias displayed in ALL running sessions.
+        // The script must NOT read from the global file.
+        let cmd = "bunx -y ccstatusline@latest";
+        let script = generate_script(cmd);
+
+        // The alias detection logic (after find_claude_pid function) must not reference
+        // the global file. The find_claude_pid function body references per-PID files
+        // (cc_auto_switch_alias_${pid}) which is fine.
+        let alias_detection_section = script
+            .split("alias_name=\"\"")
+            .nth(1)
+            .expect("Script must have alias detection section");
+
+        assert!(
+            !alias_detection_section.contains("cc_auto_switch_current_alias"),
+            "The alias detection section must NOT use the global file \
+             (cc_auto_switch_current_alias) as a fallback, because it is shared \
+             across all sessions and causes cross-session contamination"
+        );
     }
 }
