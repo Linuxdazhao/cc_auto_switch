@@ -1,11 +1,18 @@
 #!/bin/bash
 
-# Publish script for cc-switch
-# This script publishes the package to crates.io after version increment
+# Manual / emergency publish script for cc-switch.
+#
+# NORMAL PATH: pushing a v* tag triggers .github/workflows/publish.yml which
+# runs `cargo publish` from CI. Do NOT call this script from release.sh — it
+# will race the workflow and one side will fail with "already exists on
+# crates.io index".
+#
+# Use this script only when CI is unavailable or the workflow failed and you
+# need to publish from your machine.
 
 set -e
 
-echo "🚀 Publishing cc-switch to crates.io..."
+echo "🚀 Publishing cc-switch to crates.io (manual / emergency path)..."
 
 # Check if Cargo.toml exists
 if [ ! -f "Cargo.toml" ]; then

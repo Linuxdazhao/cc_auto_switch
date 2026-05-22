@@ -72,9 +72,13 @@ if [ $? -eq 0 ]; then
     git push origin "v$new_version"
     echo "✅ Pushed main and tag v$new_version"
 
-    # Publish to crates.io
-    echo "🚀 Publishing to crates.io..."
-    ./scripts/publish.sh
+    # crates.io publish is handled by .github/workflows/publish.yml on tag push.
+    # The local script must NOT run `cargo publish` here, otherwise CI loses
+    # the race and fails with "crate already exists on crates.io index".
+    # If you ever need to publish from your machine (e.g. CI is down), run
+    # ./scripts/publish.sh manually after this script finishes.
+    echo "📦 Tag pushed — GitHub Actions (publish.yml) will publish to crates.io"
+    echo "   Watch: https://github.com/Linuxdazhao/cc_auto_switch/actions"
 else
     echo "❌ Tests failed, skipping publish"
     exit 1

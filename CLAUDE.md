@@ -100,13 +100,21 @@ pre-commit uninstall
 
 ### Version Management and Release
 
+**Publish ownership**: `.github/workflows/publish.yml` is the **single** publisher
+to crates.io. It triggers on every `v*` tag push. Local scripts must never call
+`cargo publish` directly — doing so races CI and one side fails with
+`crate cc-switch@x.y.z already exists on crates.io index`.
+
 **Complete Release Workflow** (Recommended):
 
 ```bash
 ./scripts/release.sh
 ```
 
-This handles version increment, commit, and publish automatically.
+This bumps the version, commits, tags `v$new_version`, and pushes both `main`
+and the tag. The tag push triggers the `publish.yml` workflow, which runs tests
+and `cargo publish` from CI. Watch the run at
+<https://github.com/Linuxdazhao/cc_auto_switch/actions>.
 
 **Manual Workflow**:
 
@@ -115,15 +123,20 @@ This handles version increment, commit, and publish automatically.
 git add .
 git commit -m "Your message"
 
-# 2. Increment version
+# 2. Increment version (updates Cargo.toml, commits "Release vX.Y.Z")
 ./scripts/increment-version.sh
 
-# 3. Run tests
+# 3. Run tests locally
 cargo test
 
-# 4. Publish to crates.io
-./scripts/publish.sh
+# 4. Tag and push — CI publishes
+git tag "v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+git push origin main --follow-tags
 ```
+
+**`scripts/publish.sh`** is an **emergency-only** script for publishing from a
+developer machine when CI is unavailable. The normal release flow does not
+invoke it.
 
 **Version Format**: Semantic versioning (x.y.z)
 
