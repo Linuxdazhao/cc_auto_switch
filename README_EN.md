@@ -2,17 +2,30 @@
 
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue)](#installation)
 
-**A CLI tool for managing multiple Claude / Codex configurations and automatically switching between them.**
+**A CLI tool for managing multiple Claude / Codex configurations and automatically switching between them. Cross-platform: Linux, macOS, Windows (x86_64 + ARM64).**
 
-When working with Claude API or OpenAI Codex CLI across different projects or environments, you often need to switch API tokens and settings. cc-switch makes this painless:
+> ⚡ **Zero background processes**: cc-switch flips configurations, launches Claude / Codex, then **exits immediately** — no daemon, no listening port, no resident footprint.
+>
+> 📘 **Codex users**: full configuration management docs live in [docs/codex.md](docs/codex.md).
 
-- Store multiple configurations with memorable names
-- Switch instantly between them
-- Launch Claude / Codex with the right environment variables automatically
-- Keep your API keys organized and secure
-- Import/export configurations from JSON files
-- Full interactive mode with keyboard navigation
+---
+
+## Highlights
+
+- 🚀 **Zero background** — exits as soon as Claude / Codex starts; never resident
+- 🛡️ **Bypass permissions on by default** — cc-switch launches Claude with `--dangerously-skip-permissions`, so tool calls don't prompt each time (details below)
+- 🧩 **Multi-config switching** — interactive TUI plus a fast `use` command
+- ⌨️ **Native Vim keybindings** — `j` / `k` to move, `n` / `p` to page through configs; built for Vim geeks
+- 🎯 **StatusLine integration** — shows the active alias in Claude Code's status bar (see [StatusLine integration](#statusline-integration))
+- ⚡ **Completion in every shell** — Fish / Zsh / Bash / PowerShell / Elvish all get full completion; Fish adds live alias completion on top
+- 📂 **Codex support** — manage Claude and OpenAI Codex auth from one tool
+- 🌍 **Cross-platform** — macOS / Linux / Windows (x86_64 + ARM64); transparently handles npm-installed `claude.cmd` / `codex.cmd` shims on Windows
+
+> 🛡️ **About the default bypass-permissions behavior**
+>
+> Both `cc-switch use <name>` and interactive selection launch Claude **with `--dangerously-skip-permissions` automatically applied** — file reads/writes, Bash calls, and other tool actions no longer prompt one by one. This is the opinionated default for geek / power users.
 
 ## Quick Start
 
@@ -20,44 +33,56 @@ When working with Claude API or OpenAI Codex CLI across different projects or en
 # Install
 cargo install cc-switch
 
-# ===== Claude Configurations =====
-
-# Add your first configuration
+# ===== Claude configurations =====
 cc-switch add work sk-ant-work-xxx https://api.anthropic.com
+cc-switch                       # interactive menu, pick 'work'
+cc-switch use work              # or switch + launch Claude (cc-switch then exits)
 
-# Switch to work configuration
-cc-switch
-# Then select 'work' from the interactive menu
-
-# ===== Codex Configurations =====
-
-# Import from existing auth.json
+# ===== Codex configurations =====  (full docs: docs/codex.md)
 cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex use work        # switch + launch Codex
 
-# Switch to work configuration and launch Codex
-cc-switch codex use work
-
-# Enter Codex interactive mode
-cc-switch codex
-# Then select 'work' from the interactive menu
-
-# See all configurations
-cc-switch list        # Claude configurations
-cc-switch codex list  # Codex configurations
+# List all configurations
+cc-switch list                  # Claude
+cc-switch codex list            # Codex
 ```
 
 ## Installation
 
-### Cargo (Recommended)
+### macOS / Linux
+
+**Option 1 — Homebrew (recommended):**
+
+```bash
+brew install Linuxdazhao/cc-switch/cc-switch
+# Equivalent explicit form:
+# brew tap Linuxdazhao/cc-switch && brew install cc-switch
+```
+
+**Option 2 — Cargo:**
+
 ```bash
 cargo install cc-switch
 ```
 
-### Homebrew
-```bash
-brew tap Linuxdazhao/cc-switch
-brew install cc-switch
+**Option 3 — Pre-built binaries:** download the matching `.tar.gz` from [Releases](https://github.com/Linuxdazhao/cc_auto_switch/releases) and put `cc-switch` on your `PATH`.
+
+### Windows
+
+**Option 1 — Scoop (recommended, v0.1.18+):**
+
+```powershell
+scoop bucket add cc-switch https://github.com/Linuxdazhao/scoop-cc-switch
+scoop install cc-switch
 ```
+
+**Option 2 — Cargo:**
+
+```powershell
+cargo install cc-switch
+```
+
+**Option 3 — Pre-built binaries:** download the matching `.zip` from [Releases](https://github.com/Linuxdazhao/cc_auto_switch/releases) and put `cc-switch.exe` on your `PATH`.
 
 ## Main Commands
 
@@ -68,7 +93,7 @@ brew install cc-switch
 | `cc-switch add <name>` | Add new configuration |
 | `cc-switch list` | Show all configurations (JSON or plain text) |
 | `cc-switch remove <name...>` | Delete one or more configurations |
-| `cc-switch use <name>` | Quick switch and launch Claude |
+| `cc-switch use <name>` | Switch and launch Claude (cc-switch then exits) |
 | `cc-switch` | Enter interactive mode |
 
 ### Codex Configuration Management
@@ -81,17 +106,37 @@ brew install cc-switch
 | `cc-switch codex use <name>` | Switch and launch Codex |
 | `cc-switch codex` | Enter interactive mode |
 
-For detailed documentation, see [Codex Configuration Management](docs/codex.md).
+Full documentation: [docs/codex.md](docs/codex.md).
 
 ### Common Commands
 
 | Command | What it does |
 |---------|--------------|
+| `cc-switch statusline install` | Install the Claude Code statusLine wrapper (shows current alias) |
+| `cc-switch statusline uninstall` | Remove the statusLine wrapper |
 | `cc-switch completion <shell>` | Generate shell completion scripts |
+
+## Why "zero background"?
+
+cc-switch is a **one-shot command**:
+
+1. You run `cc-switch use work`
+2. cc-switch updates `~/.claude/settings.json` (or writes `~/.codex/auth.json`)
+3. cc-switch `exec`s `claude --dangerously-skip-permissions` (or `codex`) with the right env vars
+4. The cc-switch process **exits immediately** — everything that follows is Claude / Codex itself
+
+Which means:
+
+- ✅ No long-lived process, no port, no PID lockfile
+- ✅ No `cc-switch start` / `cc-switch stop` ceremony
+- ✅ Close Claude and the environment ends with it — no leftover state
+- ✅ Once it exits, nothing of cc-switch is visible on the system except its config file
+- 🛡️ The launched Claude has bypass-permissions enabled by default (see Highlights above)
 
 ## Advanced Usage
 
 ### Interactive Mode
+
 ```bash
 # Claude interactive mode
 cc-switch
@@ -99,15 +144,18 @@ cc-switch
 # Codex interactive mode
 cc-switch codex
 
-# Navigate with:
-# - ↑↓ arrows or 1-9 keys: Select configuration
-# - N/P: Next/Previous page (when >9 configs)
-# - R: Reset to default Claude (Claude mode only)
-# - E: Edit configuration
-# - Q: Exit
+# Navigation (arrows AND Vim-style keys both work):
+# - ↑↓ or k/j: move up / down
+# - 1-9: jump straight to that configuration
+# - N/PageDown: next page (when >9 configs)
+# - P/PageUp: previous page
+# - R: reset to default Claude (Claude mode only)
+# - E: edit configuration
+# - Q: quit
 ```
 
 ### Quick Switch (use command)
+
 ```bash
 # Switch to a configuration and launch Claude
 cc-switch use work
@@ -125,8 +173,9 @@ cc-switch use work -c
 ```
 
 ### Add with Full Configuration
+
 ```bash
-# Add configuration with all options
+# Every option at once
 cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com \
   -m claude-3-5-sonnet-20241022 \
   --small-fast-model claude-3-haiku-20240307 \
@@ -137,10 +186,10 @@ cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com \
   --default-opus-model claude-3-opus-20240229 \
   --default-haiku-model claude-3-haiku-20240307
 
-# Add with force overwrite
+# Force overwrite
 cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com -f
 
-# Add in interactive mode
+# Interactive add
 cc-switch add work -i
 
 # Import from JSON file (filename becomes alias)
@@ -148,80 +197,223 @@ cc-switch add --from-file config.json
 ```
 
 ### Storage Modes
+
+> ⚠️ **If you run multiple Claude instances at once, use `env` mode (the default).**
+>
+> - **`env` mode (default, recommended)**: writes to the `env` field of `settings.json`. Claude reads these into the process environment at launch and **does not watch the file afterward**. Each window / session is fully isolated.
+> - **`config` mode**: writes to root-level camelCase config fields in `settings.json`. Claude **hot-reads** these at runtime — so flipping cc-switch once will silently switch **every Claude instance already running** onto the new configuration. Avoid this unless you have exactly one window open and *want* the change to apply live.
+
 ```bash
-# Set default storage mode
-cc-switch --store env    # Write to env field (default)
-cc-switch --store config # Write to root level with camelCase
+cc-switch --store env    # Write to env field (default, safe with multiple instances)
+cc-switch --store config # Write root-level camelCase (mutates live instances)
 ```
 
 ### List Configurations
-```bash
-# List in JSON format (default)
-cc-switch list
 
-# List in plain text format
-cc-switch list -p
+```bash
+cc-switch list           # JSON format (default)
+cc-switch list -p        # Plain text format
 ```
 
 ### Remove Multiple Configurations
-```bash
-# Remove one configuration
-cc-switch remove work
 
-# Remove multiple configurations at once
+```bash
+cc-switch remove work
 cc-switch remove work personal test-config
 ```
 
 ### Configuration Migration
+
 ```bash
-# Migrate from old path (~/.cc_auto_switch/) to new path
+# Migrate from old path (~/.cc_auto_switch/) to the new one
 cc-switch --migrate
 ```
 
-## Codex Configuration Management
+## StatusLine Integration
 
-`cc-switch codex` manages multiple OpenAI Codex CLI authentication configurations.
+cc-switch can show the **current configuration alias** at the start of Claude Code's status bar so you can tell at a glance which API set you're on.
 
 ```bash
-# Import from existing auth.json
-cc-switch codex add work --from-file ~/.codex/auth.json
+# Install (run after first install or after upgrading cc-switch)
+cc-switch statusline install
 
-# Interactive creation
-cc-switch codex add personal -i
-
-# Enter interactive mode (TUI)
-cc-switch codex
-
-# Switch configuration and launch Codex
-cc-switch codex use work
+# Uninstall
+cc-switch statusline uninstall
 ```
 
-For detailed documentation, see [docs/codex.md](docs/codex.md).
+How it works:
+
+- cc-switch writes a shell wrapper to `~/.claude/cc_auto_switch_statusline.sh`
+- It auto-detects [`ccstatusline`](https://www.npmjs.com/package/ccstatusline) (prefers `bunx`, falls back to `npx`) and uses it as the underlying statusLine command
+- The status bar gains an `[alias]` prefix, e.g. `[work] /Users/you/project | claude-sonnet-4-6 | $0.12`
+- If you already have a statusLine command in `settings.json`, it is **wrapped**, not replaced
+- Uninstall restores the original command
+
+Requires `bun` or `npm` on `PATH` (to run ccstatusline).
 
 ## Shell Integration
 
-### Generate Completions
+### Generate completion scripts
+
+> **Re-generate completion scripts after upgrading** to pick up new subcommands (`codex`, `statusline`).
+
+#### Fish / Zsh / Bash
+
 ```bash
-# Fish (recommended)
+# Fish (recommended — the only shell with dynamic alias completion)
 cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
 
 # Zsh
 cc-switch completion zsh > ~/.zsh/completions/_cc-switch
 echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
 
-# Bash
+# Bash (incl. Git Bash on Windows)
 cc-switch completion bash > ~/.bash_completion.d/cc-switch
 echo 'source ~/.bash_completion.d/cc-switch' >> ~/.bashrc
 
-# Elvish or PowerShell also supported
+# Elvish also supported
 cc-switch completion elvish
-cc-switch completion powershell
 ```
 
-### Create Aliases
-```bash
-# Add aliases permanently to shell config
+#### PowerShell (Windows)
 
+**Don't** redirect the completion script directly into `$PROFILE` — that overwrites your existing aliases, modules, and theme. Write it to a dedicated file and dot-source it:
+
+```powershell
+$completionDir = Split-Path -Parent $PROFILE
+if (-not (Test-Path $completionDir)) { New-Item -ItemType Directory -Path $completionDir | Out-Null }
+$completionPath = Join-Path $completionDir 'cc-switch.completion.ps1'
+cc-switch completion powershell | Out-File -Encoding utf8 $completionPath
+
+$line = ". '$completionPath'"
+if (-not ((Test-Path $PROFILE) -and (Select-String -Path $PROFILE -Pattern ([regex]::Escape($line)) -Quiet))) {
+    Add-Content -Path $PROFILE -Value $line
+}
+```
+
+The snippet is idempotent — safe to re-run.
+
+#### CMD (Windows)
+
+CMD has no completion mechanism; just use the commands directly.
+
+### Completion support matrix
+
+**Fish / Zsh / Bash / PowerShell / Elvish all get full completion for subcommands, args, and flags.** *Dynamic alias completion* — pressing `<Tab>` to enumerate every config name live — is available in every shell: Fish ships it out-of-the-box; the others just need the snippets below.
+
+| Shell | Static (commands / args / flags) | Dynamic alias completion (`use <Tab>` lists configs) |
+|-------|----------------------------------|------------------------------------------------------|
+| **Fish** | ✅ auto | ✅ **auto** (Claude + Codex) |
+| **Zsh** | ✅ auto | ⚙️ snippet needed ([see below](#zsh-dynamic-alias-completion)) |
+| **Bash** | ✅ auto | ⚙️ snippet needed ([see below](#bash-dynamic-alias-completion)) |
+| **PowerShell** | ✅ auto | ⚙️ snippet needed ([see below](#powershell-dynamic-alias-completion)) |
+| **Elvish** | ✅ auto | ⚙️ build your own with `edit:completion:arg-completer` |
+
+> Mechanism: `cc-switch --list-aliases` and `cc-switch --list-codex-aliases` print every configured alias and are shell-agnostic. Fish's generated script already wires them into completion; for the other shells you just append a few lines.
+
+### Enabling dynamic alias completion in other shells
+
+> All snippets below are **additive** — paste them *after* the script produced by `cc-switch completion <shell>`. Static completion keeps working.
+
+#### Zsh dynamic alias completion
+
+Append to `~/.zshrc` (**after** the completion script is sourced and `compinit` has run):
+
+```zsh
+_cc_switch_dynamic_aliases() {
+  local -a aliases
+  local words_count=$#words
+  local cmd1=$words[2]
+  local cmd2=$words[3]
+
+  # cc-switch codex use|remove <TAB>
+  if [[ "$cmd1" == "codex" && ("$cmd2" == "use" || "$cmd2" == "remove") && $words_count -ge 4 ]]; then
+    aliases=("${(@f)$(cc-switch --list-codex-aliases 2>/dev/null)}")
+    compadd -a aliases
+    return 0
+  fi
+
+  # cc-switch use|switch|remove <TAB>
+  if [[ ("$cmd1" == "use" || "$cmd1" == "switch" || "$cmd1" == "remove") && $words_count -ge 3 ]]; then
+    aliases=("${(@f)$(cc-switch --list-aliases 2>/dev/null)}")
+    compadd -a aliases
+    return 0
+  fi
+}
+# Override the clap-generated _cc-switch with the dynamic version
+compdef _cc_switch_dynamic_aliases cc-switch
+```
+
+#### Bash dynamic alias completion
+
+Append to `~/.bashrc` (**after** `source ~/.bash_completion.d/cc-switch`):
+
+```bash
+_cc_switch_with_aliases() {
+  # First run the clap-generated completion (handles subcommands, flags, etc.)
+  _cc-switch "$@"
+
+  # Then override COMPREPLY at alias positions
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local prev="${COMP_WORDS[COMP_CWORD-1]}"
+  local cmd1="${COMP_WORDS[1]:-}"
+
+  case "$prev" in
+    use|switch|remove)
+      if [[ "$cmd1" == "codex" ]]; then
+        COMPREPLY=($(compgen -W "$(cc-switch --list-codex-aliases 2>/dev/null)" -- "$cur"))
+      else
+        COMPREPLY=($(compgen -W "$(cc-switch --list-aliases 2>/dev/null)" -- "$cur"))
+      fi
+      ;;
+  esac
+}
+complete -F _cc_switch_with_aliases -o nosort cc-switch
+```
+
+#### PowerShell dynamic alias completion
+
+PowerShell's `Register-ArgumentCompleter` **composes** with existing completion — no replacement needed. Append to your PowerShell `$PROFILE` (or to the `cc-switch.completion.ps1` file from earlier):
+
+```powershell
+Register-ArgumentCompleter -CommandName cc-switch -Native -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $tokens = $commandAst.CommandElements | ForEach-Object { $_.ToString() }
+    $count = $tokens.Count
+    if ($count -lt 2) { return }
+
+    $cmd1 = $tokens[1]
+    $cmd2 = if ($count -ge 3) { $tokens[2] } else { '' }
+
+    # cc-switch codex use|remove <TAB>
+    if ($cmd1 -eq 'codex' -and ($cmd2 -eq 'use' -or $cmd2 -eq 'remove')) {
+        cc-switch --list-codex-aliases 2>$null | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+        return
+    }
+
+    # cc-switch use|switch|remove <TAB>
+    if ($cmd1 -in 'use', 'switch', 'remove') {
+        cc-switch --list-aliases 2>$null | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+    }
+}
+```
+
+### Built-in aliases (recommended)
+
+`cc-switch completion <shell>` prints recommended aliases alongside the completion script. You can also add them manually:
+
+| Alias | Expands to | Purpose |
+|-------|------------|---------|
+| `cs` | `cc-switch` | short form of the main command (typing `cs` drops you into interactive mode) |
+| `ccd` | `claude --dangerously-skip-permissions` | launch Claude without permission prompts |
+| `cx` | `cc-switch codex` | short form of the Codex subcommand |
+
+```bash
 # Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
@@ -237,73 +429,32 @@ echo "alias cs='cc-switch'" >> ~/.bashrc
 echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
 echo "alias cx='cc-switch codex'" >> ~/.bashrc
 
-# Now you can use:
-cs              # Instead of cc-switch (enters interactive mode)
-ccd             # Quick Claude launch
-cx              # Enter Codex interactive mode
+# PowerShell
+Set-Alias -Name cs -Value cc-switch
+function ccd { claude --dangerously-skip-permissions @args }
 ```
 
-## How it Works
+Then:
 
-cc-switch stores configurations in `~/.claude/cc_auto_switch_setting.json`:
-
-**Claude configurations**: Updates Claude's `settings.json` file with the appropriate environment variables.
-
-**Codex configurations**: Writes to `~/.codex/auth.json` file, which Codex CLI reads for authentication.
-
-This means:
-
-- ✅ No global configuration changes
-- ✅ Complete isolation between configurations
-- ✅ Safe and secure API key management
-- ✅ Works with any Claude / Codex installation
-- ✅ Preserves other settings
-- ✅ Supports custom settings directory
-
-## Environment Variables
-
-### Claude Configurations
-
-The tool sets these environment variables when switching configuration:
-
-- `ANTHROPIC_AUTH_TOKEN` - Your API token
-- `ANTHROPIC_BASE_URL` - API endpoint URL
-- `ANTHROPIC_MODEL` - Custom model (optional)
-- `ANTHROPIC_SMALL_FAST_MODEL` - Fast model for background tasks (optional)
-- `ANTHROPIC_MAX_THINKING_TOKENS` - Maximum thinking tokens limit (optional)
-- `API_TIMEOUT_MS` - API timeout in milliseconds (optional)
-- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` - Disable non-essential traffic flag (optional)
-- `ANTHROPIC_DEFAULT_SONNET_MODEL` - Default Sonnet model (optional)
-- `ANTHROPIC_DEFAULT_OPUS_MODEL` - Default Opus model (optional)
-- `ANTHROPIC_DEFAULT_HAIKU_MODEL` - Default Haiku model (optional)
-- `CLAUDE_CODE_SUBAGENT_MODEL` - Subagent model (optional)
-- `CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK` - Disable non-streaming fallback flag (optional)
-- `CLAUDE_CODE_EFFORT_LEVEL` - Effort level (optional, e.g., 'max')
-
-### Codex Configurations
-
-Codex configurations are stored in `~/.codex/auth.json`, supporting two authentication modes:
-
-**chatgpt mode (OAuth)**:
-- `id_token` - ID token
-- `access_token` - Access token
-- `refresh_token` - Refresh token
-- `account_id` - Account ID
-
-**apikey mode**:
-- `OPENAI_API_KEY` - API key
-
-For detailed documentation, see [Codex Configuration Management](docs/codex.md).
-
-## Import/Export
-
-### Claude Configurations from JSON
 ```bash
-# Import configuration from JSON file
-# The filename (without extension) becomes the alias name
+cs              # = cc-switch (interactive mode)
+cs use work     # = cc-switch use work
+ccd             # quick Claude launch (permission prompts skipped)
+cx              # = cc-switch codex (Codex interactive mode)
+cx use work     # = cc-switch codex use work
+```
+
+> 💡 **Fish tip**: dynamic completion still works through the `cs` alias — Fish expands the alias before completing.
+
+## Import / Export
+
+### Claude configurations from JSON
+
+```bash
+# Filename (without extension) becomes the alias
 cc-switch add --from-file my-work-config.json
 
-# JSON format expected:
+# Expected JSON format:
 # {
 #   "env": {
 #     "ANTHROPIC_AUTH_TOKEN": "sk-ant-xxx",
@@ -313,13 +464,60 @@ cc-switch add --from-file my-work-config.json
 # }
 ```
 
-### Codex Configurations from auth.json
+### Codex configurations from auth.json
+
 ```bash
-# Import from existing auth.json
 cc-switch codex add work --from-file ~/.codex/auth.json
 ```
 
-For detailed documentation, see [Codex Configuration Management](docs/codex.md).
+Full documentation: [docs/codex.md](docs/codex.md).
+
+## How it Works
+
+cc-switch stores configurations in `~/.claude/cc_auto_switch_setting.json`:
+
+- **Claude configurations**: update Claude's `settings.json` with the right environment variables
+- **Codex configurations**: write `~/.codex/auth.json`, which the Codex CLI reads for auth
+
+Which means:
+
+- ✅ No global configuration changes
+- ✅ Complete isolation between configurations
+- ✅ Safe and secure API key management
+- ✅ Works with any Claude / Codex installation
+- ✅ Preserves other settings
+- ✅ Supports a custom settings directory
+
+## Environment Variables
+
+### Claude Configurations
+
+cc-switch sets the following when switching configuration:
+
+- `ANTHROPIC_AUTH_TOKEN` - your API token
+- `ANTHROPIC_BASE_URL` - API endpoint URL
+- `ANTHROPIC_MODEL` - custom model (optional)
+- `ANTHROPIC_SMALL_FAST_MODEL` - fast model for background tasks (optional)
+- `ANTHROPIC_MAX_THINKING_TOKENS` - maximum thinking tokens (optional)
+- `API_TIMEOUT_MS` - API timeout in ms (optional)
+- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` - disable non-essential traffic (optional)
+- `ANTHROPIC_DEFAULT_SONNET_MODEL` - default Sonnet model (optional)
+- `ANTHROPIC_DEFAULT_OPUS_MODEL` - default Opus model (optional)
+- `ANTHROPIC_DEFAULT_HAIKU_MODEL` - default Haiku model (optional)
+- `CLAUDE_CODE_SUBAGENT_MODEL` - subagent model (optional)
+- `CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK` - disable non-streaming fallback (optional)
+- `CLAUDE_CODE_EFFORT_LEVEL` - effort level (optional, e.g. 'max')
+- `CC_SWITCH_CURRENT_ALIAS` - current alias (injected by cc-switch for the statusLine wrapper)
+
+### Codex Configurations
+
+Codex configurations live in `~/.codex/auth.json` and support two auth modes:
+
+**chatgpt (OAuth)**: `id_token`, `access_token`, `refresh_token`, `account_id`
+
+**apikey**: `OPENAI_API_KEY`
+
+Full documentation: [docs/codex.md](docs/codex.md).
 
 ## Development
 
@@ -337,7 +535,7 @@ cargo test
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file.
+MIT License — see [LICENSE](LICENSE).
 
 ---
 
