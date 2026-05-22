@@ -1,5 +1,7 @@
 # cc-switch
 
+**English | [中文](README.md)**
+
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue)](#installation)
@@ -8,7 +10,7 @@
 
 > ⚡ **Zero background processes**: cc-switch flips configurations, launches Claude / Codex, then **exits immediately** — no daemon, no listening port, no resident footprint.
 >
-> 📘 **Codex users**: full configuration management docs live in [docs/codex.md](docs/codex.md).
+> 📘 **Codex users**: full configuration management docs live in [docs/codex_EN.md](docs/codex_EN.md).
 
 ---
 
@@ -38,7 +40,7 @@ cc-switch add work sk-ant-work-xxx https://api.anthropic.com
 cc-switch                       # interactive menu, pick 'work'
 cc-switch use work              # or switch + launch Claude (cc-switch then exits)
 
-# ===== Codex configurations =====  (full docs: docs/codex.md)
+# ===== Codex configurations =====  (full docs: docs/codex_EN.md)
 cc-switch codex add work --from-file ~/.codex/auth.json
 cc-switch codex use work        # switch + launch Codex
 
@@ -106,7 +108,7 @@ cargo install cc-switch
 | `cc-switch codex use <name>` | Switch and launch Codex |
 | `cc-switch codex` | Enter interactive mode |
 
-Full documentation: [docs/codex.md](docs/codex.md).
+Full documentation: [docs/codex_EN.md](docs/codex_EN.md).
 
 ### Common Commands
 
@@ -470,7 +472,7 @@ cc-switch add --from-file my-work-config.json
 cc-switch codex add work --from-file ~/.codex/auth.json
 ```
 
-Full documentation: [docs/codex.md](docs/codex.md).
+Full documentation: [docs/codex_EN.md](docs/codex_EN.md).
 
 ## How it Works
 
@@ -517,7 +519,7 @@ Codex configurations live in `~/.codex/auth.json` and support two auth modes:
 
 **apikey**: `OPENAI_API_KEY`
 
-Full documentation: [docs/codex.md](docs/codex.md).
+Full documentation: [docs/codex_EN.md](docs/codex_EN.md).
 
 ## Development
 

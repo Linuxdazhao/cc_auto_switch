@@ -1,5 +1,7 @@
 # Codex 配置管理
 
+**[English](codex_EN.md) | 中文**
+
 `cc-switch codex` 用于管理 OpenAI Codex CLI 的多个认证配置，支持 OAuth（chatgpt）和 API Key 两种认证模式。
 
 ## 快速开始
