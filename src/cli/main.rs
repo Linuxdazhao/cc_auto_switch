@@ -572,6 +572,10 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
 
+    // Reap per-PID alias files for terminated sessions on every invocation.
+    // Skipped for completion-only paths above to keep shell completion fast.
+    let _ = ClaudeSettings::cleanup_orphan_alias_files();
+
     // Handle --store flag: set default storage mode and exit
     if let Some(ref store_str) = cli.store
         && cli.command.is_none()
@@ -756,8 +760,6 @@ pub fn run() -> Result<()> {
                     settings.remove_anthropic_env();
                     settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                    ClaudeSettings::write_current_alias("official")?;
-
                     launch_claude_with_env(
                         EnvironmentConfig::empty().with_alias("official"),
                         None,
@@ -784,8 +786,6 @@ pub fn run() -> Result<()> {
                     storage_mode,
                     storage.get_claude_settings_dir().map(|s| s.as_str()),
                 )?;
-
-                ClaudeSettings::write_current_alias(&alias_name)?;
 
                 println!("Switched to configuration '{}'", alias_name);
                 println!("  URL:   {}", config.url);
