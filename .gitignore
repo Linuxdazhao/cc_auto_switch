@@ -18,11 +18,12 @@ cc-switch-*
 temp/
 *.tmp
 
-# NPM files (legacy - remove after migration complete)
-node_modules/
-*.tgz
-cc-switch-*.tgz
-
 # Binary artifacts
 bin/cc-switch
 bin/cc-switch.exe
+
+# Tooling / agent working dirs
+.playwright-mcp/
+.serena/
+.specify/
+.claude/settings.local.json
