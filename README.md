@@ -5,7 +5,7 @@
 [![Crates.io](https://img.shields.io/crates/v/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![Downloads](https://img.shields.io/crates/d/cc-switch.svg)](https://crates.io/crates/cc-switch)
 [![CI](https://github.com/Linuxdazhao/cc_auto_switch/actions/workflows/ci.yml/badge.svg)](https://github.com/Linuxdazhao/cc_auto_switch/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE_zh)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue)](#安装)
 
 **一个 CLI 工具，用于管理多个 Claude / Codex 配置并在它们之间自动切换。全平台支持：Linux、macOS、Windows（x86_64 + ARM64）。**
