@@ -8,8 +8,8 @@
 
 ```bash
 # 从现有 auth.json 导入配置
-cc-switch codex add work --from-file                       # default: ~/.codex/auth.json
-cc-switch codex add work --from-file ~/.codex/auth.json    # explicit path also supported
+cc-switch codex add work --from-file                       # 默认从 ~/.codex/auth.json 导入
+cc-switch codex add work --from-file ~/.codex/auth.json    # 也支持显式路径
 
 # 交互式创建配置
 cc-switch codex add personal -i
