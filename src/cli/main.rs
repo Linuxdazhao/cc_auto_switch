@@ -608,17 +608,10 @@ pub fn run() -> Result<()> {
                 url_arg,
                 from_file,
             } => {
-                // When from_file is provided, alias_name will be extracted from the file
-                // For other cases, use the provided alias_name or provide a default
-                let final_alias_name = if from_file.is_some() {
-                    // Will be set from file parsing, use a placeholder for now
-                    "placeholder".to_string()
-                } else {
-                    alias_name.unwrap_or_else(|| {
-                        eprintln!("Error: alias_name is required when not using --from-file");
-                        std::process::exit(1);
-                    })
-                };
+                let final_alias_name = alias_name.unwrap_or_else(|| {
+                    eprintln!("Error: alias_name is required");
+                    std::process::exit(1);
+                });
 
                 let params = AddCommandParams {
                     alias_name: final_alias_name,
