@@ -584,7 +584,11 @@ mod tests {
                 ..
             }) => {
                 assert_eq!(alias_name, "work");
-                assert_eq!(from_file, Some(None), "expected Some(None) for bare --from-file");
+                assert_eq!(
+                    from_file,
+                    Some(None),
+                    "expected Some(None) for bare --from-file"
+                );
             }
             _ => panic!("Expected Add command"),
         }
@@ -592,7 +596,13 @@ mod tests {
 
     #[test]
     fn test_cli_add_from_file_with_value() {
-        let args = vec!["cc-switch", "add", "work", "--from-file", "/tmp/config.json"];
+        let args = vec![
+            "cc-switch",
+            "add",
+            "work",
+            "--from-file",
+            "/tmp/config.json",
+        ];
         let cli = Cli::try_parse_from(args).expect("Should parse --from-file with path");
         match cli.command {
             Some(Commands::Add {
@@ -658,7 +668,12 @@ mod tests {
         // Case B: explicit `--from-file /nonexistent/path.json`.
         let output_b = Command::new(bin)
             .env("HOME", tmp.path())
-            .args(["add", "work", "--from-file", "/nonexistent/cc-switch-test.json"])
+            .args([
+                "add",
+                "work",
+                "--from-file",
+                "/nonexistent/cc-switch-test.json",
+            ])
             .output()
             .expect("Should run cc-switch");
         let stderr_b = String::from_utf8_lossy(&output_b.stderr);

@@ -102,14 +102,15 @@ mod cli_parse_tests {
     #[test]
     fn test_codex_add_from_file_no_value() {
         let args = vec!["cc-switch", "codex", "add", "work", "--from-file"];
-        let cli = cc_switch::cli::Cli::try_parse_from(args)
-            .expect("Should parse codex add --from-file");
+        let cli =
+            cc_switch::cli::Cli::try_parse_from(args).expect("Should parse codex add --from-file");
         let Some(Commands::Codex {
-            command: Some(CodexCommands::Add {
-                alias_name,
-                from_file,
-                ..
-            }),
+            command:
+                Some(CodexCommands::Add {
+                    alias_name,
+                    from_file,
+                    ..
+                }),
         }) = cli.command
         else {
             panic!("Expected codex add command");
@@ -131,11 +132,12 @@ mod cli_parse_tests {
         let cli = cc_switch::cli::Cli::try_parse_from(args)
             .expect("Should parse codex add --from-file path");
         let Some(Commands::Codex {
-            command: Some(CodexCommands::Add {
-                alias_name,
-                from_file,
-                ..
-            }),
+            command:
+                Some(CodexCommands::Add {
+                    alias_name,
+                    from_file,
+                    ..
+                }),
         }) = cli.command
         else {
             panic!("Expected codex add command");

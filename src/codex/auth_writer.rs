@@ -148,8 +148,7 @@ mod tests {
         let path = default_codex_auth_path().expect("Should resolve default codex auth path");
         let path_str = path.to_string_lossy();
         assert!(
-            path_str.ends_with(".codex/auth.json")
-                || path_str.ends_with(r".codex\auth.json"),
+            path_str.ends_with(".codex/auth.json") || path_str.ends_with(r".codex\auth.json"),
             "expected path to end with .codex/auth.json, got {}",
             path_str
         );
