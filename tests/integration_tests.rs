@@ -153,4 +153,41 @@ mod integration_tests {
                 .ends_with("cc_auto_switch_setting.json")
         );
     }
+
+    #[test]
+    fn test_parse_claude_settings_json_shape() {
+        use cc_switch::config::types::ClaudeSettings;
+        use std::collections::BTreeMap;
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("Should create temp dir");
+        let settings_path = tmp.path().join("settings.json");
+
+        let settings_json = r#"{
+            "env": {
+                "ANTHROPIC_AUTH_TOKEN": "sk-ant-test-12345",
+                "ANTHROPIC_BASE_URL": "https://api.test.example.com",
+                "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
+            }
+        }"#;
+
+        std::fs::write(&settings_path, settings_json).expect("Should write");
+
+        let content = std::fs::read_to_string(&settings_path).expect("Should read back");
+        let parsed: ClaudeSettings = serde_json::from_str(&content).expect("Should parse");
+
+        let env: BTreeMap<String, String> = parsed.env;
+        assert_eq!(
+            env.get("ANTHROPIC_AUTH_TOKEN").map(|s| s.as_str()),
+            Some("sk-ant-test-12345")
+        );
+        assert_eq!(
+            env.get("ANTHROPIC_BASE_URL").map(|s| s.as_str()),
+            Some("https://api.test.example.com")
+        );
+        assert_eq!(
+            env.get("ANTHROPIC_MODEL").map(|s| s.as_str()),
+            Some("claude-3-5-sonnet-20241022")
+        );
+    }
 }
