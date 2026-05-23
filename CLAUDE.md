@@ -144,6 +144,26 @@ invoke it.
 - Minor (y): New features
 - Patch (z): Bug fixes
 
+**Commit Message Convention** (drives auto-generated release notes):
+
+The `.github/workflows/release.yml` workflow categorises commits by their
+Conventional Commits prefix when building the release notes:
+
+- `feat(scope): ...` → **New Features** section
+- `fix(scope): ...` → **Bug Fixes** section
+- `chore: ...` → skipped (version bumps, lock updates)
+- anything else → **Other Changes** section
+
+For breaking changes, append `!` after the type/scope:
+
+- `feat(cli)!: drop -j short for --from-file`
+- `fix!: remove deprecated env var`
+
+The workflow detects the `!` marker and renders a **💥 Breaking Changes**
+section at the top of the release notes, with a warning banner. Always use
+the `!` marker when introducing user-visible breaking changes so users
+upgrading via brew/cargo see the warning immediately.
+
 ### Dependency Management
 
 ```bash
