@@ -616,4 +616,65 @@ mod tests {
             "alias_name must be required even with --from-file"
         );
     }
+
+    #[test]
+    fn test_cli_add_from_file_default_path_branches_message() {
+        // When `--from-file` is bare and the default path is missing, the
+        // bail message should guide the user to run `claude` first.
+        // When `--from-file <wrong-path>` is given, the message must NOT
+        // mention "run `claude`" — the user clearly intended a specific file.
+        //
+        // We exercise this by running the binary against a non-existent HOME.
+
+        use std::process::Command;
+
+        // Build the binary (cargo test ensures it's already built, but we point
+        // at the debug binary path directly).
+        let bin = env!("CARGO_BIN_EXE_cc-switch");
+
+        // Case A: bare `--from-file` with a HOME pointing at an empty dir.
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let output_a = Command::new(bin)
+            .env("HOME", tmp.path())
+            .args(["add", "work", "--from-file"])
+            .output()
+            .expect("Should run cc-switch");
+        let stderr_a = String::from_utf8_lossy(&output_a.stderr);
+        assert!(
+            !output_a.status.success(),
+            "expected failure when default file missing"
+        );
+        assert!(
+            stderr_a.contains("Default Claude config not found"),
+            "default-branch message expected; got stderr: {}",
+            stderr_a
+        );
+        assert!(
+            stderr_a.contains("Run `claude` once"),
+            "default-branch should advise running claude; got: {}",
+            stderr_a
+        );
+
+        // Case B: explicit `--from-file /nonexistent/path.json`.
+        let output_b = Command::new(bin)
+            .env("HOME", tmp.path())
+            .args(["add", "work", "--from-file", "/nonexistent/cc-switch-test.json"])
+            .output()
+            .expect("Should run cc-switch");
+        let stderr_b = String::from_utf8_lossy(&output_b.stderr);
+        assert!(
+            !output_b.status.success(),
+            "expected failure when explicit path missing"
+        );
+        assert!(
+            stderr_b.contains("Config file not found"),
+            "explicit-branch message expected; got: {}",
+            stderr_b
+        );
+        assert!(
+            !stderr_b.contains("Run `claude`"),
+            "explicit-branch must NOT advise running claude; got: {}",
+            stderr_b
+        );
+    }
 }

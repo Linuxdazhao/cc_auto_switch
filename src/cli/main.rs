@@ -169,14 +169,6 @@ fn parse_config_from_file(
 fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage) -> Result<()> {
     // If from-file is provided, parse the file and use those values
     if let Some(file_path) = &params.from_file {
-        if !std::path::Path::new(file_path).exists() {
-            anyhow::bail!(
-                "Config file not found: {}\n\
-                 If you intended to import from Claude's default config, run `claude` once to create it.\n\
-                 Otherwise pass an explicit path: --from-file <path>",
-                file_path
-            );
-        }
         println!("Importing configuration from file: {}", file_path);
 
         let (
@@ -617,16 +609,27 @@ pub fn run() -> Result<()> {
                 from_file,
             } => {
                 let resolved_from_file: Option<String> = match from_file {
-                    Some(Some(path)) => Some(path),
+                    Some(Some(path)) => {
+                        if !std::path::Path::new(&path).exists() {
+                            anyhow::bail!("Config file not found: {}", path);
+                        }
+                        Some(path)
+                    }
                     Some(None) => {
                         let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
-                        Some(
-                            crate::utils::get_claude_settings_path(custom_dir)
-                                .map(|p| p.to_string_lossy().into_owned())
-                                .map_err(|e| {
-                                    anyhow!("Failed to resolve default Claude settings path: {}", e)
-                                })?,
-                        )
+                        let default_path = crate::utils::get_claude_settings_path(custom_dir)
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .map_err(|e| {
+                                anyhow!("Failed to resolve default Claude settings path: {}", e)
+                            })?;
+                        if !std::path::Path::new(&default_path).exists() {
+                            anyhow::bail!(
+                                "Default Claude config not found at: {}\n\
+                                 Run `claude` once to create it, or pass an explicit path: --from-file <path>",
+                                default_path
+                            );
+                        }
+                        Some(default_path)
                     }
                     None => None,
                 };
