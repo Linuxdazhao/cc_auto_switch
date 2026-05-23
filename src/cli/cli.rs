@@ -86,11 +86,8 @@ pub enum Commands {
     /// Stores a new configuration with alias, API token, base URL, and optional model settings
     Add {
         /// Configuration alias name (used to identify this config)
-        #[arg(
-            help = "Configuration alias name (cannot be 'cc')",
-            required_unless_present = "from_file"
-        )]
-        alias_name: Option<String>,
+        #[arg(help = "Configuration alias name (cannot be 'cc')")]
+        alias_name: String,
 
         /// ANTHROPIC_AUTH_TOKEN value (your Claude API token)
         #[arg(
@@ -203,13 +200,17 @@ pub enum Commands {
         #[arg(help = "API endpoint URL (if not using -u flag)")]
         url_arg: Option<String>,
 
-        /// Import configuration from a JSON file (uses filename as alias)
+        /// Import configuration from a JSON file
+        ///
+        /// With no value, imports from `~/.claude/settings.json`.
+        /// With a value, imports from the given path.
         #[arg(
             long = "from-file",
-            short = 'j',
-            help = "Import configuration from a JSON file (filename becomes alias name)"
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import configuration from JSON file (defaults to ~/.claude/settings.json if no path)"
         )]
-        from_file: Option<String>,
+        from_file: Option<Option<String>>,
     },
     /// Remove one or more configurations by alias name
     ///

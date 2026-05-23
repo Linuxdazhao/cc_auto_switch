@@ -121,7 +121,7 @@ mod tests {
                 from_file: _,
                 ..
             }) => {
-                assert_eq!(alias_name.unwrap(), "my-config");
+                assert_eq!(alias_name, "my-config");
                 assert_eq!(token_arg, Some("sk-ant-test-token".to_string()));
                 assert_eq!(url_arg, Some("https://api.test.com".to_string()));
                 assert!(!force);
@@ -171,7 +171,7 @@ mod tests {
                 from_file: _,
                 ..
             }) => {
-                assert_eq!(alias_name.unwrap(), "my-config");
+                assert_eq!(alias_name, "my-config");
                 assert_eq!(token, Some("sk-ant-flag-token".to_string()));
                 assert_eq!(url, Some("https://flag.api.com".to_string()));
                 assert!(force);
@@ -213,7 +213,7 @@ mod tests {
                 max_thinking_tokens: _,
                 ..
             }) => {
-                assert_eq!(alias_name.unwrap(), "model-config");
+                assert_eq!(alias_name, "model-config");
                 assert_eq!(token, Some("sk-ant-model-token".to_string()));
                 assert_eq!(url, Some("https://model.api.com".to_string()));
                 assert_eq!(model, Some("claude-3-5-sonnet-20241022".to_string()));
@@ -452,7 +452,7 @@ mod tests {
         if let Ok(cli) = result
             && let Some(Commands::Add { alias_name, .. }) = cli.command
         {
-            assert_eq!(alias_name.unwrap(), "test-config_123");
+            assert_eq!(alias_name, "test-config_123");
         }
     }
 
@@ -477,7 +477,7 @@ mod tests {
                 ..
             }) = cli.command
         {
-            assert_eq!(alias_name.unwrap(), "测试-config");
+            assert_eq!(alias_name, "测试-config");
             assert_eq!(token_arg, Some("sk-ant-测试".to_string()));
             assert_eq!(url_arg, Some("https://αpi.测试.com".to_string()));
         }
@@ -502,7 +502,7 @@ mod tests {
                 ..
             }) = cli.command
         {
-            assert_eq!(alias_name.unwrap().len(), 1000);
+            assert_eq!(alias_name.len(), 1000);
             assert_eq!(token_arg.as_ref().unwrap().len(), 1007); // "sk-ant-" + 1000
             assert_eq!(url_arg.as_ref().unwrap().len(), 1011); // "https://" + 1000 + "com"
         }
@@ -571,5 +571,49 @@ mod tests {
         // Test non-existent removal
         assert!(!storage.remove_configuration("nonexistent"));
         assert_eq!(storage.configurations.len(), 2);
+    }
+
+    #[test]
+    fn test_cli_add_from_file_no_value() {
+        let args = vec!["cc-switch", "add", "work", "--from-file"];
+        let cli = Cli::try_parse_from(args).expect("Should parse --from-file with no value");
+        match cli.command {
+            Some(Commands::Add {
+                alias_name,
+                from_file,
+                ..
+            }) => {
+                assert_eq!(alias_name, "work");
+                assert_eq!(from_file, Some(None), "expected Some(None) for bare --from-file");
+            }
+            _ => panic!("Expected Add command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_add_from_file_with_value() {
+        let args = vec!["cc-switch", "add", "work", "--from-file", "/tmp/config.json"];
+        let cli = Cli::try_parse_from(args).expect("Should parse --from-file with path");
+        match cli.command {
+            Some(Commands::Add {
+                alias_name,
+                from_file,
+                ..
+            }) => {
+                assert_eq!(alias_name, "work");
+                assert_eq!(from_file, Some(Some("/tmp/config.json".to_string())));
+            }
+            _ => panic!("Expected Add command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_add_alias_required() {
+        let args = vec!["cc-switch", "add", "--from-file", "/tmp/config.json"];
+        let result = Cli::try_parse_from(args);
+        assert!(
+            result.is_err(),
+            "alias_name must be required even with --from-file"
+        );
     }
 }
