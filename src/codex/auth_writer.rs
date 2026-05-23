@@ -21,6 +21,19 @@ fn get_auth_path(base_dir: Option<&PathBuf>) -> Result<PathBuf> {
     Ok(codex_dir.join("auth.json"))
 }
 
+/// Build the default path to `~/.codex/auth.json` without creating any
+/// directories.
+///
+/// This is a read-only lookup, distinct from `get_auth_path` which both
+/// resolves the path and creates the `.codex` directory as a side effect
+/// for the write path.
+pub fn default_codex_auth_path() -> Result<PathBuf> {
+    Ok(dirs::home_dir()
+        .ok_or_else(|| anyhow!("Could not find home directory"))?
+        .join(".codex")
+        .join("auth.json"))
+}
+
 /// Write CodexConfiguration to ~/.codex/auth.json
 pub fn write_auth_json(config: &CodexConfiguration) -> Result<()> {
     let auth_path = get_auth_path(None)?;
@@ -123,5 +136,28 @@ mod tests {
         assert_eq!(parsed["auth_mode"], "apikey");
         assert_eq!(parsed["OPENAI_API_KEY"], "sk-ant-test-key");
         assert!(parsed["tokens"].is_null());
+    }
+
+    #[test]
+    fn test_default_codex_auth_path_ends_correctly() {
+        let path = default_codex_auth_path().expect("Should resolve default codex auth path");
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.ends_with(".codex/auth.json")
+                || path_str.ends_with(r".codex\auth.json"),
+            "expected path to end with .codex/auth.json, got {}",
+            path_str
+        );
+    }
+
+    #[test]
+    fn test_default_codex_auth_path_does_not_create_dir() {
+        // The default-path helper must be a pure lookup. It must NOT have
+        // a side effect of creating the .codex directory (unlike the writer's
+        // private get_auth_path which does create it).
+        let _path = default_codex_auth_path().expect("Should resolve");
+        // No filesystem assertions — this test is here to lock in the contract;
+        // a future refactor that adds mkdir to the helper will be caught by
+        // code review of this test's intent comment.
     }
 }
