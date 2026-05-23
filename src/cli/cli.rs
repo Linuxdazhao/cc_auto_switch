@@ -310,8 +310,17 @@ pub enum CodexCommands {
             help = "Enter configuration values interactively"
         )]
         interactive: bool,
-        #[arg(long = "from-file", help = "Import from existing auth.json file")]
-        from_file: Option<String>,
+        /// Import from existing auth.json file
+        ///
+        /// With no value, imports from `~/.codex/auth.json`.
+        /// With a value, imports from the given path.
+        #[arg(
+            long = "from-file",
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import from auth.json (defaults to ~/.codex/auth.json if no path)"
+        )]
+        from_file: Option<Option<String>>,
     },
     List {
         #[arg(long = "plain", short = 'p')]

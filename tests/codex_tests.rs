@@ -93,3 +93,54 @@ fn test_remove_codex_configurations() {
     let removed_again = storage.remove_codex_configuration("test");
     assert!(!removed_again);
 }
+
+#[cfg(test)]
+mod cli_parse_tests {
+    use cc_switch::cli::{CodexCommands, Commands};
+    use clap::Parser;
+
+    #[test]
+    fn test_codex_add_from_file_no_value() {
+        let args = vec!["cc-switch", "codex", "add", "work", "--from-file"];
+        let cli = cc_switch::cli::Cli::try_parse_from(args)
+            .expect("Should parse codex add --from-file");
+        let Some(Commands::Codex {
+            command: Some(CodexCommands::Add {
+                alias_name,
+                from_file,
+                ..
+            }),
+        }) = cli.command
+        else {
+            panic!("Expected codex add command");
+        };
+        assert_eq!(alias_name, "work");
+        assert_eq!(from_file, Some(None));
+    }
+
+    #[test]
+    fn test_codex_add_from_file_with_value() {
+        let args = vec![
+            "cc-switch",
+            "codex",
+            "add",
+            "work",
+            "--from-file",
+            "/tmp/auth.json",
+        ];
+        let cli = cc_switch::cli::Cli::try_parse_from(args)
+            .expect("Should parse codex add --from-file path");
+        let Some(Commands::Codex {
+            command: Some(CodexCommands::Add {
+                alias_name,
+                from_file,
+                ..
+            }),
+        }) = cli.command
+        else {
+            panic!("Expected codex add command");
+        };
+        assert_eq!(alias_name, "work");
+        assert_eq!(from_file, Some(Some("/tmp/auth.json".to_string())));
+    }
+}

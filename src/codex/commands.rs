@@ -34,7 +34,7 @@ pub fn handle_codex_add(
     } else {
         let key = api_key.ok_or_else(|| {
             anyhow!(
-                "API key is required. Use -k <key>, --from-file <path>, or -i for interactive mode."
+                "API key is required. Use --api-key <key>, --from-file [<path>], or -i for interactive mode."
             )
         })?;
         CodexConfiguration {

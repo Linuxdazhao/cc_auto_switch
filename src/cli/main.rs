@@ -809,12 +809,37 @@ pub fn run() -> Result<()> {
                     interactive,
                     from_file,
                 }) => {
+                    let resolved_from_file: Option<String> = match from_file {
+                        Some(Some(path)) => {
+                            if !std::path::Path::new(&path).exists() {
+                                anyhow::bail!("Codex auth file not found: {}", path);
+                            }
+                            Some(path)
+                        }
+                        Some(None) => {
+                            let default_path = crate::codex::default_codex_auth_path()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .map_err(|e| {
+                                    anyhow!("Failed to resolve default Codex auth path: {}", e)
+                                })?;
+                            if !std::path::Path::new(&default_path).exists() {
+                                anyhow::bail!(
+                                    "Default Codex auth file not found at: {}\n\
+                                     Run `codex login` first, or pass an explicit path: --from-file <path>",
+                                    default_path
+                                );
+                            }
+                            Some(default_path)
+                        }
+                        None => None,
+                    };
+
                     handle_codex_add(
                         alias_name,
                         api_key,
                         force,
                         interactive,
-                        from_file,
+                        resolved_from_file,
                         &mut storage,
                     )?;
                 }
