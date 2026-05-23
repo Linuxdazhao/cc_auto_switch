@@ -8,7 +8,8 @@
 
 ```bash
 # Import from an existing auth.json
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file                       # default: ~/.codex/auth.json
+cc-switch codex add work --from-file ~/.codex/auth.json    # explicit path also supported
 
 # Create interactively
 cc-switch codex add personal -i
@@ -38,8 +39,8 @@ cc-switch codex use work
 ### Import from existing auth.json
 
 ```bash
-# Import — the filename (without extension) becomes the alias
-cc-switch codex add work --from-file ~/.codex/auth.json
+# Import — alias is required (here: 'work')
+cc-switch codex add work --from-file
 ```
 
 ### Interactive creation
@@ -64,7 +65,7 @@ cc-switch codex add api-only --api-key sk-xxxxxxxx
 ### Force overwrite
 
 ```bash
-cc-switch codex add work --from-file ~/.codex/auth.json -f
+cc-switch codex add work --from-file -f
 ```
 
 ## Interactive Mode (TUI)

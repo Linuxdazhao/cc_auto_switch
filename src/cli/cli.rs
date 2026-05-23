@@ -15,7 +15,9 @@ EXAMPLES:
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --max-thinking-tokens 8192
-    cc-switch add my-config -i  # Interactive mode
+    cc-switch add my-config -i                       # Interactive mode
+    cc-switch add my-config --from-file              # Import from ~/.claude/settings.json
+    cc-switch add my-config --from-file ./other.json # Import from an explicit JSON file
     cc-switch add my-config --force  # Overwrite existing config
     cc-switch list
     cc-switch remove config1 config2 config3
@@ -23,7 +25,8 @@ EXAMPLES:
     cc-switch  # Enter interactive mode (same as 'current' without arguments)
 
 CODEX CONFIGURATIONS:
-    cc-switch codex add work --from-file ~/.codex/auth.json
+    cc-switch codex add work --from-file                       # Import from ~/.codex/auth.json
+    cc-switch codex add work --from-file ~/other/auth.json     # Import from an explicit path
     cc-switch codex add personal -i  # Interactive mode
     cc-switch codex list
     cc-switch codex use work  # Switch and launch Codex

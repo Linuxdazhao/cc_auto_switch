@@ -41,7 +41,7 @@ cc-switch                       # interactive menu, pick 'work'
 cc-switch use work              # or switch + launch Claude (cc-switch then exits)
 
 # ===== Codex configurations =====  (full docs: docs/codex_EN.md)
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file              # imports from ~/.codex/auth.json
 cc-switch codex use work        # switch + launch Codex
 
 # List all configurations
@@ -194,8 +194,9 @@ cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com -f
 # Interactive add
 cc-switch add work -i
 
-# Import from JSON file (filename becomes alias)
-cc-switch add --from-file config.json
+# Import from JSON file (alias required)
+cc-switch add work --from-file                   # import from ~/.claude/settings.json
+cc-switch add work --from-file config.json       # import from a specific file
 ```
 
 ### Storage Modes
@@ -453,8 +454,8 @@ cx use work     # = cc-switch codex use work
 ### Claude configurations from JSON
 
 ```bash
-# Filename (without extension) becomes the alias
-cc-switch add --from-file my-work-config.json
+# Provide an explicit alias before --from-file
+cc-switch add my-work --from-file my-work-config.json
 
 # Expected JSON format:
 # {
@@ -469,7 +470,7 @@ cc-switch add --from-file my-work-config.json
 ### Codex configurations from auth.json
 
 ```bash
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file              # default ~/.codex/auth.json
 ```
 
 Full documentation: [docs/codex_EN.md](docs/codex_EN.md).

@@ -43,7 +43,7 @@ cc-switch                       # 进入交互菜单，选择 'work'
 cc-switch use work              # 或直接切换并启动 Claude（cc-switch 随后退出）
 
 # ===== Codex 配置 =====（完整文档：docs/codex.md）
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file              # 默认从 ~/.codex/auth.json 导入
 cc-switch codex use work        # 切换并启动 Codex
 
 # 列出所有配置
@@ -209,8 +209,9 @@ cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com -f
 # 交互模式添加
 cc-switch add work -i
 
-# 从 JSON 文件导入（文件名作为别名）
-cc-switch add --from-file config.json
+# 从 JSON 文件导入（需要显式提供别名）
+cc-switch add work --from-file                   # 从 ~/.claude/settings.json 导入
+cc-switch add work --from-file config.json       # 从指定文件导入
 ```
 
 ### 存储模式
@@ -468,8 +469,8 @@ cx use work     # = cc-switch codex use work
 ### Claude 配置从 JSON 导入
 
 ```bash
-# 文件名（不含扩展名）成为别名
-cc-switch add --from-file my-work-config.json
+# 显式提供别名后从指定文件导入
+cc-switch add my-work --from-file my-work-config.json
 
 # 期望的 JSON 格式：
 # {
@@ -484,7 +485,7 @@ cc-switch add --from-file my-work-config.json
 ### Codex 配置从 auth.json 导入
 
 ```bash
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file              # 默认 ~/.codex/auth.json
 ```
 
 完整文档：[docs/codex.md](docs/codex.md)。

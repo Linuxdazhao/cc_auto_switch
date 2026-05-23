@@ -8,7 +8,8 @@
 
 ```bash
 # 从现有 auth.json 导入配置
-cc-switch codex add work --from-file ~/.codex/auth.json
+cc-switch codex add work --from-file                       # default: ~/.codex/auth.json
+cc-switch codex add work --from-file ~/.codex/auth.json    # explicit path also supported
 
 # 交互式创建配置
 cc-switch codex add personal -i
@@ -38,8 +39,8 @@ cc-switch codex use work
 ### 从现有 auth.json 导入
 
 ```bash
-# 导入已有配置，文件名作为别名
-cc-switch codex add work --from-file ~/.codex/auth.json
+# 导入已有配置（别名必须显式提供）
+cc-switch codex add work --from-file
 ```
 
 ### 交互式创建
@@ -64,7 +65,7 @@ cc-switch codex add api-only --api-key sk-xxxxxxxx
 ### 强制覆盖
 
 ```bash
-cc-switch codex add work --from-file ~/.codex/auth.json -f
+cc-switch codex add work --from-file -f
 ```
 
 ## 交互模式（TUI）
