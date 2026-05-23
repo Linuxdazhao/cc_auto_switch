@@ -21,6 +21,24 @@ fn get_auth_path(base_dir: Option<&PathBuf>) -> Result<PathBuf> {
     Ok(codex_dir.join("auth.json"))
 }
 
+/// Build the default path to `~/.codex/auth.json` without creating any
+/// directories.
+///
+/// This is a read-only lookup, distinct from `get_auth_path` which both
+/// resolves the path and creates the `.codex` directory as a side effect
+/// for the write path. Intended for callers that need to read the user's
+/// existing auth file (e.g., importing into a cc-switch configuration).
+pub fn default_codex_auth_path() -> Result<PathBuf> {
+    let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+    Ok(default_codex_auth_path_in(&home))
+}
+
+/// Inner helper: build the `<home>/.codex/auth.json` path without any
+/// filesystem side effects. Exposed for tests.
+fn default_codex_auth_path_in(home: &std::path::Path) -> PathBuf {
+    home.join(".codex").join("auth.json")
+}
+
 /// Write CodexConfiguration to ~/.codex/auth.json
 pub fn write_auth_json(config: &CodexConfiguration) -> Result<()> {
     let auth_path = get_auth_path(None)?;
@@ -123,5 +141,33 @@ mod tests {
         assert_eq!(parsed["auth_mode"], "apikey");
         assert_eq!(parsed["OPENAI_API_KEY"], "sk-ant-test-key");
         assert!(parsed["tokens"].is_null());
+    }
+
+    #[test]
+    fn test_default_codex_auth_path_ends_correctly() {
+        let path = default_codex_auth_path().expect("Should resolve default codex auth path");
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.ends_with(".codex/auth.json") || path_str.ends_with(r".codex\auth.json"),
+            "expected path to end with .codex/auth.json, got {}",
+            path_str
+        );
+    }
+
+    #[test]
+    fn test_default_codex_auth_path_in_does_not_create_dir() {
+        // The inner helper must be a pure path-join with no filesystem side
+        // effects. Override the "home" directory with a fresh tempdir and
+        // assert the .codex subdirectory does NOT appear after the call.
+        let tmp = TempDir::new().expect("Should create tempdir");
+        let home = tmp.path();
+
+        let path = default_codex_auth_path_in(home);
+
+        assert_eq!(path, home.join(".codex").join("auth.json"));
+        assert!(
+            !home.join(".codex").exists(),
+            ".codex directory must not be created by default_codex_auth_path_in"
+        );
     }
 }

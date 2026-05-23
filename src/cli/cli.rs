@@ -15,7 +15,9 @@ EXAMPLES:
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --small-fast-model claude-3-haiku-20240307
     cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com --max-thinking-tokens 8192
-    cc-switch add my-config -i  # Interactive mode
+    cc-switch add my-config -i                       # Interactive mode
+    cc-switch add my-config --from-file              # Import from ~/.claude/settings.json
+    cc-switch add my-config --from-file ./other.json # Import from an explicit JSON file
     cc-switch add my-config --force  # Overwrite existing config
     cc-switch list
     cc-switch remove config1 config2 config3
@@ -23,7 +25,8 @@ EXAMPLES:
     cc-switch  # Enter interactive mode (same as 'current' without arguments)
 
 CODEX CONFIGURATIONS:
-    cc-switch codex add work --from-file ~/.codex/auth.json
+    cc-switch codex add work --from-file                       # Import from ~/.codex/auth.json
+    cc-switch codex add work --from-file ~/other/auth.json     # Import from an explicit path
     cc-switch codex add personal -i  # Interactive mode
     cc-switch codex list
     cc-switch codex use work  # Switch and launch Codex
@@ -86,11 +89,8 @@ pub enum Commands {
     /// Stores a new configuration with alias, API token, base URL, and optional model settings
     Add {
         /// Configuration alias name (used to identify this config)
-        #[arg(
-            help = "Configuration alias name (cannot be 'cc')",
-            required_unless_present = "from_file"
-        )]
-        alias_name: Option<String>,
+        #[arg(help = "Configuration alias name (cannot be 'cc')")]
+        alias_name: String,
 
         /// ANTHROPIC_AUTH_TOKEN value (your Claude API token)
         #[arg(
@@ -203,13 +203,17 @@ pub enum Commands {
         #[arg(help = "API endpoint URL (if not using -u flag)")]
         url_arg: Option<String>,
 
-        /// Import configuration from a JSON file (uses filename as alias)
+        /// Import configuration from a JSON file
+        ///
+        /// With no value, imports from `~/.claude/settings.json`.
+        /// With a value, imports from the given path.
         #[arg(
             long = "from-file",
-            short = 'j',
-            help = "Import configuration from a JSON file (filename becomes alias name)"
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import configuration from JSON file (defaults to ~/.claude/settings.json if no path)"
         )]
-        from_file: Option<String>,
+        from_file: Option<Option<String>>,
     },
     /// Remove one or more configurations by alias name
     ///
@@ -309,8 +313,17 @@ pub enum CodexCommands {
             help = "Enter configuration values interactively"
         )]
         interactive: bool,
-        #[arg(long = "from-file", help = "Import from existing auth.json file")]
-        from_file: Option<String>,
+        /// Import from existing auth.json file
+        ///
+        /// With no value, imports from `~/.codex/auth.json`.
+        /// With a value, imports from the given path.
+        #[arg(
+            long = "from-file",
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import from auth.json (defaults to ~/.codex/auth.json if no path)"
+        )]
+        from_file: Option<Option<String>>,
     },
     List {
         #[arg(long = "plain", short = 'p')]

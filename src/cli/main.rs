@@ -14,7 +14,6 @@ use crate::interactive::{
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use std::fs;
-use std::path::Path;
 
 /// Parse storage mode string to StorageMode enum
 ///
@@ -40,7 +39,7 @@ fn parse_storage_mode(store_str: &str) -> Result<StorageMode> {
 /// * `file_path` - Path to the JSON configuration file
 ///
 /// # Returns
-/// Result containing a tuple of configuration values
+/// Result containing a tuple of configuration values (token, url, and optional fields)
 ///
 /// # Errors
 /// Returns error if file cannot be read or parsed
@@ -48,7 +47,6 @@ fn parse_storage_mode(store_str: &str) -> Result<StorageMode> {
 fn parse_config_from_file(
     file_path: &str,
 ) -> Result<(
-    String,
     String,
     String,
     Option<String>,
@@ -63,15 +61,12 @@ fn parse_config_from_file(
     Option<u32>,
     Option<String>,
 )> {
-    // Read the file
     let file_content = fs::read_to_string(file_path)
         .map_err(|e| anyhow!("Failed to read file '{}': {}", file_path, e))?;
 
-    // Parse JSON
     let json: serde_json::Value = serde_json::from_str(&file_content)
         .map_err(|e| anyhow!("Failed to parse JSON from file '{}': {}", file_path, e))?;
 
-    // Extract env section
     let env = json.get("env").and_then(|v| v.as_object()).ok_or_else(|| {
         anyhow!(
             "File '{}' does not contain a valid 'env' section",
@@ -79,15 +74,6 @@ fn parse_config_from_file(
         )
     })?;
 
-    // Extract alias name from filename (without extension)
-    let path = Path::new(file_path);
-    let alias_name = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or_else(|| anyhow!("Invalid file path: {}", file_path))?
-        .to_string();
-
-    // Extract and map environment variables
     let token = env
         .get("ANTHROPIC_AUTH_TOKEN")
         .and_then(|v| v.as_str())
@@ -156,7 +142,6 @@ fn parse_config_from_file(
         .map(|s| s.to_string());
 
     Ok((
-        alias_name,
         token,
         url,
         model,
@@ -187,7 +172,6 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         println!("Importing configuration from file: {}", file_path);
 
         let (
-            file_alias_name,
             file_token,
             file_url,
             file_model,
@@ -203,10 +187,6 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
             file_effort_level,
         ) = parse_config_from_file(file_path)?;
 
-        // Use the file's alias name (ignoring the one provided via command line)
-        params.alias_name = file_alias_name;
-
-        // Override params with file values
         params.token = Some(file_token);
         params.url = Some(file_url);
         params.model = file_model;
@@ -628,20 +608,34 @@ pub fn run() -> Result<()> {
                 url_arg,
                 from_file,
             } => {
-                // When from_file is provided, alias_name will be extracted from the file
-                // For other cases, use the provided alias_name or provide a default
-                let final_alias_name = if from_file.is_some() {
-                    // Will be set from file parsing, use a placeholder for now
-                    "placeholder".to_string()
-                } else {
-                    alias_name.unwrap_or_else(|| {
-                        eprintln!("Error: alias_name is required when not using --from-file");
-                        std::process::exit(1);
-                    })
+                let resolved_from_file: Option<String> = match from_file {
+                    Some(Some(path)) => {
+                        if !std::path::Path::new(&path).exists() {
+                            anyhow::bail!("Config file not found: {}", path);
+                        }
+                        Some(path)
+                    }
+                    Some(None) => {
+                        let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
+                        let default_path = crate::utils::get_claude_settings_path(custom_dir)
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .map_err(|e| {
+                                anyhow!("Failed to resolve default Claude settings path: {}", e)
+                            })?;
+                        if !std::path::Path::new(&default_path).exists() {
+                            anyhow::bail!(
+                                "Default Claude config not found at: {}\n\
+                                 Run `claude` once to create it, or pass an explicit path: --from-file <path>",
+                                default_path
+                            );
+                        }
+                        Some(default_path)
+                    }
+                    None => None,
                 };
 
                 let params = AddCommandParams {
-                    alias_name: final_alias_name,
+                    alias_name,
                     token,
                     url,
                     model,
@@ -659,7 +653,7 @@ pub fn run() -> Result<()> {
                     interactive,
                     token_arg,
                     url_arg,
-                    from_file,
+                    from_file: resolved_from_file,
                 };
                 handle_add_command(params, &mut storage)?;
             }
@@ -815,12 +809,37 @@ pub fn run() -> Result<()> {
                     interactive,
                     from_file,
                 }) => {
+                    let resolved_from_file: Option<String> = match from_file {
+                        Some(Some(path)) => {
+                            if !std::path::Path::new(&path).exists() {
+                                anyhow::bail!("Codex auth file not found: {}", path);
+                            }
+                            Some(path)
+                        }
+                        Some(None) => {
+                            let default_path = crate::codex::default_codex_auth_path()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .map_err(|e| {
+                                    anyhow!("Failed to resolve default Codex auth path: {}", e)
+                                })?;
+                            if !std::path::Path::new(&default_path).exists() {
+                                anyhow::bail!(
+                                    "Default Codex auth file not found at: {}\n\
+                                     Run `codex login` first, or pass an explicit path: --from-file <path>",
+                                    default_path
+                                );
+                            }
+                            Some(default_path)
+                        }
+                        None => None,
+                    };
+
                     handle_codex_add(
                         alias_name,
                         api_key,
                         force,
                         interactive,
-                        from_file,
+                        resolved_from_file,
                         &mut storage,
                     )?;
                 }

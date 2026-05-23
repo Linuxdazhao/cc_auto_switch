@@ -304,7 +304,7 @@ fn generate_fish_completion(app: &mut clap::Command) {
         "complete -c cx -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'"
     );
     println!(
-        "complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from JSON file' -r"
+        "complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from auth.json (defaults to ~/.codex/auth.json if no path)' -r"
     );
 
     println!("\n# Fish completion generated successfully");
@@ -345,7 +345,7 @@ complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-
 complete -c cx -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'
 complete -c cx -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only name and auth mode'
 complete -c cx -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'
-complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from JSON file' -r
+complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from auth.json (defaults to ~/.codex/auth.json if no path)' -r
 "#;
 
     let cx_path = completions_dir.join("cx.fish");

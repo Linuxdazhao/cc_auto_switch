@@ -292,7 +292,8 @@ cc-switch add my-config sk-ant-xxx https://api.anthropic.com
 cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com
 cc-switch add my-config -t sk-ant-xxx -u https://api.anthropic.com -m claude-3-5-sonnet-20241022
 cc-switch add my-config -i  # Interactive mode
-cc-switch add my-config --from-file config.json  # Import from JSON
+cc-switch add my-config --from-file                   # Import from ~/.claude/settings.json
+cc-switch add my-config --from-file config.json       # Import from a specific JSON file
 
 # Switch configurations
 # Interactive mode to view and switch configurations
