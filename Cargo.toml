@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.1.28"
+version = "0.1.29"
 edition = "2024"
 description = "A CLI tool for managing multiple Claude and Codex API configurations and automatically switching between them"
 license = "MIT"
