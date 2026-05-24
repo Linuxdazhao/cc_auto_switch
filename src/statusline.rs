@@ -64,6 +64,18 @@ fn generate_script(original_cmd: &str) -> String {
         r#"#!/usr/bin/env bash
 {marker}{encoded}
 
+# Clean up orphaned alias files for dead processes (runs in background to avoid latency)
+cleanup_orphans() {{
+  for f in "$HOME/.claude/cc_auto_switch_alias_"*; do
+    [ -f "$f" ] || continue
+    local pid="${{f##*_}}"
+    if ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$f"
+    fi
+  done
+}}
+cleanup_orphans &
+
 # Traverse parent process chain to find the real Claude process
 # Claude Code spawns statusLine via an intermediate process, so $PPID is not
 # the Claude main process. We walk up the process tree to find a process
