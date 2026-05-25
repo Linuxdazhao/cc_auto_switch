@@ -238,6 +238,23 @@ impl ClaudeSettings {
             self.env
                 .insert("CLAUDE_CODE_EFFORT_LEVEL".to_string(), level.clone());
         }
+
+        if let Some(flag) = config.disable_prompt_caching {
+            self.env
+                .insert("DISABLE_PROMPT_CACHING".to_string(), flag.to_string());
+        }
+
+        if let Some(flag) = config.claude_code_disable_experimental_betas {
+            self.env.insert(
+                "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS".to_string(),
+                flag.to_string(),
+            );
+        }
+
+        if let Some(flag) = config.disable_autoupdater {
+            self.env
+                .insert("DISABLE_AUTOUPDATER".to_string(), flag.to_string());
+        }
     }
 
     /// Remove Anthropic environment variables

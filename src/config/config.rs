@@ -115,6 +115,24 @@ impl EnvironmentConfig {
             env_vars.insert("CLAUDE_CODE_EFFORT_LEVEL".to_string(), level.clone());
         }
 
+        // Set disable prompt caching only if provided
+        if let Some(flag) = config.disable_prompt_caching {
+            env_vars.insert("DISABLE_PROMPT_CACHING".to_string(), flag.to_string());
+        }
+
+        // Set disable experimental betas only if provided
+        if let Some(flag) = config.claude_code_disable_experimental_betas {
+            env_vars.insert(
+                "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS".to_string(),
+                flag.to_string(),
+            );
+        }
+
+        // Set disable auto-updater only if provided
+        if let Some(flag) = config.disable_autoupdater {
+            env_vars.insert("DISABLE_AUTOUPDATER".to_string(), flag.to_string());
+        }
+
         EnvironmentConfig { env_vars }
     }
 

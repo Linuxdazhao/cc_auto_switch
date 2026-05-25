@@ -179,6 +179,27 @@ pub enum Commands {
         )]
         claude_code_effort_level: Option<String>,
 
+        /// DISABLE_PROMPT_CACHING flag
+        #[arg(
+            long = "disable-prompt-caching",
+            help = "Disable prompt caching flag (optional)"
+        )]
+        disable_prompt_caching: Option<u32>,
+
+        /// CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS flag
+        #[arg(
+            long = "disable-experimental-betas",
+            help = "Disable experimental betas flag (optional)"
+        )]
+        claude_code_disable_experimental_betas: Option<u32>,
+
+        /// DISABLE_AUTOUPDATER flag
+        #[arg(
+            long = "disable-autoupdater",
+            help = "Disable auto-updater flag (optional)"
+        )]
+        disable_autoupdater: Option<u32>,
+
         /// Force overwrite existing configuration
         #[arg(
             long = "force",

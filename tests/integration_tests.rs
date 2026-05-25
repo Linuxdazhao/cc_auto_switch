@@ -29,6 +29,9 @@ mod integration_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         }
     }
 

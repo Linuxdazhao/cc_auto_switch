@@ -1156,6 +1156,9 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     let subagent_model_label = "Subagent Model:";
     let disable_nonstreaming_fallback_label = "Disable Nonstreaming Fallback:";
     let effort_level_label = "Effort Level:";
+    let disable_prompt_caching_label = "Disable Prompt Caching:";
+    let disable_experimental_betas_label = "Disable Experimental Betas:";
+    let disable_autoupdater_label = "Disable Auto-Updater:";
 
     // Find the widest label for alignment
     let max_label_width = [
@@ -1172,6 +1175,9 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
         subagent_model_label,
         disable_nonstreaming_fallback_label,
         effort_level_label,
+        disable_prompt_caching_label,
+        disable_experimental_betas_label,
+        disable_autoupdater_label,
     ]
     .iter()
     .map(|label| text_display_width(label))
@@ -1360,6 +1366,54 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
             effort_level.yellow()
         );
         lines.push(effort_line);
+    }
+
+    // Format disable prompt caching if available
+    if let Some(disable_flag) = config.disable_prompt_caching {
+        let flag_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                disable_prompt_caching_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", disable_flag).yellow()
+        );
+        lines.push(flag_line);
+    }
+
+    // Format disable experimental betas if available
+    if let Some(disable_flag) = config.claude_code_disable_experimental_betas {
+        let flag_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                disable_experimental_betas_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", disable_flag).yellow()
+        );
+        lines.push(flag_line);
+    }
+
+    // Format disable auto-updater if available
+    if let Some(disable_flag) = config.disable_autoupdater {
+        let flag_line = format!(
+            "{}{} {}",
+            indent,
+            pad_text_to_width(
+                disable_autoupdater_label,
+                max_label_width,
+                TextAlignment::Left,
+                ' '
+            ),
+            format!("{}", disable_flag).yellow()
+        );
+        lines.push(flag_line);
     }
 
     lines
@@ -1782,7 +1836,7 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
 
         // Get user input for field selection
         println!("\n{}", "提示: 可使用大小写字母".dimmed());
-        print!("请选择要编辑的字段 (1-9, A-E), 或输入 S 保存, Q 返回上一级菜单: ");
+        print!("请选择要编辑的字段 (1-9, A-H), 或输入 S 保存, Q 返回上一级菜单: ");
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -1807,6 +1861,11 @@ fn handle_config_edit(config: &Configuration) -> Result<()> {
                 edit_field_claude_code_disable_nonstreaming_fallback(&mut editing_config)?
             }
             "14" | "e" | "E" => edit_field_claude_code_effort_level(&mut editing_config)?,
+            "15" | "f" | "F" => edit_field_disable_prompt_caching(&mut editing_config)?,
+            "16" | "g" | "G" => {
+                edit_field_claude_code_disable_experimental_betas(&mut editing_config)?
+            }
+            "17" | "h" | "H" => edit_field_disable_autoupdater(&mut editing_config)?,
             "s" | "S" => {
                 // Save changes
                 return save_configuration_changes(&original_alias, &editing_config);
@@ -1928,6 +1987,33 @@ fn display_edit_menu(config: &Configuration) {
             .claude_code_effort_level
             .as_deref()
             .unwrap_or("[未设置]")
+            .green()
+    );
+
+    println!(
+        "F. 禁用提示缓存 (DISABLE_PROMPT_CACHING): {}",
+        config
+            .disable_prompt_caching
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "G. 禁用实验性功能 (CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS): {}",
+        config
+            .claude_code_disable_experimental_betas
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
+            .green()
+    );
+
+    println!(
+        "H. 禁用自动更新 (DISABLE_AUTOUPDATER): {}",
+        config
+            .disable_autoupdater
+            .map(|t| t.to_string())
+            .unwrap_or("[未设置]".to_string())
             .green()
     );
 
@@ -2182,6 +2268,36 @@ fn edit_field_claude_code_effort_level(config: &mut Configuration) -> Result<()>
         edit_optional_string_field("努力级别", config.claude_code_effort_level.as_deref())?
     {
         config.claude_code_effort_level = result;
+    }
+    Ok(())
+}
+
+/// Edit disable_prompt_caching field
+fn edit_field_disable_prompt_caching(config: &mut Configuration) -> Result<()> {
+    if let Some(result) =
+        edit_optional_u32_field("禁用提示缓存标志", config.disable_prompt_caching)?
+    {
+        config.disable_prompt_caching = result;
+    }
+    Ok(())
+}
+
+/// Edit claude_code_disable_experimental_betas field
+fn edit_field_claude_code_disable_experimental_betas(config: &mut Configuration) -> Result<()> {
+    if let Some(result) = edit_optional_u32_field(
+        "禁用实验性功能标志",
+        config.claude_code_disable_experimental_betas,
+    )? {
+        config.claude_code_disable_experimental_betas = result;
+    }
+    Ok(())
+}
+
+/// Edit disable_autoupdater field
+fn edit_field_disable_autoupdater(config: &mut Configuration) -> Result<()> {
+    if let Some(result) = edit_optional_u32_field("禁用自动更新标志", config.disable_autoupdater)?
+    {
+        config.disable_autoupdater = result;
     }
     Ok(())
 }

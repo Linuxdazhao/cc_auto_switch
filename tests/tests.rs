@@ -31,6 +31,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         }
     }
 
@@ -563,6 +566,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -728,6 +734,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let json = serde_json::to_string_pretty(&config).expect("Should serialize to pretty JSON");
@@ -805,6 +814,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -958,6 +970,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
         storage.add_configuration(config);
 
@@ -986,6 +1001,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -1021,6 +1039,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1055,6 +1076,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let result = storage.update_configuration("nonexistent", new_config);
@@ -1084,6 +1108,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
         storage.add_configuration(config2);
 
@@ -1105,6 +1132,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let result = storage.update_configuration("test-config", renamed_config);
@@ -1139,6 +1169,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let result = storage.update_configuration("test-config", updated_config);
@@ -1168,6 +1201,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         assert_eq!(config.api_timeout_ms, Some(3000000));
@@ -1205,6 +1241,9 @@ mod config_edit_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         let env_config = EnvironmentConfig::from_config(&config);
@@ -1270,6 +1309,9 @@ mod claude_settings_tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         }
     }
 

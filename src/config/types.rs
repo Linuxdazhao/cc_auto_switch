@@ -77,6 +77,15 @@ pub struct Configuration {
     /// Effort level for Claude Code
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claude_code_effort_level: Option<String>,
+    /// Disable prompt caching flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable_prompt_caching: Option<u32>,
+    /// Disable experimental betas flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_disable_experimental_betas: Option<u32>,
+    /// Disable auto-updater flag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable_autoupdater: Option<u32>,
 }
 
 impl Configuration {
@@ -99,6 +108,9 @@ impl Configuration {
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "DISABLE_PROMPT_CACHING",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "DISABLE_AUTOUPDATER",
             "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
@@ -128,6 +140,9 @@ impl Configuration {
             // - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
             // - CLAUDE_CODE_DISABLE_1M_CONTEXT
             // - CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK
+            // - DISABLE_PROMPT_CACHING
+            // - CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
+            // - DISABLE_AUTOUPDATER
         ]
     }
 }
@@ -157,12 +172,15 @@ mod tests {
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "DISABLE_PROMPT_CACHING",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "DISABLE_AUTOUPDATER",
         ];
 
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 15 fields"
+            "Should have exactly 18 fields"
         );
 
         for expected_field in expected_fields {
@@ -209,6 +227,9 @@ mod tests {
             "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
             "CLAUDE_CODE_DISABLE_1M_CONTEXT",
             "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+            "DISABLE_PROMPT_CACHING",
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+            "DISABLE_AUTOUPDATER",
         ];
 
         assert_eq!(
@@ -313,6 +334,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         // Switch to new configuration
@@ -393,6 +417,9 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            disable_prompt_caching: None,
+            claude_code_disable_experimental_betas: None,
+            disable_autoupdater: None,
         };
 
         // Switch to new configuration
@@ -434,6 +461,13 @@ mod tests {
                 .contains_key("CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK")
         );
         assert!(!settings.env.contains_key("CLAUDE_CODE_EFFORT_LEVEL"));
+        assert!(!settings.env.contains_key("DISABLE_PROMPT_CACHING"));
+        assert!(
+            !settings
+                .env
+                .contains_key("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+        );
+        assert!(!settings.env.contains_key("DISABLE_AUTOUPDATER"));
     }
 }
 
@@ -531,6 +565,9 @@ pub struct AddCommandParams {
     pub claude_code_subagent_model: Option<String>,
     pub claude_code_disable_nonstreaming_fallback: Option<u32>,
     pub claude_code_effort_level: Option<String>,
+    pub disable_prompt_caching: Option<u32>,
+    pub claude_code_disable_experimental_betas: Option<u32>,
+    pub disable_autoupdater: Option<u32>,
     pub force: bool,
     pub interactive: bool,
     pub token_arg: Option<String>,

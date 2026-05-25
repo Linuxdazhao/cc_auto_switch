@@ -60,6 +60,9 @@ fn parse_config_from_file(
     Option<String>,
     Option<u32>,
     Option<String>,
+    Option<u32>,
+    Option<u32>,
+    Option<u32>,
 )> {
     let file_content = fs::read_to_string(file_path)
         .map_err(|e| anyhow!("Failed to read file '{}': {}", file_path, e))?;
@@ -141,6 +144,21 @@ fn parse_config_from_file(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let disable_prompt_caching = env
+        .get("DISABLE_PROMPT_CACHING")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let claude_code_disable_experimental_betas = env
+        .get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
+    let disable_autoupdater = env
+        .get("DISABLE_AUTOUPDATER")
+        .and_then(|v| v.as_u64())
+        .map(|u| u as u32);
+
     Ok((
         token,
         url,
@@ -155,6 +173,9 @@ fn parse_config_from_file(
         claude_code_subagent_model,
         claude_code_disable_nonstreaming_fallback,
         claude_code_effort_level,
+        disable_prompt_caching,
+        claude_code_disable_experimental_betas,
+        disable_autoupdater,
     ))
 }
 
@@ -185,6 +206,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
             file_subagent_model,
             file_disable_nonstreaming_fallback,
             file_effort_level,
+            file_disable_prompt_caching,
+            file_disable_experimental_betas,
+            file_disable_autoupdater,
         ) = parse_config_from_file(file_path)?;
 
         params.token = Some(file_token);
@@ -200,6 +224,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.claude_code_subagent_model = file_subagent_model;
         params.claude_code_disable_nonstreaming_fallback = file_disable_nonstreaming_fallback;
         params.claude_code_effort_level = file_effort_level;
+        params.disable_prompt_caching = file_disable_prompt_caching;
+        params.claude_code_disable_experimental_betas = file_disable_experimental_betas;
+        params.disable_autoupdater = file_disable_autoupdater;
 
         println!(
             "Configuration '{}' will be imported from file",
@@ -475,6 +502,72 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.claude_code_effort_level
     };
 
+    // Determine disable prompt caching flag value
+    let final_disable_prompt_caching = if params.interactive {
+        if params.disable_prompt_caching.is_some() {
+            eprintln!(
+                "Warning: Disable prompt caching flag provided via flags will be ignored in interactive mode"
+            );
+        }
+        let flag_input = read_input(
+            "Enter disable prompt caching flag (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if flag_input.is_empty() {
+            None
+        } else if let Ok(flag) = flag_input.parse::<u32>() {
+            if flag == 0 { None } else { Some(flag) }
+        } else {
+            eprintln!("Warning: Invalid disable prompt caching flag value, skipping");
+            None
+        }
+    } else {
+        params.disable_prompt_caching
+    };
+
+    // Determine disable experimental betas flag value
+    let final_claude_code_disable_experimental_betas = if params.interactive {
+        if params.claude_code_disable_experimental_betas.is_some() {
+            eprintln!(
+                "Warning: Disable experimental betas flag provided via flags will be ignored in interactive mode"
+            );
+        }
+        let flag_input = read_input(
+            "Enter disable experimental betas flag (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if flag_input.is_empty() {
+            None
+        } else if let Ok(flag) = flag_input.parse::<u32>() {
+            if flag == 0 { None } else { Some(flag) }
+        } else {
+            eprintln!("Warning: Invalid disable experimental betas flag value, skipping");
+            None
+        }
+    } else {
+        params.claude_code_disable_experimental_betas
+    };
+
+    // Determine disable auto-updater flag value
+    let final_disable_autoupdater = if params.interactive {
+        if params.disable_autoupdater.is_some() {
+            eprintln!(
+                "Warning: Disable auto-updater flag provided via flags will be ignored in interactive mode"
+            );
+        }
+        let flag_input = read_input(
+            "Enter disable auto-updater flag (optional, press enter to skip, enter 0 to clear): ",
+        )?;
+        if flag_input.is_empty() {
+            None
+        } else if let Ok(flag) = flag_input.parse::<u32>() {
+            if flag == 0 { None } else { Some(flag) }
+        } else {
+            eprintln!("Warning: Invalid disable auto-updater flag value, skipping");
+            None
+        }
+    } else {
+        params.disable_autoupdater
+    };
+
     // Validate token format with flexible API provider support
     let is_anthropic_official = final_url.contains("api.anthropic.com");
     if is_anthropic_official {
@@ -507,6 +600,9 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         claude_code_subagent_model: final_claude_code_subagent_model,
         claude_code_disable_nonstreaming_fallback: final_claude_code_disable_nonstreaming_fallback,
         claude_code_effort_level: final_claude_code_effort_level,
+        disable_prompt_caching: final_disable_prompt_caching,
+        claude_code_disable_experimental_betas: final_claude_code_disable_experimental_betas,
+        disable_autoupdater: final_disable_autoupdater,
         claude_code_experimental_agent_teams: None,
         claude_code_disable_1m_context: None,
     };
@@ -602,6 +698,9 @@ pub fn run() -> Result<()> {
                 claude_code_subagent_model,
                 claude_code_disable_nonstreaming_fallback,
                 claude_code_effort_level,
+                disable_prompt_caching,
+                claude_code_disable_experimental_betas,
+                disable_autoupdater,
                 force,
                 interactive,
                 token_arg,
@@ -649,6 +748,9 @@ pub fn run() -> Result<()> {
                     claude_code_subagent_model,
                     claude_code_disable_nonstreaming_fallback,
                     claude_code_effort_level,
+                    disable_prompt_caching,
+                    claude_code_disable_experimental_betas,
+                    disable_autoupdater,
                     force,
                     interactive,
                     token_arg,
@@ -722,6 +824,15 @@ pub fn run() -> Result<()> {
                             }
                             if let Some(effort_level) = &config.claude_code_effort_level {
                                 info.push_str(&format!(", effort_level={effort_level}"));
+                            }
+                            if let Some(flag) = config.disable_prompt_caching {
+                                info.push_str(&format!(", disable_prompt_caching={flag}"));
+                            }
+                            if let Some(flag) = config.claude_code_disable_experimental_betas {
+                                info.push_str(&format!(", disable_experimental_betas={flag}"));
+                            }
+                            if let Some(flag) = config.disable_autoupdater {
+                                info.push_str(&format!(", disable_autoupdater={flag}"));
                             }
                             println!("  {alias_name}: {info}");
                         }
