@@ -434,6 +434,70 @@ init();
     },
   };
 
+  // ===== MessageItem =====
+  const MessageItem = {
+    props: { message: { required: true } },
+    template: `
+      <div class="message" :class="'role-' + (message.role || 'unknown')">
+        <span class="role-badge" :class="'role-' + (message.role || 'unknown')">{{ message.role || 'unknown' }}</span>
+        <template v-if="typeof message.content === 'string'">
+          <Markdown :text="message.content" />
+        </template>
+        <template v-else-if="Array.isArray(message.content)">
+          <ContentBlock v-for="(block, i) in message.content" :key="i" :block="block" />
+        </template>
+        <JsonBlock v-else :value="message.content ?? null" />
+      </div>
+    `,
+  };
+
+  // ===== MessageThread =====
+  const MessageThread = {
+    props: { messages: { type: Array, required: true } },
+    template: `
+      <div class="message-thread">
+        <MessageItem v-for="(m, i) in messages" :key="i" :message="m" />
+      </div>
+    `,
+  };
+
+  // ===== SystemSection =====
+  const SystemSection = {
+    props: { system: { required: false, default: null } },
+    computed: {
+      blocks() {
+        if (this.system == null) return [];
+        if (typeof this.system === 'string') return [{ type: 'text', text: this.system }];
+        if (Array.isArray(this.system)) return this.system;
+        return [];
+      },
+    },
+    template: `
+      <details v-if="blocks.length" class="section" open>
+        <summary>System</summary>
+        <ContentBlock v-for="(b, i) in blocks" :key="i" :block="b" />
+      </details>
+    `,
+  };
+
+  // ===== ToolsSection =====
+  const ToolsSection = {
+    props: { tools: { type: Array, required: false, default: () => [] } },
+    template: `
+      <details v-if="tools && tools.length" class="section">
+        <summary>Tools ({{ tools.length }})</summary>
+        <div class="tool-entry" v-for="(tool, i) in tools" :key="i">
+          <strong>{{ tool.name }}</strong>
+          <div v-if="tool.description" class="tool-desc">{{ tool.description }}</div>
+          <details v-if="tool.input_schema">
+            <summary style="cursor: pointer; font-size: 11px; color: var(--muted);">input_schema</summary>
+            <JsonBlock :value="tool.input_schema" />
+          </details>
+        </div>
+      </details>
+    `,
+  };
+
   // ===== OverviewTab =====
   const OverviewTab = {
     props: { record: { required: true } },
@@ -531,6 +595,10 @@ init();
   app.component('Markdown', Markdown);
   app.component('JsonBlock', JsonBlock);
   app.component('ContentBlock', ContentBlock);
+  app.component('MessageItem', MessageItem);
+  app.component('MessageThread', MessageThread);
+  app.component('SystemSection', SystemSection);
+  app.component('ToolsSection', ToolsSection);
   app.component('OverviewTab', OverviewTab);
   app.directive('highlight', highlightDirective);
   app.mount('#detail-mount');
