@@ -59,7 +59,7 @@ mod daemon_supervisor {
             ("personal", "https://api.anthropic.com"),
             ("glm", "https://glm.example.com/v1"),
         ]);
-        let cfg = LifecycleConfig::from_storage(&storage).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
         // Two unique upstreams, not three.
         assert_eq!(cfg.upstreams.len(), 2);
     }
@@ -67,7 +67,7 @@ mod daemon_supervisor {
     #[test]
     fn lifecycle_config_skips_empty_urls() {
         let storage = make_storage(&[("empty", ""), ("work", "https://api.anthropic.com")]);
-        let cfg = LifecycleConfig::from_storage(&storage).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
         assert_eq!(cfg.upstreams.len(), 1);
         assert_eq!(cfg.upstreams[0].1, "https://api.anthropic.com");
     }
@@ -75,7 +75,7 @@ mod daemon_supervisor {
     #[test]
     fn lifecycle_config_paths_are_in_cc_switch_dir() {
         let storage = make_storage(&[("x", "https://api.anthropic.com")]);
-        let cfg = LifecycleConfig::from_storage(&storage).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
         let state_str = cfg.state_path.to_string_lossy();
         let pid_str = cfg.pidfile_path.to_string_lossy();
         assert!(state_str.contains(".cc-switch"), "state_path: {state_str}");
@@ -165,7 +165,7 @@ mod daemon_supervisor {
     #[test]
     fn empty_configurations_yields_zero_upstreams() {
         let storage = make_storage(&[]);
-        let cfg = LifecycleConfig::from_storage(&storage).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
         assert!(cfg.upstreams.is_empty());
     }
 }

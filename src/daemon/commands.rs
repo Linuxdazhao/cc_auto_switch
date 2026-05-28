@@ -41,8 +41,8 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 }
 
 #[cfg(unix)]
-fn handle_start(foreground: bool, _log_level: Option<String>, _verbose: u8, storage: &ConfigStorage) -> Result<()> {
-    let cfg = LifecycleConfig::from_storage(storage)?;
+fn handle_start(foreground: bool, log_level: Option<String>, verbose: u8, storage: &ConfigStorage) -> Result<()> {
+    let cfg = LifecycleConfig::from_storage(storage, foreground)?;
 
     // Preflight: check for existing pidfile (spec §8 invariant table).
     let pidfile = Pidfile::new(cfg.pidfile_path.clone());
@@ -77,7 +77,7 @@ fn handle_start(foreground: bool, _log_level: Option<String>, _verbose: u8, stor
         crate::daemon::fork::double_fork_into_background(&log_path)?;
     }
 
-    crate::daemon::lifecycle::run_daemon_blocking(cfg)
+    crate::daemon::lifecycle::run_daemon_blocking(cfg, log_level, verbose)
 }
 
 #[cfg(unix)]

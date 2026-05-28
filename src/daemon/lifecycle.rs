@@ -15,10 +15,11 @@ pub struct LifecycleConfig {
     pub pidfile_path: PathBuf,
     pub data_root: PathBuf,
     pub upstreams: Vec<Upstream>,
+    pub foreground: bool,
 }
 
 impl LifecycleConfig {
-    pub fn from_storage(storage: &ConfigStorage) -> Result<Self> {
+    pub fn from_storage(storage: &ConfigStorage, foreground: bool) -> Result<Self> {
         let home = dirs::home_dir().context("could not find home directory")?;
         let cc_switch_dir = home.join(".cc-switch");
         std::fs::create_dir_all(&cc_switch_dir)
@@ -31,6 +32,7 @@ impl LifecycleConfig {
             pidfile_path: cc_switch_dir.join("daemon.pid"),
             data_root: cc_switch_dir.join("daemon-data"),
             upstreams,
+            foreground,
         })
     }
 }
@@ -57,7 +59,22 @@ fn upstream_hash(url: &str) -> String {
     format!("{:08x}", hasher.finish() & 0xFFFF_FFFF)
 }
 
-pub fn run_daemon_blocking(cfg: LifecycleConfig) -> Result<()> {
+pub fn run_daemon_blocking(cfg: LifecycleConfig, log_level: Option<String>, verbose: u8) -> Result<()> {
+    let env_val = std::env::var("CCS_LOG").ok();
+    let level = crate::daemon::logging::resolve_log_level(
+        log_level.as_deref(),
+        verbose,
+        env_val.as_deref(),
+    );
+    let mode = if cfg.foreground {
+        crate::daemon::logging::LogMode::Foreground
+    } else {
+        crate::daemon::logging::LogMode::Background
+    };
+
+    crate::daemon::logging::cleanup_old_logs(7);
+    let _guard = crate::daemon::logging::init_tracing(mode, level);
+
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -82,7 +99,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         let parsed_url = match Url::parse(upstream_url) {
             Ok(u) => u,
             Err(err) => {
-                eprintln!("warning: skipping upstream {upstream_url}: invalid URL: {err}");
+                tracing::warn!(upstream = %upstream_url, error = %err, "skipping invalid upstream URL");
                 continue;
             }
         };
@@ -110,7 +127,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
                 handles.push(handle);
             }
             Err(err) => {
-                eprintln!("warning: failed to start proxy for {upstream_url}: {err}");
+                tracing::error!(upstream = %upstream_url, error = %err, "failed to start proxy");
             }
         }
     }
@@ -127,11 +144,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         .save(&cfg.state_path)
         .context("failed to write initial daemon state")?;
 
-    eprintln!(
-        "ccs-daemon: started (pid {}), {} proxies active",
-        state.pid,
-        handles.len()
-    );
+    tracing::info!(pid = state.pid, proxy_count = handles.len(), "daemon started");
 
     // Wait for shutdown signal.
     let shutdown = async {
@@ -150,7 +163,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
 
     tokio::select! {
         _ = shutdown => {
-            eprintln!("ccs-daemon: shutting down...");
+            tracing::info!("daemon shutting down");
         }
         _ = supervisor => {
             // supervisor_loop runs forever unless cancelled
@@ -176,7 +189,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
     // Remove pidfile.
     let _ = pidfile.release();
 
-    eprintln!("ccs-daemon: stopped");
+    tracing::info!("daemon stopped");
     Ok(())
 }
 
@@ -192,10 +205,7 @@ async fn supervisor_loop(
             let finished = handles[i].is_finished();
 
             if finished {
-                eprintln!(
-                    "ccs-daemon: proxy for {} exited unexpectedly, respawning...",
-                    entries[i].upstream
-                );
+                tracing::warn!(upstream = %entries[i].upstream, "proxy exited unexpectedly, respawning");
 
                 let parsed_url = match Url::parse(&entries[i].upstream) {
                     Ok(u) => u,
@@ -230,10 +240,7 @@ async fn supervisor_loop(
                         let _ = state.save(&cfg.state_path);
                     }
                     Err(err) => {
-                        eprintln!(
-                            "ccs-daemon: failed to respawn proxy for {}: {err}",
-                            entries[i].upstream
-                        );
+                        tracing::error!(upstream = %entries[i].upstream, error = %err, "failed to respawn proxy");
                     }
                 }
             }
