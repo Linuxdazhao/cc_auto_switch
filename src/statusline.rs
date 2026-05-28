@@ -66,7 +66,7 @@ fn generate_script(original_cmd: &str) -> String {
 
 # Clean up orphaned alias files for dead processes (runs in background to avoid latency)
 cleanup_orphans() {{
-  for f in "$HOME/.claude/cc_auto_switch_alias_"*; do
+  for f in "$HOME/.claude/cc_auto_tmp_pid/cc_auto_switch_alias_"*; do
     [ -f "$f" ] || continue
     local pid="${{f##*_}}"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -97,7 +97,7 @@ find_claude_pid() {{
 
     # Check if this is claude or node (Claude Code runs on Node.js)
     if [[ "$comm" == *"claude"* ]] || [[ "$comm" == *"node"* ]]; then
-      if [ -f "$HOME/.claude/cc_auto_switch_alias_${{pid}}" ]; then
+      if [ -f "$HOME/.claude/cc_auto_tmp_pid/cc_auto_switch_alias_${{pid}}" ]; then
         echo $pid
         return 0
       fi
@@ -121,8 +121,8 @@ if [ -n "$CC_SWITCH_CURRENT_ALIAS" ]; then
   alias_name="$CC_SWITCH_CURRENT_ALIAS"
 else
   claude_pid=$(find_claude_pid)
-  if [ -n "$claude_pid" ] && [ -f "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" ]; then
-    alias_name=$(cat "$HOME/.claude/cc_auto_switch_alias_${{claude_pid}}" 2>/dev/null)
+  if [ -n "$claude_pid" ] && [ -f "$HOME/.claude/cc_auto_tmp_pid/cc_auto_switch_alias_${{claude_pid}}" ]; then
+    alias_name=$(cat "$HOME/.claude/cc_auto_tmp_pid/cc_auto_switch_alias_${{claude_pid}}" 2>/dev/null)
   fi
 fi
 if [ -n "$alias_name" ]; then

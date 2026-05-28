@@ -461,7 +461,10 @@ impl ClaudeSettings {
         let config_dir = config_file
             .parent()
             .context("Could not get config directory")?;
-        Ok(config_dir.join(format!("{PER_PID_ALIAS_PREFIX}{pid}")))
+        let alias_dir = config_dir.join("cc_auto_tmp_pid");
+        // Best-effort ensure the directory exists; callers tolerate pre-existing files
+        let _ = fs::create_dir_all(&alias_dir);
+        Ok(alias_dir.join(format!("{PER_PID_ALIAS_PREFIX}{pid}")))
     }
 
     /// Clean up orphaned per-PID alias files
@@ -475,21 +478,40 @@ impl ClaudeSettings {
             .parent()
             .context("Could not get config directory")?;
 
+        // Remove legacy global file (no longer used after v0.1.26)
         let legacy_global = config_dir.join("cc_auto_switch_current_alias");
         if legacy_global.exists() {
             let _ = fs::remove_file(&legacy_global);
         }
 
-        for entry in fs::read_dir(config_dir)? {
-            let entry = entry?;
-            let file_name = entry.file_name();
-            let file_name_str = file_name.to_string_lossy();
+        // Remove legacy per-PID files in the old location (config_dir root)
+        if let Ok(entries) = fs::read_dir(config_dir) {
+            for entry in entries.flatten() {
+                let file_name_str = entry.file_name();
+                let file_name = file_name_str.to_string_lossy();
+                if let Some(pid_str) = file_name.strip_prefix(PER_PID_ALIAS_PREFIX)
+                    && let Ok(pid) = pid_str.parse::<u32>()
+                    && !Self::is_process_running(pid)
+                {
+                    let _ = fs::remove_file(entry.path());
+                }
+            }
+        }
 
-            if let Some(pid_str) = file_name_str.strip_prefix(PER_PID_ALIAS_PREFIX)
-                && let Ok(pid) = pid_str.parse::<u32>()
-                && !Self::is_process_running(pid)
-            {
-                let _ = fs::remove_file(entry.path());
+        // Scan the new cc_auto_tmp_pid directory for orphaned files
+        let alias_dir = config_dir.join("cc_auto_tmp_pid");
+        if alias_dir.exists() {
+            for entry in fs::read_dir(&alias_dir)? {
+                let entry = entry?;
+                let file_name = entry.file_name();
+                let file_name_str = file_name.to_string_lossy();
+
+                if let Some(pid_str) = file_name_str.strip_prefix(PER_PID_ALIAS_PREFIX)
+                    && let Ok(pid) = pid_str.parse::<u32>()
+                    && !Self::is_process_running(pid)
+                {
+                    let _ = fs::remove_file(entry.path());
+                }
             }
         }
 
