@@ -159,22 +159,32 @@ function renderPagination(total) {
 }
 
 async function selectRow(sid, seq) {
-  const panel = document.getElementById('detail-panel');
-  const content = document.getElementById('detail-content');
-  panel.classList.remove('hidden');
+  if (window.__detailStore) {
+    window.__detailStore.target = { sid, seq };
+    window.__detailStore.visible = true;
+    return;
+  }
+  legacySelectRow(sid, seq);
+}
 
+async function legacySelectRow(sid, seq) {
+  const panel = document.getElementById('detail-panel');
+  const mount = document.getElementById('detail-mount');
+  panel.classList.remove('hidden');
+  mount.innerHTML = '<button class="panel-close" onclick="document.getElementById(\'detail-panel\').classList.add(\'hidden\')">&times;</button><div class="status-line">Loading...</div>';
   try {
     const resp = await fetch(`/api/requests/${sid}/${seq}`);
     const data = await resp.json();
-    renderDetail(data);
+    legacyRenderDetail(data);
   } catch (e) {
-    content.innerHTML = '<p>Failed to load request detail.</p>';
+    mount.innerHTML = '<button class="panel-close" onclick="document.getElementById(\'detail-panel\').classList.add(\'hidden\')">&times;</button><div class="status-line error">Failed to load request detail.</div>';
   }
 }
 
-function renderDetail(data) {
-  const content = document.getElementById('detail-content');
-  content.innerHTML = `
+function legacyRenderDetail(data) {
+  const mount = document.getElementById('detail-mount');
+  mount.innerHTML = `
+    <button class="panel-close" onclick="document.getElementById('detail-panel').classList.add('hidden')">&times;</button>
     <dl>
       <dt>Session</dt><dd>${data.session_id}</dd>
       <dt>Seq</dt><dd>${data.seq}</dd>
@@ -269,19 +279,6 @@ document.querySelectorAll('.time-btn').forEach(btn => {
   });
 });
 
-// Detail panel tabs
-document.querySelectorAll('#detail-tabs .tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelector('#detail-tabs .tab.active')?.classList.remove('active');
-    tab.classList.add('active');
-  });
-});
-
-// Close detail
-document.getElementById('close-detail')?.addEventListener('click', () => {
-  document.getElementById('detail-panel').classList.add('hidden');
-});
-
 // Helpers
 function timeWindowToISO(w) {
   const d = timeWindowToDate(w);
@@ -313,3 +310,44 @@ function formatNumber(n) {
 }
 
 init();
+
+// ===== Vue detail panel =====
+(function mountDetailPanel() {
+  if (!window.Vue) {
+    console.warn('[ccs-daemon] Vue not loaded; detail panel falls back to JSON-only renderer.');
+    return;
+  }
+  const { createApp, reactive, computed, watch, ref, h } = window.Vue;
+
+  const detailStore = reactive({
+    visible: false,
+    target: null,
+    loading: false,
+    error: null,
+    record: null,
+    viewMode: 'structured',
+    activeTab: 'overview',
+  });
+  window.__detailStore = detailStore;
+
+  const DetailPanel = {
+    setup() {
+      return { store: detailStore };
+    },
+    template: `
+      <div v-if="store.visible" class="detail-root">
+        <div class="status-line">Vue mounted (stub) — sid={{ store.target?.sid }} seq={{ store.target?.seq }}</div>
+        <button class="panel-close" @click="store.visible = false">&times;</button>
+      </div>
+    `,
+  };
+
+  createApp(DetailPanel).mount('#detail-mount');
+
+  watch(() => detailStore.visible, (v) => {
+    const panel = document.getElementById('detail-panel');
+    if (!panel) return;
+    if (v) panel.classList.remove('hidden');
+    else panel.classList.add('hidden');
+  });
+})();
