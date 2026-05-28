@@ -1,4 +1,7 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -23,13 +26,183 @@ pub struct DaemonState {
 }
 
 impl DaemonState {
-    pub fn load(_path: &Path) -> anyhow::Result<Option<DaemonState>> {
-        unimplemented!("Task 3")
+    /// Load state from disk. Returns `Ok(None)` when the file does not exist;
+    /// returns `Err` with the path on corrupt JSON or other IO errors.
+    pub fn load(path: &Path) -> Result<Option<DaemonState>> {
+        let raw = match std::fs::read_to_string(path) {
+            Ok(contents) => contents,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => {
+                return Err(err)
+                    .with_context(|| format!("failed to read daemon state at {}", path.display()));
+            }
+        };
+        let state: DaemonState = serde_json::from_str(&raw)
+            .with_context(|| format!("failed to parse daemon state at {}", path.display()))?;
+        Ok(Some(state))
     }
-    pub fn save(&self, _path: &Path) -> anyhow::Result<()> {
-        unimplemented!("Task 3")
+
+    /// Save state atomically: write to `<path>.tmp` (mode 0600 on Unix),
+    /// fsync, then rename over `path`.
+    pub fn save(&self, path: &Path) -> Result<()> {
+        let tmp_path = PathBuf::from(format!("{}.tmp", path.display()));
+        let json = serde_json::to_string_pretty(self)
+            .context("failed to serialize daemon state to JSON")?;
+        write_tmp_then_rename(&tmp_path, path, json.as_bytes())
     }
-    pub fn find_proxy(&self, _provider: &str, _upstream: &str) -> Option<&ProxyEntry> {
-        unimplemented!("Task 3")
+
+    /// Exact-match lookup. No URL normalization.
+    pub fn find_proxy(&self, provider: &str, upstream: &str) -> Option<&ProxyEntry> {
+        self.proxies
+            .iter()
+            .find(|entry| entry.provider == provider && entry.upstream == upstream)
+    }
+}
+
+fn write_tmp_then_rename(tmp_path: &Path, final_path: &Path, bytes: &[u8]) -> Result<()> {
+    {
+        let mut file = open_tmp_for_write(tmp_path)?;
+        file.write_all(bytes)
+            .with_context(|| format!("failed to write daemon state to {}", tmp_path.display()))?;
+        file.sync_all()
+            .with_context(|| format!("failed to fsync daemon state at {}", tmp_path.display()))?;
+    }
+    std::fs::rename(tmp_path, final_path).with_context(|| {
+        format!(
+            "failed to rename {} -> {}",
+            tmp_path.display(),
+            final_path.display()
+        )
+    })
+}
+
+#[cfg(unix)]
+fn open_tmp_for_write(tmp_path: &Path) -> Result<File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(tmp_path)
+        .with_context(|| format!("failed to open {} for write", tmp_path.display()))
+}
+
+#[cfg(not(unix))]
+fn open_tmp_for_write(tmp_path: &Path) -> Result<File> {
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(tmp_path)
+        .with_context(|| format!("failed to open {} for write", tmp_path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DaemonState, ProxyEntry};
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn sample_proxy(provider: &str, upstream: &str, proxy_port: u16) -> ProxyEntry {
+        ProxyEntry {
+            provider: provider.to_owned(),
+            upstream: upstream.to_owned(),
+            proxy_port,
+            api_port: 9000,
+            data_dir: PathBuf::from("/tmp/ccs"),
+            started_at: "2026-05-28T00:00:00Z".to_owned(),
+            restart_count: 0,
+        }
+    }
+
+    fn sample_state(proxies: Vec<ProxyEntry>) -> DaemonState {
+        DaemonState {
+            schema_version: 1,
+            pid: 4242,
+            started_at: "2026-05-28T00:00:00Z".to_owned(),
+            stopped_at: None,
+            data_root: PathBuf::from("/tmp/ccs"),
+            proxies,
+        }
+    }
+
+    #[test]
+    fn load_save_round_trip() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("state.json");
+        let state = sample_state(vec![
+            sample_proxy("claude", "https://api.anthropic.com", 8080),
+            sample_proxy("codex", "https://api.openai.com", 8081),
+        ]);
+        state.save(&path).unwrap();
+        let loaded = DaemonState::load(&path).unwrap().expect("file exists");
+        assert_eq!(state, loaded);
+    }
+
+    #[test]
+    fn load_missing_file_returns_none() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("does_not_exist.json");
+        assert!(DaemonState::load(&path).unwrap().is_none());
+    }
+
+    #[test]
+    fn load_corrupt_json_returns_err_with_path() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("corrupt.json");
+        std::fs::write(&path, "{not json").unwrap();
+        let err = DaemonState::load(&path).unwrap_err();
+        let rendered = format!("{err:#}");
+        assert!(
+            rendered.contains(path.to_string_lossy().as_ref()),
+            "error message should contain path; got: {rendered}"
+        );
+    }
+
+    #[test]
+    fn find_proxy_exact_match() {
+        let entry = sample_proxy("claude", "https://api.anthropic.com", 8080);
+        let state = sample_state(vec![entry.clone()]);
+        assert_eq!(
+            state.find_proxy("claude", "https://api.anthropic.com"),
+            Some(&entry)
+        );
+        assert_eq!(
+            state.find_proxy("claude", "https://api.anthropic.com/"),
+            None
+        );
+        assert_eq!(state.find_proxy("codex", "https://api.anthropic.com"), None);
+    }
+
+    #[test]
+    fn save_atomic_no_partial_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("state.json");
+        let first = sample_state(vec![sample_proxy("claude", "https://a.example", 8080)]);
+        first.save(&path).unwrap();
+        let second = sample_state(vec![sample_proxy("codex", "https://b.example", 8081)]);
+        second.save(&path).unwrap();
+
+        let loaded = DaemonState::load(&path).unwrap().expect("file exists");
+        assert_eq!(second, loaded);
+
+        let tmp_path = PathBuf::from(format!("{}.tmp", path.display()));
+        assert!(
+            !tmp_path.exists(),
+            "temp file {tmp_path:?} should be renamed away after save"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_sets_unix_0600_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("state.json");
+        let state = sample_state(vec![]);
+        state.save(&path).unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "expected 0600, got {:o}", mode & 0o777);
     }
 }
