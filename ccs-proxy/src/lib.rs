@@ -5,8 +5,10 @@ mod config;
 mod error;
 mod handle;
 pub mod provider;
+mod session;
 
 pub use config::ServeConfig;
 pub use error::ServeError;
 pub use handle::ProxyHandle;
 pub use provider::ProviderKind;
+pub use session::SessionId;
