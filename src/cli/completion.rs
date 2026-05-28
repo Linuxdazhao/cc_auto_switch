@@ -270,7 +270,34 @@ fn generate_fish_completion(app: &mut clap::Command) {
     // Add completion for cs alias subcommands (but NOT configuration aliases at top level)
     println!("\n# Completion for 'cs' alias subcommands");
     println!(
-        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex' -d 'Subcommand'"
+        "complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex daemon statusline' -d 'Subcommand'"
+    );
+
+    // Add completion for daemon subcommand
+    println!("\n# Completion for 'daemon' subcommand");
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and not __fish_seen_subcommand_from start stop status restart' -f -a 'start stop status restart' -d 'Daemon action'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -l foreground -d 'Run in the foreground'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -l log-level -d 'Log level (error/warn/info/debug/trace)' -r -f -a 'error warn info debug trace'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -s v -l verbose -d 'Increase verbosity (-v/-vv/-vvv)'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -l foreground -d 'Run in the foreground after restart'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -l log-level -d 'Log level (error/warn/info/debug/trace)' -r -f -a 'error warn info debug trace'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -s v -l verbose -d 'Increase verbosity (-v/-vv/-vvv)'"
+    );
+    println!(
+        "complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from status' -l json -d 'Output as JSON'"
     );
 
     // Add completion for cs list subcommand flags
@@ -280,6 +307,39 @@ fn generate_fish_completion(app: &mut clap::Command) {
     );
     println!(
         "complete -c cs -n '__fish_seen_subcommand_from list' -l name -s n -d 'Show only name and URL'"
+    );
+
+    // Add completion for 'cs daemon' subcommand
+    println!("\n# Completion for 'cs daemon' subcommand");
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and not __fish_seen_subcommand_from start stop status restart' -f -a 'start stop status restart' -d 'Daemon action'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -l foreground -d 'Run in the foreground'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -l log-level -d 'Log level' -r -f -a 'error warn info debug trace'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -s v -l verbose -d 'Increase verbosity'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -l foreground -d 'Run in the foreground after restart'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -l log-level -d 'Log level' -r -f -a 'error warn info debug trace'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -s v -l verbose -d 'Increase verbosity'"
+    );
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from status' -l json -d 'Output as JSON'"
+    );
+
+    // Add completion for 'cs statusline' subcommand
+    println!("\n# Completion for 'cs statusline' subcommand");
+    println!(
+        "complete -c cs -n '__fish_seen_subcommand_from statusline' -f -a 'install uninstall' -d 'Statusline action'"
     );
 
     // Add completion for the 'cx' alias (cc-switch codex)
