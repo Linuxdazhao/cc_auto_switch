@@ -374,6 +374,45 @@ init();
     template: `<pre class="json-block" v-highlight><code class="language-json">{{ text }}</code></pre>`,
   };
 
+  // ===== OverviewTab =====
+  const OverviewTab = {
+    props: { record: { required: true } },
+    setup(props) {
+      const fmtMs = (n) => (n == null ? '—' : `${n}ms`);
+      const fmtTokens = (u) => {
+        if (!u) return '—';
+        const parts = [];
+        if (u.input_tokens != null) parts.push(`in=${u.input_tokens}`);
+        if (u.output_tokens != null) parts.push(`out=${u.output_tokens}`);
+        if (u.cache_creation_input_tokens) parts.push(`cache_create=${u.cache_creation_input_tokens}`);
+        if (u.cache_read_input_tokens) parts.push(`cache_read=${u.cache_read_input_tokens}`);
+        return parts.join(' · ') || '—';
+      };
+      return { store: detailStore, fmtMs, fmtTokens };
+    },
+    template: `
+      <div v-if="store.viewMode === 'structured'">
+        <dl class="meta">
+          <dt>Session</dt><dd>{{ record.session_id }}</dd>
+          <dt>Seq</dt><dd>{{ record.seq }}</dd>
+          <dt>Request ID</dt><dd>{{ record.request_id || '—' }}</dd>
+          <dt>Model</dt><dd>{{ record.model || '—' }}</dd>
+          <dt>Started</dt><dd>{{ record.started_at }}</dd>
+          <dt>Ended</dt><dd>{{ record.ended_at || '—' }}</dd>
+          <dt>Duration</dt><dd>{{ fmtMs(record.duration_ms) }}</dd>
+          <dt>TTFT</dt><dd>{{ fmtMs(record.ttft_ms) }}</dd>
+          <dt>Usage</dt><dd>{{ fmtTokens(record.usage) }}</dd>
+          <dt v-if="record.partial">Partial</dt><dd v-if="record.partial">yes</dd>
+        </dl>
+        <div v-if="record.error">
+          <div class="section-title">Error</div>
+          <JsonBlock :value="record.error" />
+        </div>
+      </div>
+      <JsonBlock v-else :value="record" />
+    `,
+  };
+
   // ===== DetailPanel =====
   const DetailPanel = {
     setup() {
@@ -420,7 +459,7 @@ init();
         <div v-if="store.loading" class="status-line">Loading…</div>
         <div v-else-if="store.error" class="status-line error">Failed to load: {{ store.error }}</div>
         <div v-else-if="store.record">
-          <div v-if="store.activeTab === 'overview'" class="status-line">[overview placeholder — Task 6]</div>
+          <OverviewTab v-if="store.activeTab === 'overview'" :record="store.record" />
           <div v-else-if="store.activeTab === 'request'" class="status-line">[request placeholder — Task 9]</div>
           <div v-else-if="store.activeTab === 'response'" class="status-line">[response placeholder — Task 10]</div>
         </div>
@@ -431,6 +470,7 @@ init();
   const app = createApp(DetailPanel);
   app.component('Markdown', Markdown);
   app.component('JsonBlock', JsonBlock);
+  app.component('OverviewTab', OverviewTab);
   app.directive('highlight', highlightDirective);
   app.mount('#detail-mount');
 
