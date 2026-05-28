@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 pub mod claude;
+pub mod codex;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
