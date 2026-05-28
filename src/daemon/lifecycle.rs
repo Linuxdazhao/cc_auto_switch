@@ -63,7 +63,11 @@ fn upstream_hash(url: &str) -> String {
     format!("{:08x}", hasher.finish() & 0xFFFF_FFFF)
 }
 
-pub fn run_daemon_blocking(cfg: LifecycleConfig, log_level: Option<String>, verbose: u8) -> Result<()> {
+pub fn run_daemon_blocking(
+    cfg: LifecycleConfig,
+    log_level: Option<String>,
+    verbose: u8,
+) -> Result<()> {
     let env_val = std::env::var("CCS_LOG").ok();
     let level = crate::daemon::logging::resolve_log_level(
         log_level.as_deref(),
@@ -185,7 +189,11 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         .save(&cfg.state_path)
         .context("failed to write initial daemon state")?;
 
-    tracing::info!(pid = state.pid, proxy_count = handles.len(), "daemon started");
+    tracing::info!(
+        pid = state.pid,
+        proxy_count = handles.len(),
+        "daemon started"
+    );
 
     // Wait for shutdown signal.
     let shutdown = async {

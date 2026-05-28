@@ -11,7 +11,9 @@ pub enum DaemonAction {
         verbose: u8,
     },
     Stop,
-    Status { json: bool },
+    Status {
+        json: bool,
+    },
     Restart {
         foreground: bool,
         log_level: Option<String>,
@@ -28,12 +30,18 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 
     #[cfg(unix)]
     match action {
-        DaemonAction::Start { foreground, log_level, verbose } => {
-            handle_start(foreground, log_level, verbose, storage)
-        }
+        DaemonAction::Start {
+            foreground,
+            log_level,
+            verbose,
+        } => handle_start(foreground, log_level, verbose, storage),
         DaemonAction::Stop => handle_stop(),
         DaemonAction::Status { json } => handle_status(json, storage),
-        DaemonAction::Restart { foreground, log_level, verbose } => {
+        DaemonAction::Restart {
+            foreground,
+            log_level,
+            verbose,
+        } => {
             let _ = handle_stop();
             handle_start(foreground, log_level, verbose, storage)
         }
@@ -41,7 +49,12 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 }
 
 #[cfg(unix)]
-fn handle_start(foreground: bool, log_level: Option<String>, verbose: u8, storage: &ConfigStorage) -> Result<()> {
+fn handle_start(
+    foreground: bool,
+    log_level: Option<String>,
+    verbose: u8,
+    storage: &ConfigStorage,
+) -> Result<()> {
     let cfg = LifecycleConfig::from_storage(storage, foreground)?;
 
     // Preflight: check for existing pidfile (spec §8 invariant table).

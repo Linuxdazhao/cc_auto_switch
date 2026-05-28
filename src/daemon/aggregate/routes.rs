@@ -1,7 +1,7 @@
 use super::state::AggregateState;
 use axum::extract::{Path, Query, State};
-use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::IntoResponse;
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::{Json, Router, routing::get};
 use ccs_proxy::store::Store;
 use futures::stream::Stream;
@@ -98,9 +98,10 @@ async fn list_sessions(
 
     if let Some(ref alias_filter) = params.alias {
         all_sessions.retain(|s| {
-            s["aliases"]
-                .as_array()
-                .is_some_and(|arr| arr.iter().any(|a| a.as_str() == Some(alias_filter.as_str())))
+            s["aliases"].as_array().is_some_and(|arr| {
+                arr.iter()
+                    .any(|a| a.as_str() == Some(alias_filter.as_str()))
+            })
         });
     }
 
@@ -178,7 +179,10 @@ async fn stats(State(state): State<SharedState>, Query(params): Query<StatsQuery
         let session_count = sessions.len() as u64;
 
         for session in &sessions {
-            let requests = store.list_requests(&session.session_id).await.unwrap_or_default();
+            let requests = store
+                .list_requests(&session.session_id)
+                .await
+                .unwrap_or_default();
             for req in &requests {
                 if since.is_some_and(|since_dt| req.started_at < since_dt) {
                     continue;
@@ -227,7 +231,9 @@ async fn stats(State(state): State<SharedState>, Query(params): Query<StatsQuery
         }));
     }
 
-    let totals_avg_duration = totals_duration.checked_div(totals_duration_count).unwrap_or(0);
+    let totals_avg_duration = totals_duration
+        .checked_div(totals_duration_count)
+        .unwrap_or(0);
 
     Json(json!({
         "upstreams": upstreams_stats,

@@ -18,12 +18,12 @@ mod daemon_aggregate {
             ("https://b.example.com".to_string(), store_b),
         ];
 
-        let alias_map = Arc::new(
-            cc_switch::daemon::aggregate::state::AliasMap::from_entries(vec![(
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![(
                 "https://a.example.com".to_string(),
                 vec!["alias_a".to_string()],
-            )]),
-        );
+            )],
+        ));
 
         let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
             .await
@@ -82,8 +82,8 @@ mod daemon_aggregate {
             ("https://b.example.com".to_string(), store_b),
         ];
 
-        let alias_map = Arc::new(
-            cc_switch::daemon::aggregate::state::AliasMap::from_entries(vec![
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![
                 (
                     "https://a.example.com".to_string(),
                     vec!["work".to_string()],
@@ -92,8 +92,8 @@ mod daemon_aggregate {
                     "https://b.example.com".to_string(),
                     vec!["personal".to_string()],
                 ),
-            ]),
-        );
+            ],
+        ));
 
         let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
             .await
@@ -191,9 +191,9 @@ mod daemon_aggregate {
             .unwrap();
 
         let stores = vec![("https://a.example.com".to_string(), store_a)];
-        let alias_map = Arc::new(
-            cc_switch::daemon::aggregate::state::AliasMap::from_entries(vec![]),
-        );
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
         let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
             .await
             .unwrap();
@@ -215,9 +215,9 @@ mod daemon_aggregate {
         let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
 
         let stores = vec![("https://a.example.com".to_string(), store)];
-        let alias_map = Arc::new(
-            cc_switch::daemon::aggregate::state::AliasMap::from_entries(vec![]),
-        );
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
         let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
             .await
             .unwrap();
@@ -226,7 +226,12 @@ mod daemon_aggregate {
             .await
             .unwrap();
         assert_eq!(resp.status(), 200);
-        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert!(ct.contains("text/html"));
         let body = resp.text().await.unwrap();
         assert!(body.contains("ccs-daemon"));

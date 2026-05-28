@@ -25,9 +25,8 @@ pub async fn event_merger(
         .into_iter()
         .map(|(upstream, rx)| {
             let upstream = upstream.clone();
-            BroadcastStream::new(rx).filter_map(move |res| {
-                res.ok().map(|ev| (upstream.clone(), ev))
-            })
+            BroadcastStream::new(rx)
+                .filter_map(move |res| res.ok().map(|ev| (upstream.clone(), ev)))
         })
         .collect();
 
@@ -94,10 +93,7 @@ mod tests {
 
         let alias_map = Arc::new(AliasMap::from_entries(vec![]));
 
-        let proxy_events = vec![(
-            "https://b.example.com".to_string(),
-            tx_b.subscribe(),
-        )];
+        let proxy_events = vec![("https://b.example.com".to_string(), tx_b.subscribe())];
 
         let _merger = tokio::spawn(event_merger(proxy_events, alias_map, merged_tx));
 

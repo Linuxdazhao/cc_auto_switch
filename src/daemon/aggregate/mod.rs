@@ -122,7 +122,12 @@ fn serve_asset(name: &str) -> Response {
                 Some("css") => "text/css; charset=utf-8",
                 _ => "application/octet-stream",
             };
-            (StatusCode::OK, [(header::CONTENT_TYPE, mime)], asset.data.into_owned()).into_response()
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, mime)],
+                asset.data.into_owned(),
+            )
+                .into_response()
         }
         None => (StatusCode::NOT_FOUND, "not found").into_response(),
     }

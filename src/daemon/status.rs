@@ -116,9 +116,7 @@ pub fn format_status_text(
         )
     ));
     if let Some(agg_port) = state.agg_port {
-        out.push_str(&format!(
-            "  dashboard: http://127.0.0.1:{agg_port}\n"
-        ));
+        out.push_str(&format!("  dashboard: http://127.0.0.1:{agg_port}\n"));
     }
     out.push('\n');
 

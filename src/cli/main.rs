@@ -999,14 +999,26 @@ pub fn run() -> Result<()> {
                 use crate::cli::DaemonCommands;
                 use crate::daemon::{DaemonAction, handle_daemon_command};
                 let action = match command {
-                    DaemonCommands::Start { foreground, log_level, verbose } => {
-                        DaemonAction::Start { foreground, log_level, verbose }
-                    }
+                    DaemonCommands::Start {
+                        foreground,
+                        log_level,
+                        verbose,
+                    } => DaemonAction::Start {
+                        foreground,
+                        log_level,
+                        verbose,
+                    },
                     DaemonCommands::Stop => DaemonAction::Stop,
                     DaemonCommands::Status { json } => DaemonAction::Status { json },
-                    DaemonCommands::Restart { foreground, log_level, verbose } => {
-                        DaemonAction::Restart { foreground, log_level, verbose }
-                    }
+                    DaemonCommands::Restart {
+                        foreground,
+                        log_level,
+                        verbose,
+                    } => DaemonAction::Restart {
+                        foreground,
+                        log_level,
+                        verbose,
+                    },
                 };
                 handle_daemon_command(action, &storage)?;
             }

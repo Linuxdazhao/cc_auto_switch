@@ -70,7 +70,9 @@ pub fn init_tracing(mode: LogMode, level: LevelFilter) -> WorkerGuard {
             registry.with(stderr_layer).init();
         }
         LogMode::Background => {
-            registry.with(None::<tracing_subscriber::fmt::Layer<_>>).init();
+            registry
+                .with(None::<tracing_subscriber::fmt::Layer<_>>)
+                .init();
         }
     }
 
@@ -159,16 +161,25 @@ mod tests {
 
     #[test]
     fn resolve_level_cli_overrides_verbose() {
-        assert_eq!(resolve_log_level(Some("error"), 3, None), LevelFilter::ERROR);
+        assert_eq!(
+            resolve_log_level(Some("error"), 3, None),
+            LevelFilter::ERROR
+        );
     }
 
     #[test]
     fn resolve_level_env_overrides_all() {
-        assert_eq!(resolve_log_level(Some("error"), 0, Some("trace")), LevelFilter::TRACE);
+        assert_eq!(
+            resolve_log_level(Some("error"), 0, Some("trace")),
+            LevelFilter::TRACE
+        );
     }
 
     #[test]
     fn resolve_level_invalid_env_falls_back() {
-        assert_eq!(resolve_log_level(Some("warn"), 0, Some("not_a_level")), LevelFilter::WARN);
+        assert_eq!(
+            resolve_log_level(Some("warn"), 0, Some("not_a_level")),
+            LevelFilter::WARN
+        );
     }
 }
