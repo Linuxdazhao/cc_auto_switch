@@ -207,9 +207,28 @@ mod tests {
     }
 
     #[test]
+    fn read_returns_pid_for_valid_file() {
+        let (_dir, path) = make_path();
+        let pidfile = Pidfile::new(path);
+        pidfile.acquire().expect("acquire");
+        let pid = pidfile.read().expect("read");
+        assert_eq!(pid, Some(std::process::id()));
+    }
+
+    #[test]
     fn process_alive_for_self() {
         let alive = process_alive(std::process::id()).expect("query self");
         assert!(alive);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn process_alive_for_pid_1() {
+        // PID 1 is init/launchd; it always exists on Unix and is owned by
+        // root, so kill(1, 0) from a non-root caller returns EPERM. That
+        // still counts as "alive" — exercises the EPERM branch.
+        let alive = process_alive(1).expect("query pid 1");
+        assert!(alive, "PID 1 must be reported alive on Unix");
     }
 
     #[test]
