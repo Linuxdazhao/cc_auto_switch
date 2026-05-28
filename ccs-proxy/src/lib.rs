@@ -1,6 +1,7 @@
 //! ccs-proxy: a local logging reverse-proxy + dashboard that captures the
 //! traffic between Claude Code / Codex and their upstream LLM APIs.
 
+pub mod api;
 pub mod capture;
 mod config;
 mod error;
