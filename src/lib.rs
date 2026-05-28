@@ -6,6 +6,7 @@
 pub mod cli;
 pub mod codex;
 pub mod config;
+pub mod daemon;
 pub mod interactive;
 
 pub mod claude_settings;
@@ -14,6 +15,7 @@ pub mod statusline;
 pub mod utils;
 
 pub use codex::CodexConfiguration;
+pub use daemon::handle_daemon_command;
 
 // Re-export commonly used types and functions for easier importing
 pub use crate::cli::completion::{

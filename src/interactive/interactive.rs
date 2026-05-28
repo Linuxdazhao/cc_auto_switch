@@ -925,7 +925,25 @@ fn handle_selection_action(
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
         let config_index = selected_index - 1; // -1 because official is at index 0
-        let selected_config = configs[config_index].clone();
+        let mut selected_config = configs[config_index].clone();
+
+        // Consult daemon state: substitute proxy URL if daemon is alive.
+        let original_url = selected_config.url.clone();
+        match crate::daemon::try_resolve_proxy(&selected_config.url) {
+            crate::daemon::ProxyResolution::Proxied { proxy_url } => {
+                selected_config.url = proxy_url;
+            }
+            crate::daemon::ProxyResolution::Direct => {
+                if !original_url.is_empty() {
+                    eprintln!(
+                        "\u{2139} cc daemon is not running \u{2014} traffic for '{}' will NOT be captured.",
+                        selected_config.alias_name
+                    );
+                    eprintln!("  Run `cc-switch daemon start` and re-run to enable capture.");
+                }
+            }
+        }
+
         let env_config = EnvironmentConfig::from_config(&selected_config)
             .with_alias(&selected_config.alias_name);
 
@@ -938,6 +956,9 @@ fn handle_selection_action(
         let details = format_config_details(&selected_config, "", false);
         for detail_line in details {
             println!("{detail_line}");
+        }
+        if selected_config.url != original_url {
+            println!("  (proxied from: {})", original_url);
         }
 
         // Update settings.json with the configuration

@@ -1,0 +1,18 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_01","object":"response","status":"in_progress","model":"gpt-5","output":[],"usage":null}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_01","type":"message","role":"assistant","content":[{"type":"output_text","text":""}]}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_01","output_index":0,"content_index":0,"delta":"Hello"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_01","output_index":0,"content_index":0,"delta":" world"}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","item_id":"msg_01","output_index":0,"content_index":0,"text":"Hello world"}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_01","object":"response","status":"completed","model":"gpt-5","output":[{"id":"msg_01","type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello world"}]}],"usage":{"input_tokens":10,"output_tokens":12,"total_tokens":22}}}
+
