@@ -17,8 +17,7 @@ impl FsStore {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            if let Err(e) =
-                std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))
+            if let Err(e) = std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))
             {
                 tracing::warn!(?root, ?e, "failed to set root data dir permissions to 0700");
             }
@@ -55,11 +54,8 @@ impl FsStore {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(
-                &staging_path,
-                std::fs::Permissions::from_mode(0o600),
-            )
-            .await;
+            let _ =
+                fs::set_permissions(&staging_path, std::fs::Permissions::from_mode(0o600)).await;
         }
         fs::rename(&staging_path, path).await?;
         Ok(())
@@ -178,10 +174,7 @@ impl Store for FsStore {
         Ok(out)
     }
 
-    async fn list_requests(
-        &self,
-        session_id: &str,
-    ) -> Result<Vec<RequestSummary>, StoreError> {
+    async fn list_requests(&self, session_id: &str) -> Result<Vec<RequestSummary>, StoreError> {
         let dir = self.session_dir(session_id);
         let mut out = Vec::new();
         let Ok(mut rd) = fs::read_dir(&dir).await else {

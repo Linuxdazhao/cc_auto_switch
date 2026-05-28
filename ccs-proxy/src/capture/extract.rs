@@ -49,10 +49,7 @@ mod tests {
 
     #[test]
     fn returns_none_when_no_id_header() {
-        let h = BTreeMap::from([(
-            "content-type".to_string(),
-            "application/json".to_string(),
-        )]);
+        let h = BTreeMap::from([("content-type".to_string(), "application/json".to_string())]);
         assert_eq!(extract_request_id(&h), None);
     }
 

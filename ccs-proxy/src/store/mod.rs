@@ -51,8 +51,7 @@ pub trait Store: Send + Sync + 'static {
     async fn finalize_session(&self, session_id: &str) -> Result<(), StoreError>;
     async fn append(&self, rec: CaptureRecord) -> Result<(), StoreError>;
     async fn list_sessions(&self) -> Result<Vec<SessionMeta>, StoreError>;
-    async fn list_requests(&self, session_id: &str)
-    -> Result<Vec<RequestSummary>, StoreError>;
+    async fn list_requests(&self, session_id: &str) -> Result<Vec<RequestSummary>, StoreError>;
     async fn get_request(
         &self,
         session_id: &str,
