@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <title>ccs-daemon aggregate</title>
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
 </head>
 <body>
 <header id="header">
@@ -44,13 +49,7 @@
     </table>
     <div id="pagination"></div>
     <div id="detail-panel" class="hidden">
-      <button id="close-detail">&times;</button>
-      <div id="detail-tabs">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="request">Request</button>
-        <button class="tab" data-tab="response">Response</button>
-      </div>
-      <div id="detail-content"></div>
+      <div id="detail-mount"></div>
     </div>
   </section>
 </main>
