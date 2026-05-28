@@ -24,6 +24,7 @@
 - ⚡ **Completion in every shell** — Fish / Zsh / Bash / PowerShell / Elvish all get full completion; Fish adds live alias completion on top
 - 📂 **Codex support** — manage Claude and OpenAI Codex auth from one tool
 - 🌍 **Cross-platform** — macOS / Linux / Windows (x86_64 + ARM64); transparently handles npm-installed `claude.cmd` / `codex.cmd` shims on Windows
+- 📊 **Daemon mode + aggregate dashboard** — optional background proxy that transparently captures all Claude API traffic, with a web dashboard for real-time request inspection, structured conversation views, and token statistics (see [Daemon Mode](#daemon-mode))
 
 > 🛡️ **About the default bypass-permissions behavior**
 >
@@ -109,6 +110,15 @@ cargo install cc-switch
 | `cc-switch codex` | Enter interactive mode |
 
 Full documentation: [docs/codex_EN.md](docs/codex_EN.md).
+
+### Daemon Management
+
+| Command | What it does |
+|---------|--------------|
+| `cc-switch daemon start` | Start the background proxy (one ccs-proxy per upstream) |
+| `cc-switch daemon stop` | Stop the daemon |
+| `cc-switch daemon status` | Show status, proxy list, and dashboard URL |
+| `cc-switch daemon restart` | Restart (picks up config changes) |
 
 ### Common Commands
 
@@ -231,6 +241,50 @@ cc-switch remove work personal test-config
 # Migrate from old path (~/.cc_auto_switch/) to the new one
 cc-switch --migrate
 ```
+
+## Daemon Mode
+
+cc-switch offers an **optional** Daemon mode: it automatically starts a local ccs-proxy instance for each configured upstream URL, transparently capturing all Claude API requests/responses, and serves an aggregate web dashboard.
+
+```bash
+# Start the daemon
+cc-switch daemon start
+
+# Check status (includes dashboard URL)
+cc-switch daemon status
+# Example output:
+#   ccs-daemon: RUNNING (pid 12345, uptime 5m 30s)
+#   dashboard: http://127.0.0.1:55571
+
+# Run in foreground (useful for debugging)
+cc-switch daemon start --foreground
+
+# Adjust log level
+cc-switch daemon start --log-level debug
+cc-switch daemon start -vvv   # trace level
+
+# Restart (picks up configuration changes)
+cc-switch daemon restart
+
+# Stop
+cc-switch daemon stop
+```
+
+### Dashboard Features
+
+Open the dashboard URL shown by `cc-switch daemon status` in your browser to see:
+
+- **Request list** — all API requests sorted by time, with live SSE updates
+- **Upstream filter** — filter requests by upstream
+- **Time window** — quick 1h / 24h / 7d / all filters
+- **Token stats** — total requests, input/output tokens, average latency, error count
+- **Structured detail view** (click any request row):
+  - **Overview** — metadata grid (session, model, duration, TTFT, token usage)
+  - **Request** — structured Anthropic Messages API view (System / Tools / message thread) with Markdown rendering and syntax highlighting
+  - **Response** — assistant content blocks, tool_use/thinking blocks, stop_reason
+  - **Structured ⇄ Raw** toggle to switch between structured and raw JSON views
+
+> 💡 The daemon is entirely optional — all other cc-switch features work without it. After starting the daemon, your cc-switch workflow stays exactly the same (`use`, interactive mode, etc. all work as usual) — the daemon just captures traffic transparently in the background.
 
 ## StatusLine Integration
 

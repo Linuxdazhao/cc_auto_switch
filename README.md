@@ -26,6 +26,7 @@
 - ⚡ **全 Shell 补全 + Fish 动态别名补全** — Fish / Zsh / Bash / PowerShell / Elvish 全部支持，Fish 额外提供 `<Tab>` 实时列出配置名
 - 📂 **Codex 支持** — 同一工具管理 Claude 和 OpenAI Codex 两套认证
 - 🌍 **全平台** — macOS / Linux / Windows（x86_64 + ARM64），自动处理 Windows 上的 npm `claude.cmd` / `codex.cmd` shim
+- 📊 **Daemon 模式 + 聚合仪表盘** — 可选的后台代理进程，透明捕获所有 Claude API 流量，提供 Web 仪表盘实时查看请求详情、结构化对话视图、token 统计（详见 [Daemon 模式](#daemon-模式)）
 
 > 🛡️ **关于默认 Bypass Permissions**
 >
@@ -111,6 +112,15 @@ cargo install cc-switch
 | `cc-switch codex` | 进入交互模式 |
 
 完整文档：[docs/codex.md](docs/codex.md)。
+
+### Daemon 管理
+
+| 命令 | 作用 |
+|------|------|
+| `cc-switch daemon start` | 启动后台代理（每个 upstream 自动启动一个 ccs-proxy） |
+| `cc-switch daemon stop` | 停止后台代理 |
+| `cc-switch daemon status` | 查看状态、代理列表和仪表盘 URL |
+| `cc-switch daemon restart` | 重启（拾取配置变更） |
 
 ### 通用命令
 
@@ -246,6 +256,50 @@ cc-switch remove work personal test-config
 # 从旧路径迁移（~/.cc_auto_switch/）到新路径
 cc-switch --migrate
 ```
+
+## Daemon 模式
+
+cc-switch 提供**可选**的 Daemon 模式：为每个已配置的 upstream URL 自动启动一个本地 ccs-proxy 实例，透明捕获所有 Claude API 请求/响应，并提供一个聚合 Web 仪表盘。
+
+```bash
+# 启动 daemon
+cc-switch daemon start
+
+# 查看状态（包含仪表盘 URL）
+cc-switch daemon status
+# 输出示例：
+#   ccs-daemon: RUNNING (pid 12345, uptime 5m 30s)
+#   dashboard: http://127.0.0.1:55571
+
+# 前台模式运行（方便调试）
+cc-switch daemon start --foreground
+
+# 调整日志级别
+cc-switch daemon start --log-level debug
+cc-switch daemon start -vvv   # trace 级别
+
+# 重启（拾取配置变更）
+cc-switch daemon restart
+
+# 停止
+cc-switch daemon stop
+```
+
+### 仪表盘功能
+
+在浏览器中打开 `cc-switch daemon status` 输出的 dashboard URL，即可看到：
+
+- **请求列表** — 按时间排序的所有 API 请求，实时 SSE 更新
+- **Upstream 筛选** — 按 upstream 过滤请求
+- **时间窗口** — 1h / 24h / 7d / all 快速筛选
+- **Token 统计** — 总请求数、输入/输出 token 数、平均延迟、错误数
+- **结构化详情视图**（点击任一请求行）：
+  - **Overview** — 元数据网格（session、model、duration、TTFT、token 用量）
+  - **Request** — 结构化 Anthropic Messages API 视图（System / Tools / 对话线程），支持 Markdown 渲染和代码高亮
+  - **Response** — assistant 回复内容块、tool_use/thinking 块、stop_reason
+  - **Structured ⇄ Raw** 一键切换结构化/原始 JSON 视图
+
+> 💡 Daemon 是完全可选的——不启动它，cc-switch 的其他功能完全不受影响。启动 daemon 后，cc-switch 的使用方式也完全不变（`use`、交互模式等照常工作），daemon 只是在后台透明地捕获流量。
 
 ## StatusLine 集成
 
