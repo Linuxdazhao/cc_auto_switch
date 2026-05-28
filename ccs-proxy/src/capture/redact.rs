@@ -1,8 +1,5 @@
 //! Default redaction of secret-bearing headers and JSON body keys.
 
-// Wired in by Task 5; suppress dead-code warnings while only the redactors exist.
-#![allow(dead_code)]
-
 use serde_json::Value;
 use std::collections::BTreeMap;
 
