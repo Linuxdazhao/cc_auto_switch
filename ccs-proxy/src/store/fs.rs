@@ -90,6 +90,10 @@ impl FsStore {
 
 #[async_trait]
 impl Store for FsStore {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn init_session(&self, meta: SessionMeta) -> Result<(), StoreError> {
         let dir = self.session_dir(&meta.session_id);
         fs::create_dir_all(&dir).await?;

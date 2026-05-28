@@ -47,6 +47,7 @@ pub enum StoreError {
 
 #[async_trait]
 pub trait Store: Send + Sync + 'static {
+    fn as_any(&self) -> &dyn std::any::Any;
     async fn init_session(&self, meta: SessionMeta) -> Result<(), StoreError>;
     async fn finalize_session(&self, session_id: &str) -> Result<(), StoreError>;
     async fn append(&self, rec: CaptureRecord) -> Result<(), StoreError>;
