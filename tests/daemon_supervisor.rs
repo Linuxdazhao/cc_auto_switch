@@ -90,16 +90,17 @@ mod daemon_supervisor {
         let state_path = dir.path().join("daemon-state.json");
 
         let mut state = DaemonState {
-            schema_version: 1,
+            schema_version: 2,
             pid: 42,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,
             data_root: PathBuf::from("/tmp"),
+            agg_port: None,
             proxies: vec![ProxyEntry {
                 provider: "claude".to_owned(),
                 upstream: "https://api.anthropic.com".to_owned(),
                 proxy_port: 41001,
-                api_port: 41501,
+                api_port: Some(41501),
                 data_dir: PathBuf::from("/tmp/data"),
                 started_at: "2026-05-28T00:00:00Z".to_owned(),
                 restart_count: 0,
@@ -124,17 +125,18 @@ mod daemon_supervisor {
         let state_path = dir.path().join("daemon-state.json");
 
         let mut state = DaemonState {
-            schema_version: 1,
+            schema_version: 2,
             pid: 42,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,
             data_root: PathBuf::from("/tmp"),
+            agg_port: None,
             proxies: vec![
                 ProxyEntry {
                     provider: "claude".to_owned(),
                     upstream: "https://a.example".to_owned(),
                     proxy_port: 8001,
-                    api_port: 9001,
+                    api_port: Some(9001),
                     data_dir: PathBuf::from("/tmp/a"),
                     started_at: "2026-05-28T00:00:00Z".to_owned(),
                     restart_count: 0,
@@ -143,7 +145,7 @@ mod daemon_supervisor {
                     provider: "claude".to_owned(),
                     upstream: "https://b.example".to_owned(),
                     proxy_port: 8002,
-                    api_port: 9002,
+                    api_port: Some(9002),
                     data_dir: PathBuf::from("/tmp/b"),
                     started_at: "2026-05-28T00:00:00Z".to_owned(),
                     restart_count: 0,

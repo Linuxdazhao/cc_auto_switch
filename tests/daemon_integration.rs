@@ -13,11 +13,12 @@ mod daemon_integration {
 
     fn sample_state(pid: u32, proxies: Vec<ProxyEntry>) -> DaemonState {
         DaemonState {
-            schema_version: 1,
+            schema_version: 2,
             pid,
             started_at: "2026-05-28T19:30:00Z".to_owned(),
             stopped_at: None,
             data_root: PathBuf::from("/tmp/ccs-test"),
+            agg_port: None,
             proxies,
         }
     }
@@ -27,7 +28,7 @@ mod daemon_integration {
             provider: "claude".to_owned(),
             upstream: upstream.to_owned(),
             proxy_port,
-            api_port,
+            api_port: Some(api_port),
             data_dir: PathBuf::from("/tmp/ccs-test/abcd1234"),
             started_at: "2026-05-28T19:30:00Z".to_owned(),
             restart_count: 0,

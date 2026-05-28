@@ -9,7 +9,8 @@ pub struct ProxyEntry {
     pub provider: String,
     pub upstream: String,
     pub proxy_port: u16,
-    pub api_port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_port: Option<u16>,
     pub data_dir: PathBuf,
     pub started_at: String,
     pub restart_count: u32,
@@ -22,6 +23,8 @@ pub struct DaemonState {
     pub started_at: String,
     pub stopped_at: Option<String>,
     pub data_root: PathBuf,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agg_port: Option<u16>,
     pub proxies: Vec<ProxyEntry>,
 }
 
@@ -109,7 +112,7 @@ mod tests {
             provider: provider.to_owned(),
             upstream: upstream.to_owned(),
             proxy_port,
-            api_port: 9000,
+            api_port: Some(9000),
             data_dir: PathBuf::from("/tmp/ccs"),
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             restart_count: 0,
@@ -118,11 +121,12 @@ mod tests {
 
     fn sample_state(proxies: Vec<ProxyEntry>) -> DaemonState {
         DaemonState {
-            schema_version: 1,
+            schema_version: 2,
             pid: 4242,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,
             data_root: PathBuf::from("/tmp/ccs"),
+            agg_port: None,
             proxies,
         }
     }

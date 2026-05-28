@@ -119,7 +119,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
                     provider: "claude".to_string(),
                     upstream: upstream_url.clone(),
                     proxy_port: handle.proxy_port,
-                    api_port: handle.api_port.unwrap_or(0),
+                    api_port: handle.api_port,
                     data_dir,
                     started_at: chrono::Utc::now().to_rfc3339(),
                     restart_count: 0,
@@ -133,11 +133,12 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
     }
 
     let state = DaemonState {
-        schema_version: 1,
+        schema_version: 2,
         pid: std::process::id(),
         started_at: chrono::Utc::now().to_rfc3339(),
         stopped_at: None,
         data_root: cfg.data_root.clone(),
+        agg_port: None,
         proxies: proxy_entries.clone(),
     };
     state
@@ -177,11 +178,12 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
 
     // Write final state with stopped_at.
     let final_state = DaemonState {
-        schema_version: 1,
+        schema_version: 2,
         pid: std::process::id(),
         started_at: state.started_at,
         stopped_at: Some(chrono::Utc::now().to_rfc3339()),
         data_root: cfg.data_root,
+        agg_port: None,
         proxies: proxy_entries,
     };
     let _ = final_state.save(&cfg.state_path);
@@ -221,13 +223,13 @@ async fn supervisor_loop(
                 match ccs_proxy::serve(serve_cfg).await {
                     Ok(new_handle) => {
                         entries[i].proxy_port = new_handle.proxy_port;
-                        entries[i].api_port = new_handle.api_port.unwrap_or(0);
+                        entries[i].api_port = new_handle.api_port;
                         entries[i].restart_count += 1;
                         entries[i].started_at = chrono::Utc::now().to_rfc3339();
                         handles[i] = new_handle;
 
                         let state = DaemonState {
-                            schema_version: 1,
+                            schema_version: 2,
                             pid: std::process::id(),
                             started_at: entries.first().map_or_else(
                                 || chrono::Utc::now().to_rfc3339(),
@@ -235,6 +237,7 @@ async fn supervisor_loop(
                             ),
                             stopped_at: None,
                             data_root: cfg.data_root.clone(),
+                            agg_port: None,
                             proxies: entries.to_vec(),
                         };
                         let _ = state.save(&cfg.state_path);

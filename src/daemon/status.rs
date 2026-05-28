@@ -45,8 +45,15 @@ pub fn collect_status(state: &DaemonState) -> Vec<ProxyStatus> {
         .collect()
 }
 
-fn probe_health(api_port: u16) -> HealthProbe {
-    let url = format!("http://127.0.0.1:{api_port}/api/health");
+fn probe_health(api_port: Option<u16>) -> HealthProbe {
+    let Some(port) = api_port else {
+        return HealthProbe {
+            reachable: false,
+            request_count: None,
+            store_degraded: false,
+        };
+    };
+    let url = format!("http://127.0.0.1:{port}/api/health");
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_millis(500))
         .build();
@@ -132,12 +139,13 @@ pub fn format_status_text(
             None if !status.reachable => "(unreachable)".to_string(),
             None => "       ?".to_string(),
         };
+        let dashboard_str = match status.entry.api_port {
+            Some(port) => format!(":{port}"),
+            None => "—".to_string(),
+        };
         out.push_str(&format!(
             "  {:<35}  {:>10}  {:>9}  {}\n",
-            upstream_display,
-            status.entry.proxy_port,
-            format!(":{}", status.entry.api_port),
-            req_str,
+            upstream_display, status.entry.proxy_port, dashboard_str, req_str,
         ));
     }
 
