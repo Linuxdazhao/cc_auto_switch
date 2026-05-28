@@ -11,6 +11,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/sessions", get(list_sessions))
         .route("/api/sessions/{sid}", get(get_session))
         .route("/api/requests/{sid}/{seq}", get(get_request))
+        .route("/api/stream", get(crate::api::stream::stream))
 }
 
 async fn health(State(state): State<AppState>) -> Json<Value> {

@@ -1,4 +1,5 @@
 pub mod routes;
+pub mod stream;
 
 use crate::AppState;
 use axum::Router;
