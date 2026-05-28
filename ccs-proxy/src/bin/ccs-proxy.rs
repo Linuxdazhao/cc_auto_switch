@@ -95,7 +95,9 @@ async fn run_serve(args: ServeArgs) -> Result<()> {
     }
 
     let handle = ccs_proxy::serve(cfg).await?;
-    let api_port = handle.api_port.expect("api_server=true guarantees api_port");
+    let api_port = handle
+        .api_port
+        .expect("api_server=true guarantees api_port");
     let dashboard_url = format!("http://127.0.0.1:{api_port}/");
     println!("ccs-proxy -> {}", handle.upstream);
     println!("  proxy:     http://127.0.0.1:{}", handle.proxy_port);
