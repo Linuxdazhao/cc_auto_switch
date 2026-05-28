@@ -2,6 +2,7 @@
 //!
 //! See docs/superpowers/specs/2026-05-28-cc-switch-daemon-design.md for design.
 
+pub mod aggregate;
 pub mod commands;
 pub mod lifecycle;
 pub mod logging;
