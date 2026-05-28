@@ -17,7 +17,11 @@ impl FsStore {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700));
+            if let Err(e) =
+                std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))
+            {
+                tracing::warn!(?root, ?e, "failed to set root data dir permissions to 0700");
+            }
         }
         Ok(Self {
             root,
@@ -93,6 +97,11 @@ impl Store for FsStore {
     async fn init_session(&self, meta: SessionMeta) -> Result<(), StoreError> {
         let dir = self.session_dir(&meta.session_id);
         fs::create_dir_all(&dir).await?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).await;
+        }
         let bytes = serde_json::to_vec_pretty(&meta)?;
         match self
             .atomic_write(&self.meta_path(&meta.session_id), &bytes)
@@ -124,6 +133,11 @@ impl Store for FsStore {
     async fn append(&self, rec: CaptureRecord) -> Result<(), StoreError> {
         let dir = self.session_dir(&rec.session_id);
         fs::create_dir_all(&dir).await?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).await;
+        }
         let path = self.record_path(&rec.session_id, rec.seq);
         let bytes = serde_json::to_vec_pretty(&rec)?;
         match self.atomic_write(&path, &bytes).await {
