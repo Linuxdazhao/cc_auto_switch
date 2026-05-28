@@ -109,12 +109,18 @@ pub fn format_status_text(
         )
     ));
     out.push_str(&format!(
-        "  pidfile: {}\n\n",
+        "  pidfile: {}\n",
         state.data_root.parent().map_or_else(
             || "~/.cc-switch/daemon.pid".to_string(),
             |p| p.join("daemon.pid").display().to_string(),
         )
     ));
+    if let Some(agg_port) = state.agg_port {
+        out.push_str(&format!(
+            "  dashboard: http://127.0.0.1:{agg_port}\n"
+        ));
+    }
+    out.push('\n');
 
     if statuses.is_empty() {
         out.push_str("No proxies running.\n");
@@ -191,6 +197,7 @@ pub fn format_status_json(state: &DaemonState, statuses: &[ProxyStatus]) -> serd
         "pid": state.pid,
         "started_at": state.started_at,
         "data_root": state.data_root.display().to_string(),
+        "agg_port": state.agg_port,
         "proxies": proxies,
     })
 }

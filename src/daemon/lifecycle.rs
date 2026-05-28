@@ -1,11 +1,15 @@
 //! Daemon main loop: spawn proxies, write state, supervise, shutdown.
 
 use crate::config::ConfigStorage;
+use crate::daemon::aggregate;
+use crate::daemon::aggregate::state::AliasMap;
 use crate::daemon::pidfile::Pidfile;
 use crate::daemon::state::{DaemonState, ProxyEntry};
 use anyhow::{Context, Result};
+use ccs_proxy::store::FsStore;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 use url::Url;
 
 pub type Upstream = (String, String);
@@ -107,11 +111,12 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         let hash = upstream_hash(upstream_url);
         let data_dir = cfg.data_root.join(&hash);
 
-        let serve_cfg = ccs_proxy::ServeConfig::new(
+        let mut serve_cfg = ccs_proxy::ServeConfig::new(
             ccs_proxy::ProviderKind::Claude,
             parsed_url,
             data_dir.clone(),
         );
+        serve_cfg.api_server = false;
 
         match ccs_proxy::serve(serve_cfg).await {
             Ok(handle) => {
@@ -132,13 +137,47 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         }
     }
 
+    // Build AliasMap from current storage
+    let storage = ConfigStorage::load().unwrap_or_default();
+    let alias_map = Arc::new(AliasMap::from_storage(&storage));
+
+    // Collect stores and event senders for aggregate
+    let agg_stores: Vec<_> = proxy_entries
+        .iter()
+        .map(|entry| {
+            let store = Arc::new(
+                FsStore::open(entry.data_dir.clone())
+                    .expect("store open should succeed — dir already created by proxy"),
+            );
+            (entry.upstream.clone(), store)
+        })
+        .collect();
+
+    let agg_events: Vec<_> = handles
+        .iter()
+        .zip(proxy_entries.iter())
+        .map(|(handle, entry)| (entry.upstream.clone(), handle.event_sender().clone()))
+        .collect();
+
+    // Start aggregate server
+    let agg_port = match aggregate::serve(agg_stores, agg_events, alias_map, 0).await {
+        Ok(agg_handle) => {
+            tracing::info!(port = agg_handle.port, "aggregate dashboard available");
+            Some(agg_handle.port)
+        }
+        Err(err) => {
+            tracing::warn!(error = %err, "failed to start aggregate server — proxies still work");
+            None
+        }
+    };
+
     let state = DaemonState {
         schema_version: 2,
         pid: std::process::id(),
         started_at: chrono::Utc::now().to_rfc3339(),
         stopped_at: None,
         data_root: cfg.data_root.clone(),
-        agg_port: None,
+        agg_port,
         proxies: proxy_entries.clone(),
     };
     state
