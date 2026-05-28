@@ -1,6 +1,6 @@
 use crate::config::ConfigStorage;
 use crate::daemon::lifecycle::LifecycleConfig;
-use crate::daemon::pidfile::{Pidfile, process_alive};
+use crate::daemon::pidfile::{Pidfile, process_alive, process_name};
 use crate::daemon::state::DaemonState;
 use anyhow::{Context, Result};
 
@@ -34,14 +34,31 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 fn handle_start(foreground: bool, storage: &ConfigStorage) -> Result<()> {
     let cfg = LifecycleConfig::from_storage(storage)?;
 
-    // Preflight: check for existing pidfile.
+    // Preflight: check for existing pidfile (spec §8 invariant table).
     let pidfile = Pidfile::new(cfg.pidfile_path.clone());
     if let Some(pid) = pidfile.read()? {
         if process_alive(pid)? {
-            anyhow::bail!("daemon already running (PID {pid}). Use `cc-switch daemon stop` first.");
+            // PID is alive — check if it's our daemon or a recycled PID.
+            let is_ours = match process_name(pid) {
+                Some(name) => name.contains("cc-switch") || name.contains("cc_switch"),
+                // Can't determine (e.g. permission denied) — treat as stale to
+                // avoid blocking the user on PID reuse after reinstalls.
+                None => false,
+            };
+            if is_ours {
+                anyhow::bail!(
+                    "daemon already running (PID {pid}). Use `cc-switch daemon stop` first."
+                );
+            }
+            // PID alive but belongs to a different process.
+            eprintln!(
+                "warning: pidfile references PID {pid} which is alive but not cc-switch — removing stale pidfile"
+            );
+            pidfile.release()?;
+        } else {
+            eprintln!("warning: stale pidfile for dead PID {pid} — removing");
+            pidfile.release()?;
         }
-        eprintln!("warning: stale pidfile for dead PID {pid} — removing");
-        pidfile.release()?;
     }
 
     if !foreground {
