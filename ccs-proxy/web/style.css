@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: ui-monospace, Menlo, monospace; background: #fafafa; color: #222; }
+header { padding: 8px 16px; background: #111; color: #f0f0f0; display: flex; gap: 16px; align-items: center; }
+header .brand { font-weight: bold; }
+main { display: flex; height: calc(100vh - 40px); }
+#list-pane { width: 360px; border-right: 1px solid #ddd; overflow-y: auto; padding: 8px; }
+#list-pane h2 { font-size: 12px; text-transform: uppercase; color: #666; margin: 8px 4px; }
+#requests { list-style: none; padding: 0; margin: 0; }
+#requests li {
+  padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px;
+}
+#requests li:hover { background: #f0f0f0; }
+#requests li.selected { background: #e0eaff; }
+#requests li.error { background: #ffe5e5; }
+#requests .row1 { display: flex; justify-content: space-between; }
+#requests .status { font-weight: bold; }
+#requests .request-id { color: #888; font-size: 11px; word-break: break-all; }
+#detail-pane { flex: 1; overflow-y: auto; padding: 16px; }
+#detail-empty { color: #888; margin-top: 32px; text-align: center; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid #ddd; margin-bottom: 12px; }
+.tabs button { background: none; border: none; padding: 8px 12px; cursor: pointer; font-family: inherit; font-size: 12px; }
+.tabs button.active { border-bottom: 2px solid #06f; color: #06f; }
+.tab pre { background: #fff; border: 1px solid #ddd; padding: 12px; overflow-x: auto; white-space: pre-wrap; font-size: 12px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 13px; margin-bottom: 12px; }
+.kv dt { color: #666; }
+button.copy { font-size: 11px; padding: 2px 8px; cursor: pointer; }

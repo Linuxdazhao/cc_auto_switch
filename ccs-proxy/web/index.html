@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ccs-proxy dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <span class="brand">ccs-proxy</span>
+    <span id="meta"></span>
+  </header>
+  <main>
+    <aside id="list-pane">
+      <h2>Requests</h2>
+      <ol id="requests"></ol>
+    </aside>
+    <section id="detail-pane">
+      <div id="detail-empty">Select a request to inspect.</div>
+      <div id="detail" hidden>
+        <nav class="tabs">
+          <button data-tab="overview" class="active">Overview</button>
+          <button data-tab="request">Request</button>
+          <button data-tab="response">Response</button>
+          <button data-tab="headers">Raw Headers</button>
+          <button data-tab="usage">Usage</button>
+        </nav>
+        <div id="tab-overview" class="tab"></div>
+        <div id="tab-request" class="tab" hidden></div>
+        <div id="tab-response" class="tab" hidden></div>
+        <div id="tab-headers" class="tab" hidden></div>
+        <div id="tab-usage" class="tab" hidden></div>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
