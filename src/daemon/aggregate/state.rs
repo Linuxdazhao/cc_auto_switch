@@ -1,5 +1,9 @@
 use crate::config::types::ConfigStorage;
+use crate::daemon::aggregate::stream::TaggedCaptureEvent;
+use ccs_proxy::store::FsStore;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::broadcast;
 
 pub struct AliasMap {
     map: HashMap<String, Vec<String>>,
@@ -27,6 +31,13 @@ impl AliasMap {
     pub fn aliases_for(&self, upstream: &str) -> Vec<String> {
         self.map.get(upstream).cloned().unwrap_or_default()
     }
+}
+
+pub struct AggregateState {
+    pub stores: Vec<(String, Arc<FsStore>)>,
+    pub merged_events: broadcast::Sender<TaggedCaptureEvent>,
+    pub alias_map: Arc<AliasMap>,
+    pub started_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[cfg(test)]
