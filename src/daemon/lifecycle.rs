@@ -159,17 +159,18 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         .map(|(handle, entry)| (entry.upstream.clone(), handle.event_sender().clone()))
         .collect();
 
-    // Start aggregate server
-    let agg_port = match aggregate::serve(agg_stores, agg_events, alias_map, 0).await {
-        Ok(agg_handle) => {
-            tracing::info!(port = agg_handle.port, "aggregate dashboard available");
-            Some(agg_handle.port)
+    // Start aggregate server (hold handle alive for daemon lifetime)
+    let agg_handle = match aggregate::serve(agg_stores, agg_events, alias_map, 0).await {
+        Ok(handle) => {
+            tracing::info!(port = handle.port, "aggregate dashboard available");
+            Some(handle)
         }
         Err(err) => {
             tracing::warn!(error = %err, "failed to start aggregate server — proxies still work");
             None
         }
     };
+    let agg_port = agg_handle.as_ref().map(|h| h.port);
 
     let state = DaemonState {
         schema_version: 2,
@@ -210,7 +211,10 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
         }
     }
 
-    // Graceful shutdown: drop handles (triggers axum shutdown).
+    // Graceful shutdown: stop aggregate and proxy servers.
+    if let Some(agg) = agg_handle {
+        agg.shutdown().await;
+    }
     for handle in handles {
         handle.shutdown().await;
     }
