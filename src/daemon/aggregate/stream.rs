@@ -6,6 +6,8 @@ use tokio::sync::broadcast;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
+pub type ProxyEventReceiver = (String, broadcast::Receiver<CaptureEvent>);
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TaggedCaptureEvent {
     pub upstream: String,
@@ -15,7 +17,7 @@ pub struct TaggedCaptureEvent {
 }
 
 pub async fn event_merger(
-    proxy_events: Vec<(String, broadcast::Receiver<CaptureEvent>)>,
+    proxy_events: Vec<ProxyEventReceiver>,
     alias_map: Arc<AliasMap>,
     merged_tx: broadcast::Sender<TaggedCaptureEvent>,
 ) {

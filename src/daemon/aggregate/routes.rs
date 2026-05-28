@@ -132,6 +132,7 @@ async fn get_session(
     (axum::http::StatusCode::NOT_FOUND, "session not found").into_response()
 }
 
+#[allow(clippy::type_complexity)]
 async fn get_request(
     State(state): State<SharedState>,
     Path((sid, seq)): Path<(String, u64)>,
@@ -179,10 +180,8 @@ async fn stats(State(state): State<SharedState>, Query(params): Query<StatsQuery
         for session in &sessions {
             let requests = store.list_requests(&session.session_id).await.unwrap_or_default();
             for req in &requests {
-                if let Some(since_dt) = since {
-                    if req.started_at < since_dt {
-                        continue;
-                    }
+                if since.is_some_and(|since_dt| req.started_at < since_dt) {
+                    continue;
                 }
                 total_req += 1;
                 if let Some(inp) = req.input_tokens {
@@ -201,11 +200,7 @@ async fn stats(State(state): State<SharedState>, Query(params): Query<StatsQuery
             }
         }
 
-        let avg_duration = if duration_count > 0 {
-            duration_sum / duration_count
-        } else {
-            0
-        };
+        let avg_duration = duration_sum.checked_div(duration_count).unwrap_or(0);
         let error_rate = if total_req > 0 {
             error_count as f64 / total_req as f64
         } else {
@@ -232,11 +227,7 @@ async fn stats(State(state): State<SharedState>, Query(params): Query<StatsQuery
         }));
     }
 
-    let totals_avg_duration = if totals_duration_count > 0 {
-        totals_duration / totals_duration_count
-    } else {
-        0
-    };
+    let totals_avg_duration = totals_duration.checked_div(totals_duration_count).unwrap_or(0);
 
     Json(json!({
         "upstreams": upstreams_stats,

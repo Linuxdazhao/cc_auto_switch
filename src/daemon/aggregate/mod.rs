@@ -3,13 +3,14 @@ pub mod state;
 pub mod stream;
 
 use ccs_proxy::CaptureEvent;
-use ccs_proxy::store::FsStore;
-use state::{AggregateState, AliasMap};
+use state::{AggregateState, AliasMap, StoreEntry};
 use std::sync::Arc;
 use stream::TaggedCaptureEvent;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
+
+pub type EventSenderEntry = (String, broadcast::Sender<CaptureEvent>);
 
 pub struct AggregateHandle {
     pub port: u16,
@@ -37,8 +38,8 @@ impl Drop for AggregateHandle {
 }
 
 pub async fn serve(
-    stores: Vec<(String, Arc<FsStore>)>,
-    proxy_events: Vec<(String, broadcast::Sender<CaptureEvent>)>,
+    stores: Vec<StoreEntry>,
+    proxy_events: Vec<EventSenderEntry>,
     alias_map: Arc<AliasMap>,
     port: u16,
 ) -> anyhow::Result<AggregateHandle> {

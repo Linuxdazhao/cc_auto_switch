@@ -1,17 +1,20 @@
 use crate::config::types::ConfigStorage;
 use crate::daemon::aggregate::stream::TaggedCaptureEvent;
 use ccs_proxy::store::FsStore;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
+pub type StoreEntry = (String, Arc<FsStore>);
+pub type AliasEntry = (String, Vec<String>);
+
 pub struct AliasMap {
-    map: HashMap<String, Vec<String>>,
+    map: BTreeMap<String, Vec<String>>,
 }
 
 impl AliasMap {
     pub fn from_storage(storage: &ConfigStorage) -> Self {
-        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+        let mut map: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for config in storage.configurations.values() {
             if !config.url.is_empty() {
                 map.entry(config.url.clone())
@@ -22,7 +25,7 @@ impl AliasMap {
         Self { map }
     }
 
-    pub fn from_entries(entries: Vec<(String, Vec<String>)>) -> Self {
+    pub fn from_entries(entries: Vec<AliasEntry>) -> Self {
         Self {
             map: entries.into_iter().collect(),
         }
@@ -34,7 +37,7 @@ impl AliasMap {
 }
 
 pub struct AggregateState {
-    pub stores: Vec<(String, Arc<FsStore>)>,
+    pub stores: Vec<StoreEntry>,
     pub merged_events: broadcast::Sender<TaggedCaptureEvent>,
     pub alias_map: Arc<AliasMap>,
     pub started_at: chrono::DateTime<chrono::Utc>,

@@ -211,6 +211,7 @@ name = "cc-switch"
 version = "0.1.31"
 dependencies = [
  "anyhow",
+ "axum",
  "base64",
  "ccs-proxy",
  "chrono",
@@ -219,12 +220,15 @@ dependencies = [
  "colored",
  "crossterm",
  "dirs",
+ "futures",
  "libc",
  "reqwest",
+ "rust-embed",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
