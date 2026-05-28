@@ -13,6 +13,7 @@ path = "src/bin/ccs-proxy.rs"
 
 [dependencies]
 anyhow = "1"
+async-trait = "0.1"
 axum = { version = "0.8", features = ["macros"] }
 bytes = "1"
 chrono = { version = "0.4", features = ["serde"] }

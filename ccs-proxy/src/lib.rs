@@ -7,6 +7,7 @@ mod error;
 mod handle;
 pub mod provider;
 mod session;
+pub mod store;
 
 pub use config::ServeConfig;
 pub use error::ServeError;
