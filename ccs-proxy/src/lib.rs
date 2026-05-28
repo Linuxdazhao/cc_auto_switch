@@ -54,18 +54,24 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
     let proxy_listener = TcpListener::bind(("127.0.0.1", cfg.proxy_port))
         .await
         .map_err(ServeError::BindProxy)?;
-    let api_listener = TcpListener::bind(("127.0.0.1", cfg.api_port))
-        .await
-        .map_err(ServeError::BindApi)?;
     let proxy_addr = proxy_listener.local_addr().map_err(ServeError::BindProxy)?;
-    let api_addr = api_listener.local_addr().map_err(ServeError::BindApi)?;
+
+    let (api_listener, api_addr) = if cfg.api_server {
+        let listener = TcpListener::bind(("127.0.0.1", cfg.api_port))
+            .await
+            .map_err(ServeError::BindApi)?;
+        let addr = listener.local_addr().map_err(ServeError::BindApi)?;
+        (Some(listener), Some(addr))
+    } else {
+        (None, None)
+    };
 
     let meta = store::SessionMeta {
         session_id: session_id.to_string(),
         provider: cfg.provider.as_str().into(),
         upstream: cfg.upstream.to_string(),
         proxy_port: proxy_addr.port(),
-        api_port: api_addr.port(),
+        api_port: api_addr.map_or(0, |a| a.port()),
         started_at: chrono::Utc::now(),
         ended_at: None,
         request_count: 0,
@@ -84,14 +90,13 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
     );
 
     let proxy_app = proxy::build_proxy_app(state.clone());
-    let api_app = api::build_api_app(state);
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let join = spawn_servers(
         proxy_listener,
         api_listener,
         proxy_app,
-        api_app,
+        state,
         shutdown_rx,
         store,
         session_id,
@@ -101,7 +106,7 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
         provider: cfg.provider,
         upstream: cfg.upstream,
         proxy_port: proxy_addr.port(),
-        api_port: api_addr.port(),
+        api_port: api_addr.map(|a| a.port()),
         shutdown_tx: Some(shutdown_tx),
         join: Some(join),
     })
@@ -109,29 +114,43 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
 
 fn spawn_servers(
     proxy_listener: TcpListener,
-    api_listener: TcpListener,
+    api_listener: Option<TcpListener>,
     proxy_app: axum::Router,
-    api_app: axum::Router,
+    state: AppState,
     shutdown_rx: oneshot::Receiver<()>,
     store: Arc<dyn Store>,
     session_id: SessionId,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let proxy_fut = axum::serve(proxy_listener, proxy_app);
-        let api_fut = axum::serve(api_listener, api_app);
-        tokio::select! {
-            res = proxy_fut => {
-                if let Err(err) = res {
-                    tracing::warn!(error = %err, "proxy server exited");
+
+        if let Some(api_listener) = api_listener {
+            let api_app = api::build_api_app(state);
+            let api_fut = axum::serve(api_listener, api_app);
+            tokio::select! {
+                res = proxy_fut => {
+                    if let Err(err) = res {
+                        tracing::warn!(error = %err, "proxy server exited");
+                    }
                 }
-            }
-            res = api_fut => {
-                if let Err(err) = res {
-                    tracing::warn!(error = %err, "api server exited");
+                res = api_fut => {
+                    if let Err(err) = res {
+                        tracing::warn!(error = %err, "api server exited");
+                    }
                 }
+                _ = shutdown_rx => {}
             }
-            _ = shutdown_rx => {}
+        } else {
+            tokio::select! {
+                res = proxy_fut => {
+                    if let Err(err) = res {
+                        tracing::warn!(error = %err, "proxy server exited");
+                    }
+                }
+                _ = shutdown_rx => {}
+            }
         }
+
         if let Err(err) = store.finalize_session(session_id.as_str()).await {
             tracing::warn!(error = %err, "failed to finalize session");
         }

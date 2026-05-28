@@ -11,6 +11,7 @@ pub struct ServeConfig {
     pub data_dir: PathBuf,
     pub redact: bool,
     pub cors_allow: Option<String>,
+    pub api_server: bool,
 }
 
 impl ServeConfig {
@@ -23,6 +24,7 @@ impl ServeConfig {
             data_dir,
             redact: true,
             cors_allow: None,
+            api_server: true,
         }
     }
 }

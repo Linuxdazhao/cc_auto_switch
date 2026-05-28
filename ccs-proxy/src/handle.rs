@@ -7,7 +7,7 @@ pub struct ProxyHandle {
     pub provider: ProviderKind,
     pub upstream: Url,
     pub proxy_port: u16,
-    pub api_port: u16,
+    pub api_port: Option<u16>,
     pub(crate) shutdown_tx: Option<oneshot::Sender<()>>,
     pub(crate) join: Option<JoinHandle<()>>,
 }

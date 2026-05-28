@@ -119,7 +119,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
                     provider: "claude".to_string(),
                     upstream: upstream_url.clone(),
                     proxy_port: handle.proxy_port,
-                    api_port: handle.api_port,
+                    api_port: handle.api_port.unwrap_or(0),
                     data_dir,
                     started_at: chrono::Utc::now().to_rfc3339(),
                     restart_count: 0,
@@ -221,7 +221,7 @@ async fn supervisor_loop(
                 match ccs_proxy::serve(serve_cfg).await {
                     Ok(new_handle) => {
                         entries[i].proxy_port = new_handle.proxy_port;
-                        entries[i].api_port = new_handle.api_port;
+                        entries[i].api_port = new_handle.api_port.unwrap_or(0);
                         entries[i].restart_count += 1;
                         entries[i].started_at = chrono::Utc::now().to_rfc3339();
                         handles[i] = new_handle;

@@ -47,7 +47,7 @@ async fn serve_binds_and_proxies() {
     assert!(body.contains("Hello"), "expected SSE body, got: {body}");
 
     let health: serde_json::Value =
-        reqwest::get(format!("http://127.0.0.1:{}/api/health", handle.api_port))
+        reqwest::get(format!("http://127.0.0.1:{}/api/health", handle.api_port.unwrap()))
             .await
             .unwrap()
             .json()
