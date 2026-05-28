@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.1.32"
+version = "0.1.33"
 edition = "2024"
 description = "A CLI tool for managing multiple Claude and Codex API configurations and automatically switching between them"
 license = "MIT"
@@ -26,7 +26,7 @@ colored = "3.0"
 crossterm = "0.29.0"
 which = "7"
 base64 = "0.22.1"
-ccs-proxy = { path = "ccs-proxy" }
+ccs-proxy = { path = "ccs-proxy", version = "0.1.0" }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
 chrono = { version = "0.4", features = ["serde"] }

@@ -4,14 +4,16 @@
 
 pub mod aggregate;
 pub mod commands;
-pub mod lifecycle;
-pub mod logging;
 pub mod pidfile;
 pub mod state;
 pub mod status;
 
 #[cfg(unix)]
 pub mod fork;
+#[cfg(unix)]
+pub mod lifecycle;
+#[cfg(unix)]
+pub mod logging;
 
 pub use commands::{DaemonAction, handle_daemon_command};
 

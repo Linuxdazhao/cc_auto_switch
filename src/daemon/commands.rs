@@ -1,8 +1,14 @@
 use crate::config::ConfigStorage;
+use anyhow::Result;
+
+#[cfg(unix)]
 use crate::daemon::lifecycle::LifecycleConfig;
+#[cfg(unix)]
 use crate::daemon::pidfile::{Pidfile, process_alive, process_name};
+#[cfg(unix)]
 use crate::daemon::state::DaemonState;
-use anyhow::{Context, Result};
+#[cfg(unix)]
+use anyhow::Context;
 
 pub enum DaemonAction {
     Start {
