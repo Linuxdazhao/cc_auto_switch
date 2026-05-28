@@ -374,6 +374,66 @@ init();
     template: `<pre class="json-block" v-highlight><code class="language-json">{{ text }}</code></pre>`,
   };
 
+  // ===== ContentBlock =====
+  const ContentBlock = {
+    name: 'ContentBlock',
+    props: { block: { required: true } },
+    setup() { return { store: detailStore }; },
+    template: `
+      <div class="block" :class="blockClass">
+        <!-- text -->
+        <Markdown v-if="block.type === 'text'" :text="block.text || ''" />
+
+        <!-- tool_use -->
+        <details v-else-if="block.type === 'tool_use'" class="block tool-use" open>
+          <summary>
+            <span class="tool-name">{{ block.name }}</span>
+            <span v-if="block.id" style="color: var(--muted); font-weight: normal;"> · {{ block.id }}</span>
+          </summary>
+          <div class="body">
+            <JsonBlock :value="block.input ?? {}" />
+          </div>
+        </details>
+
+        <!-- tool_result -->
+        <details v-else-if="block.type === 'tool_result'" class="block tool-result" open>
+          <summary>
+            tool_result
+            <span v-if="block.tool_use_id" class="tool-ref"> · {{ block.tool_use_id }}</span>
+            <span v-if="block.is_error" style="color: var(--error); font-weight: normal;"> · error</span>
+          </summary>
+          <div class="body">
+            <template v-if="typeof block.content === 'string'">
+              <Markdown :text="block.content" />
+            </template>
+            <template v-else-if="Array.isArray(block.content)">
+              <ContentBlock v-for="(child, i) in block.content" :key="i" :block="child" />
+            </template>
+            <JsonBlock v-else :value="block.content ?? null" />
+          </div>
+        </details>
+
+        <!-- thinking -->
+        <div v-else-if="block.type === 'thinking'" class="block thinking">
+          <Markdown :text="block.thinking || ''" />
+        </div>
+
+        <!-- image -->
+        <div v-else-if="block.type === 'image'" class="block image-placeholder">
+          [image: {{ block.source?.media_type || 'unknown' }}]
+        </div>
+
+        <!-- unknown -->
+        <JsonBlock v-else :value="block" />
+      </div>
+    `,
+    computed: {
+      blockClass() {
+        return this.block && this.block.type ? 'type-' + this.block.type : 'type-unknown';
+      },
+    },
+  };
+
   // ===== OverviewTab =====
   const OverviewTab = {
     props: { record: { required: true } },
@@ -470,6 +530,7 @@ init();
   const app = createApp(DetailPanel);
   app.component('Markdown', Markdown);
   app.component('JsonBlock', JsonBlock);
+  app.component('ContentBlock', ContentBlock);
   app.component('OverviewTab', OverviewTab);
   app.directive('highlight', highlightDirective);
   app.mount('#detail-mount');
