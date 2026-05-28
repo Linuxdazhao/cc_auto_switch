@@ -537,6 +537,84 @@ init();
     `,
   };
 
+  // ===== RequestTab =====
+  const RequestTab = {
+    props: { record: { required: true } },
+    setup() { return { store: detailStore }; },
+    computed: {
+      body() { return this.record?.request?.body ?? null; },
+      isAnthropicShape() {
+        return this.body && Array.isArray(this.body.messages);
+      },
+    },
+    template: `
+      <div v-if="store.viewMode === 'structured'">
+        <template v-if="isAnthropicShape">
+          <SystemSection :system="body.system" />
+          <ToolsSection :tools="body.tools || []" />
+          <div class="section-title">Messages ({{ body.messages.length }})</div>
+          <MessageThread :messages="body.messages" />
+        </template>
+        <template v-else>
+          <div class="status-line">Non-Anthropic shape — showing raw body.</div>
+          <JsonBlock :value="body" />
+        </template>
+      </div>
+      <JsonBlock v-else :value="body" />
+    `,
+  };
+
+  // ===== ResponseTab =====
+  const ResponseTab = {
+    props: { record: { required: true } },
+    setup() { return { store: detailStore }; },
+    computed: {
+      response() { return this.record?.response ?? null; },
+      reassembled() { return this.response?.body_reassembled ?? null; },
+      content() {
+        return Array.isArray(this.reassembled?.content) ? this.reassembled.content : null;
+      },
+      stopReason() { return this.reassembled?.stop_reason ?? null; },
+      respUsage() { return this.reassembled?.usage ?? null; },
+      rawSse() { return this.response?.raw_sse_text ?? null; },
+    },
+    template: `
+      <div v-if="!response" class="status-line">No response captured.</div>
+      <div v-else-if="store.viewMode === 'structured'">
+        <template v-if="content">
+          <div class="section-title">Content blocks ({{ content.length }})</div>
+          <div class="message role-assistant">
+            <span class="role-badge role-assistant">assistant</span>
+            <ContentBlock v-for="(block, i) in content" :key="i" :block="block" />
+          </div>
+          <dl class="meta" style="margin-top: 12px;">
+            <dt>Status</dt><dd>{{ response.status }}</dd>
+            <dt>Stop reason</dt><dd>{{ stopReason || '—' }}</dd>
+            <dt>SSE frames</dt><dd>{{ response.raw_sse_frames_count }}</dd>
+          </dl>
+          <div v-if="respUsage">
+            <div class="section-title">Response usage</div>
+            <JsonBlock :value="respUsage" />
+          </div>
+        </template>
+        <template v-else-if="reassembled">
+          <div class="status-line">Non-Anthropic response shape — showing raw body.</div>
+          <JsonBlock :value="reassembled" />
+        </template>
+        <template v-else-if="rawSse">
+          <div class="status-line">No reassembled body — showing raw SSE.</div>
+          <pre class="json-block">{{ rawSse }}</pre>
+        </template>
+        <div v-else class="status-line">Empty response body.</div>
+      </div>
+      <div v-else>
+        <JsonBlock v-if="reassembled" :value="reassembled" />
+        <pre v-else-if="rawSse" class="json-block">{{ rawSse }}</pre>
+        <div v-else class="status-line">Empty response body.</div>
+      </div>
+    `,
+  };
+
   // ===== DetailPanel =====
   const DetailPanel = {
     setup() {
@@ -584,8 +662,8 @@ init();
         <div v-else-if="store.error" class="status-line error">Failed to load: {{ store.error }}</div>
         <div v-else-if="store.record">
           <OverviewTab v-if="store.activeTab === 'overview'" :record="store.record" />
-          <div v-else-if="store.activeTab === 'request'" class="status-line">[request placeholder — Task 9]</div>
-          <div v-else-if="store.activeTab === 'response'" class="status-line">[response placeholder — Task 10]</div>
+          <RequestTab v-else-if="store.activeTab === 'request'" :record="store.record" />
+          <ResponseTab v-else-if="store.activeTab === 'response'" :record="store.record" />
         </div>
       </div>
     `,
@@ -600,6 +678,8 @@ init();
   app.component('SystemSection', SystemSection);
   app.component('ToolsSection', ToolsSection);
   app.component('OverviewTab', OverviewTab);
+  app.component('RequestTab', RequestTab);
+  app.component('ResponseTab', ResponseTab);
   app.directive('highlight', highlightDirective);
   app.mount('#detail-mount');
 
