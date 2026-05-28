@@ -330,6 +330,51 @@ init();
   });
   window.__detailStore = detailStore;
 
+  // ===== v-highlight directive =====
+  const highlightDirective = {
+    mounted(el) { highlightAll(el); },
+    updated(el) { highlightAll(el); },
+  };
+  function highlightAll(el) {
+    if (!window.hljs) return;
+    el.querySelectorAll('pre code').forEach((node) => {
+      if (node.dataset.highlighted === 'yes') return;
+      try { window.hljs.highlightElement(node); } catch (_) { /* ignore */ }
+    });
+  }
+
+  // ===== Markdown component =====
+  const Markdown = {
+    props: { text: { type: String, default: '' } },
+    directives: { highlight: highlightDirective },
+    computed: {
+      html() {
+        if (!window.marked || !window.DOMPurify) {
+          const div = document.createElement('div');
+          div.textContent = this.text || '';
+          return div.innerHTML;
+        }
+        const raw = window.marked.parse(this.text || '');
+        return window.DOMPurify.sanitize(raw);
+      },
+    },
+    template: `<div class="markdown" v-highlight v-html="html"></div>`,
+  };
+
+  // ===== JsonBlock component =====
+  const JsonBlock = {
+    props: { value: { required: true } },
+    directives: { highlight: highlightDirective },
+    computed: {
+      text() {
+        try { return JSON.stringify(this.value, null, 2); }
+        catch (_) { return String(this.value); }
+      },
+    },
+    template: `<pre class="json-block" v-highlight><code class="language-json">{{ text }}</code></pre>`,
+  };
+
+  // ===== DetailPanel =====
   const DetailPanel = {
     setup() {
       watch(() => detailStore.target, async (target) => {
@@ -383,7 +428,11 @@ init();
     `,
   };
 
-  createApp(DetailPanel).mount('#detail-mount');
+  const app = createApp(DetailPanel);
+  app.component('Markdown', Markdown);
+  app.component('JsonBlock', JsonBlock);
+  app.directive('highlight', highlightDirective);
+  app.mount('#detail-mount');
 
   watch(() => detailStore.visible, (v) => {
     const panel = document.getElementById('detail-panel');
