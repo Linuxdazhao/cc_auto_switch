@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+pub mod claude;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
@@ -29,6 +31,15 @@ impl ProviderKind {
         match self {
             Self::Claude => "claude",
             Self::Codex => "codex",
+        }
+    }
+
+    pub fn is_path_recognized(self, path: &str) -> bool {
+        match self {
+            Self::Claude => path.starts_with("/v1/messages"),
+            Self::Codex => {
+                path.starts_with("/v1/responses") || path.starts_with("/v1/chat/completions")
+            }
         }
     }
 }
