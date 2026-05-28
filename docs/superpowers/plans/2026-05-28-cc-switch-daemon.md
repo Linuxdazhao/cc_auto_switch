@@ -27,7 +27,7 @@ Tasks form a dependency chain. Run them strictly in order — each downstream ta
 
 ### Task 1 — Wire the `ccs-proxy` path dep into cc-switch
 
-**Goal**: Add `ccs-proxy = { path = "ccs-proxy" }` to cc-switch's `Cargo.toml` so the daemon code can call `ccs_proxy::serve()`. Also add the few runtime deps the daemon will need that cc-switch doesn't have yet: `tokio` (full features, matching ccs-proxy's pin), `ureq` for blocking status probes (keeps the `status` command free of an async runtime requirement), and `chrono` (matches ccs-proxy's timestamp format).
+**Goal**: Add `ccs-proxy = { path = "ccs-proxy" }` to cc-switch's `Cargo.toml` so the daemon code can call `ccs_proxy::serve()`. Also add the few runtime deps the daemon will need that cc-switch doesn't have yet: `tokio` (full features, matching ccs-proxy's pin), `reqwest` with the `blocking` feature for synchronous status probes (reuses the rustls stack already pulled in via ccs-proxy — avoids duplicating HTTP/TLS code), and `chrono` (matches ccs-proxy's timestamp format).
 
 **Why a separate task**: Adding deps changes build time substantially. Keeping it isolated makes the cause obvious if CI suddenly slows.
 
@@ -369,7 +369,7 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 
 ### Task 10 — `cc daemon status` (with `--json`)
 
-**Goal**: Render the table from Spec §3. Use `ureq` for the per-proxy health probe so the status command doesn't need a tokio runtime.
+**Goal**: Render the table from Spec §3. Use `reqwest::blocking` for the per-proxy health probe so the status command doesn't need a tokio runtime (reqwest is already in the dep graph via ccs-proxy).
 
 **API** in `src/daemon/status.rs`:
 
@@ -389,7 +389,7 @@ pub fn format_status_json(state: &DaemonState, statuses: &[ProxyStatus]) -> serd
 **Behavior**:
 
 1. Read state file. Missing or daemon not alive (per pidfile) → print `cc-switch daemon: STOPPED` (text) or `{"status":"stopped"}` (json), exit 0.
-2. For each ProxyEntry: `ureq::get(http://127.0.0.1:{api_port}/api/health).timeout_connect(500ms).timeout(500ms).call()`. Parse JSON. Failure → `reachable=false`.
+2. For each ProxyEntry: use `reqwest::blocking::Client::builder().timeout(Duration::from_millis(500)).build()?.get(format!("http://127.0.0.1:{api_port}/api/health")).send()`. Parse JSON. Failure → `reachable=false`.
 3. Build alias-per-upstream map from storage.
 4. Format.
 
@@ -401,7 +401,7 @@ pub fn format_status_json(state: &DaemonState, statuses: &[ProxyStatus]) -> serd
 
 **Files touched**: `src/daemon/status.rs`, `tests/daemon_status.rs`.
 
-**Commit**: `feat(daemon): status command with ureq health probes + --json`
+**Commit**: `feat(daemon): status command with reqwest::blocking health probes + --json`
 
 ---
 
@@ -547,7 +547,7 @@ After Task 12 commits:
 |---|---|
 | Double-fork misbehaves on macOS CI | Task 6 ships a helper bin + integration test; if it's fragile, demote to e2e-only and document the limitation in PR. |
 | `tokio::JoinHandle::is_finished()` doesn't catch axum panics cleanly | Task 8 supervisor test pins this down; alternative is an explicit `tokio::spawn` + watch channel from inside ccs-proxy (out of scope for Spec B — would require Spec A API change). |
-| `ureq` adds a noticeable binary size | We're already pulling reqwest via ccs-proxy; ureq adds ~150KB of TLS-less HTTP. Acceptable. |
+| Status command's `reqwest::blocking` builds a new tokio runtime under the hood | One runtime per `cc daemon status` invocation; tens of ms. Acceptable for a CLI command run by hand. |
 | `cc use` slowdown due to state file IO + pidfile check | The whole check is two `fs::read` + a `kill(pid, 0)`. Sub-millisecond. No mitigation needed. |
 | Stale state file after crash leads `cc use` to a bogus port | Pidfile liveness check catches it; if pidfile somehow survives but daemon doesn't, the proxy port is closed and reqwest from claude will fail loudly. User runs `cc daemon restart`. |
 | Adding deps to cc-switch bloats release binary | Strip + LTO already on; accept the growth (~5MB). Document in the PR. |
