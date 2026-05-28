@@ -1,5 +1,6 @@
+use crate::capture::CaptureEvent;
 use crate::provider::ProviderKind;
-use tokio::sync::oneshot;
+use tokio::sync::{broadcast, oneshot};
 use tokio::task::JoinHandle;
 use url::Url;
 
@@ -10,6 +11,7 @@ pub struct ProxyHandle {
     pub api_port: Option<u16>,
     pub(crate) shutdown_tx: Option<oneshot::Sender<()>>,
     pub(crate) join: Option<JoinHandle<()>>,
+    pub(crate) events: broadcast::Sender<CaptureEvent>,
 }
 
 impl Drop for ProxyHandle {
@@ -17,11 +19,18 @@ impl Drop for ProxyHandle {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(());
         }
-        // task join is best-effort on drop; ProxyHandle::shutdown().await is preferred
     }
 }
 
 impl ProxyHandle {
+    pub fn subscribe_events(&self) -> broadcast::Receiver<CaptureEvent> {
+        self.events.subscribe()
+    }
+
+    pub fn event_sender(&self) -> &broadcast::Sender<CaptureEvent> {
+        &self.events
+    }
+
     pub fn is_finished(&self) -> bool {
         self.join.as_ref().is_some_and(|j| j.is_finished())
     }

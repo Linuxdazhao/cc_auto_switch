@@ -12,6 +12,7 @@ mod session;
 mod state;
 pub mod store;
 
+pub use capture::CaptureEvent;
 pub use config::ServeConfig;
 pub use error::ServeError;
 pub use handle::ProxyHandle;
@@ -90,6 +91,7 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
     );
 
     let proxy_app = proxy::build_proxy_app(state.clone());
+    let events = state.events.clone();
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let join = spawn_servers(
@@ -109,6 +111,7 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
         api_port: api_addr.map(|a| a.port()),
         shutdown_tx: Some(shutdown_tx),
         join: Some(join),
+        events,
     })
 }
 
