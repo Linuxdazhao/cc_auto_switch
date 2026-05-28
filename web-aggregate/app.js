@@ -332,12 +332,53 @@ init();
 
   const DetailPanel = {
     setup() {
+      watch(() => detailStore.target, async (target) => {
+        if (!target) return;
+        detailStore.loading = true;
+        detailStore.error = null;
+        detailStore.record = null;
+        try {
+          const resp = await fetch(`/api/requests/${target.sid}/${target.seq}`);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          detailStore.record = await resp.json();
+        } catch (e) {
+          detailStore.error = String(e.message || e);
+        } finally {
+          detailStore.loading = false;
+        }
+      });
+
       return { store: detailStore };
     },
     template: `
       <div v-if="store.visible" class="detail-root">
-        <div class="status-line">Vue mounted (stub) — sid={{ store.target?.sid }} seq={{ store.target?.seq }}</div>
-        <button class="panel-close" @click="store.visible = false">&times;</button>
+        <div class="panel-header">
+          <h3>Request {{ store.target?.seq }}</h3>
+          <div class="panel-actions">
+            <button
+              class="mode-toggle"
+              :class="{ raw: store.viewMode === 'raw' }"
+              @click="store.viewMode = store.viewMode === 'structured' ? 'raw' : 'structured'"
+            >{{ store.viewMode === 'structured' ? 'Structured' : 'Raw' }}</button>
+            <button class="panel-close" @click="store.visible = false">&times;</button>
+          </div>
+        </div>
+        <div class="detail-tabs">
+          <button
+            v-for="t in ['overview', 'request', 'response']"
+            :key="t"
+            class="tab"
+            :class="{ active: store.activeTab === t }"
+            @click="store.activeTab = t"
+          >{{ t[0].toUpperCase() + t.slice(1) }}</button>
+        </div>
+        <div v-if="store.loading" class="status-line">Loading…</div>
+        <div v-else-if="store.error" class="status-line error">Failed to load: {{ store.error }}</div>
+        <div v-else-if="store.record">
+          <div v-if="store.activeTab === 'overview'" class="status-line">[overview placeholder — Task 6]</div>
+          <div v-else-if="store.activeTab === 'request'" class="status-line">[request placeholder — Task 9]</div>
+          <div v-else-if="store.activeTab === 'response'" class="status-line">[response placeholder — Task 10]</div>
+        </div>
       </div>
     `,
   };
