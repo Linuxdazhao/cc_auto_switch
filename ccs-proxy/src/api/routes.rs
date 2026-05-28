@@ -21,19 +21,16 @@ async fn health(State(state): State<AppState>) -> Json<Value> {
         .await
         .map(|requests| requests.len())
         .unwrap_or(0);
-    let store_status = if let Some(fs) = state
-        .store
-        .as_any()
-        .downcast_ref::<crate::store::FsStore>()
-    {
-        if fs.consecutive_write_failures() >= 10 {
-            "degraded"
+    let store_status =
+        if let Some(fs) = state.store.as_any().downcast_ref::<crate::store::FsStore>() {
+            if fs.consecutive_write_failures() >= 10 {
+                "degraded"
+            } else {
+                "ok"
+            }
         } else {
             "ok"
-        }
-    } else {
-        "ok"
-    };
+        };
     Json(json!({
         "status": "ok",
         "provider": state.provider.as_str(),
