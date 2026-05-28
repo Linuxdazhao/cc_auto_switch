@@ -7,6 +7,7 @@ mod config;
 mod error;
 mod handle;
 pub mod provider;
+pub mod proxy;
 mod session;
 mod state;
 pub mod store;
