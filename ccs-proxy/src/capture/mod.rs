@@ -1,3 +1,4 @@
+pub mod extract;
 pub mod redact;
 
 use chrono::{DateTime, Utc};
