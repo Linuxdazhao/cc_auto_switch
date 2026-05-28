@@ -6,10 +6,53 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header id="header">ccs-daemon aggregate — loading...</header>
+<header id="header">
+  <span class="brand">ccs-daemon</span>
+  <span id="meta"></span>
+</header>
 <main id="main">
-  <aside id="sidebar"></aside>
-  <section id="content"></section>
+  <aside id="sidebar">
+    <section id="filter-section">
+      <h3>Upstreams</h3>
+      <div id="upstream-filters"></div>
+      <h3>Time</h3>
+      <div id="time-filters">
+        <button class="time-btn active" data-window="1h">1h</button>
+        <button class="time-btn" data-window="24h">24h</button>
+        <button class="time-btn" data-window="7d">7d</button>
+        <button class="time-btn" data-window="all">all</button>
+      </div>
+    </section>
+    <section id="stats-section">
+      <h3>Stats</h3>
+      <div id="stats-cards"></div>
+    </section>
+  </aside>
+  <section id="content">
+    <table id="request-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Upstream</th>
+          <th>Model</th>
+          <th>Tokens</th>
+          <th>Status</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody id="request-list"></tbody>
+    </table>
+    <div id="pagination"></div>
+    <div id="detail-panel" class="hidden">
+      <button id="close-detail">&times;</button>
+      <div id="detail-tabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="request">Request</button>
+        <button class="tab" data-tab="response">Response</button>
+      </div>
+      <div id="detail-content"></div>
+    </div>
+  </section>
 </main>
 <script src="/app.js"></script>
 </body>
