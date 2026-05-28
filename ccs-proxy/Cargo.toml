@@ -1,0 +1,55 @@
+[package]
+name = "ccs-proxy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Local logging reverse-proxy + dashboard for Claude Code / Codex traffic"
+license = "MIT"
+repository = "https://github.com/Linuxdazhao/ccs-proxy"
+
+[[bin]]
+name = "ccs-proxy"
+path = "src/bin/ccs-proxy.rs"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["macros"] }
+bytes = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+futures = "0.3"
+hyper = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json"] }
+rust-embed = "8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+tokio-util = { version = "0.7", features = ["io"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = { version = "2", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+webbrowser = "1"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+tempfile = "3"
+wiremock = "0.6"
+
+[features]
+default = []
+dev-fs-assets = []
+
+[[bench]]
+name = "streaming"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
