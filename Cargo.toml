@@ -26,6 +26,10 @@ colored = "3.0"
 crossterm = "0.29.0"
 which = "7"
 base64 = "0.22.1"
+ccs-proxy = { path = "ccs-proxy" }
+tokio = { version = "1", features = ["full"] }
+ureq = "2"
+chrono = { version = "0.4", features = ["serde"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
