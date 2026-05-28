@@ -333,6 +333,14 @@ pub enum DaemonCommands {
         /// Run in the foreground (don't daemonize). Useful for debugging.
         #[arg(long)]
         foreground: bool,
+
+        /// Log level: error, warn, info, debug, trace
+        #[arg(long = "log-level", value_name = "LEVEL")]
+        log_level: Option<String>,
+
+        /// Increase verbosity (-v info, -vv debug, -vvv trace)
+        #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count)]
+        verbose: u8,
     },
     /// Stop the running daemon
     Stop,
@@ -347,6 +355,14 @@ pub enum DaemonCommands {
         /// Run in the foreground after restart
         #[arg(long)]
         foreground: bool,
+
+        /// Log level: error, warn, info, debug, trace
+        #[arg(long = "log-level", value_name = "LEVEL")]
+        log_level: Option<String>,
+
+        /// Increase verbosity (-v info, -vv debug, -vvv trace)
+        #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count)]
+        verbose: u8,
     },
 }
 

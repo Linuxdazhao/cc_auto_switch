@@ -4,6 +4,7 @@
 
 pub mod commands;
 pub mod lifecycle;
+pub mod logging;
 pub mod pidfile;
 pub mod state;
 pub mod status;

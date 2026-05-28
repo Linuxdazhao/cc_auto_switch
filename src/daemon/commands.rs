@@ -5,10 +5,18 @@ use crate::daemon::state::DaemonState;
 use anyhow::{Context, Result};
 
 pub enum DaemonAction {
-    Start { foreground: bool },
+    Start {
+        foreground: bool,
+        log_level: Option<String>,
+        verbose: u8,
+    },
     Stop,
     Status { json: bool },
-    Restart { foreground: bool },
+    Restart {
+        foreground: bool,
+        log_level: Option<String>,
+        verbose: u8,
+    },
 }
 
 pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> Result<()> {
@@ -20,18 +28,20 @@ pub fn handle_daemon_command(action: DaemonAction, storage: &ConfigStorage) -> R
 
     #[cfg(unix)]
     match action {
-        DaemonAction::Start { foreground } => handle_start(foreground, storage),
+        DaemonAction::Start { foreground, log_level, verbose } => {
+            handle_start(foreground, log_level, verbose, storage)
+        }
         DaemonAction::Stop => handle_stop(),
         DaemonAction::Status { json } => handle_status(json, storage),
-        DaemonAction::Restart { foreground } => {
+        DaemonAction::Restart { foreground, log_level, verbose } => {
             let _ = handle_stop();
-            handle_start(foreground, storage)
+            handle_start(foreground, log_level, verbose, storage)
         }
     }
 }
 
 #[cfg(unix)]
-fn handle_start(foreground: bool, storage: &ConfigStorage) -> Result<()> {
+fn handle_start(foreground: bool, _log_level: Option<String>, _verbose: u8, storage: &ConfigStorage) -> Result<()> {
     let cfg = LifecycleConfig::from_storage(storage)?;
 
     // Preflight: check for existing pidfile (spec §8 invariant table).
