@@ -34,6 +34,20 @@ const HOP_BY_HOP: &[&str] = &[
 
 const MAX_REQUEST_BODY: usize = 32 * 1024 * 1024;
 
+/// Returns a process-global `reqwest::Client` so that successive forwarded
+/// requests reuse the connection pool, DNS cache, and TLS session cache.
+/// Rebuilding a `Client` per request defeats keep-alive and adds measurable
+/// TTFT overhead for a proxy.
+fn upstream_client() -> &'static reqwest::Client {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
 /// Headers prepared for the inbound side of the response, plus the same
 /// headers projected to a `BTreeMap` for the capture record.
 type ResponseHeaderPair = (HeaderMap, BTreeMap<String, String>);
@@ -145,21 +159,7 @@ async fn read_request_body(req: Request) -> Result<Bytes, Response> {
 }
 
 async fn send_upstream(prepared: &PreparedRequest) -> Result<reqwest::Response, Response> {
-    let client = match reqwest::Client::builder().no_proxy().build() {
-        Ok(client) => client,
-        Err(err) => {
-            tracing::error!(?err, "failed to build reqwest client");
-            let body = serde_json::json!({
-                "error": {
-                    "type": "proxy_client_init_failed",
-                    "message": err.to_string(),
-                }
-            });
-            return Err((StatusCode::BAD_GATEWAY, axum::Json(body)).into_response());
-        }
-    };
-
-    let mut rb = client
+    let mut rb = upstream_client()
         .request(
             reqwest_method(&prepared.method),
             prepared.upstream_url.clone(),
