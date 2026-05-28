@@ -5,4 +5,4 @@ pub mod display_utils;
 pub mod main;
 
 // Re-export types for convenience
-pub use crate::cli::cli::{Cli, CodexCommands, Commands, StatuslineAction};
+pub use crate::cli::cli::{Cli, CodexCommands, Commands, DaemonCommands, StatuslineAction};

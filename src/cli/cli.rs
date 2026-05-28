@@ -292,6 +292,14 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<CodexCommands>,
     },
+    /// Manage the ccs-proxy daemon (start/stop/status/restart)
+    ///
+    /// The daemon supervises one local ccs-proxy per unique upstream URL,
+    /// transparently capturing all Claude API traffic for the dashboard.
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommands,
+    },
     /// Manage statusLine integration with Claude Code
     ///
     /// Installs a wrapper script that displays the current cc-switch alias name
@@ -315,6 +323,31 @@ pub enum StatuslineAction {
     Install,
     /// Uninstall the statusLine wrapper script
     Uninstall,
+}
+
+/// Subcommands for `cc-switch daemon`
+#[derive(Subcommand)]
+pub enum DaemonCommands {
+    /// Start the daemon (double-forks into background by default)
+    Start {
+        /// Run in the foreground (don't daemonize). Useful for debugging.
+        #[arg(long)]
+        foreground: bool,
+    },
+    /// Stop the running daemon
+    Stop,
+    /// Show daemon status and proxy health
+    Status {
+        /// Output as JSON instead of a human-readable table
+        #[arg(long)]
+        json: bool,
+    },
+    /// Stop then start the daemon (picks up configuration changes)
+    Restart {
+        /// Run in the foreground after restart
+        #[arg(long)]
+        foreground: bool,
+    },
 }
 
 /// Available subcommands for Codex configuration management

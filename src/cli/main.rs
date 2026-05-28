@@ -874,11 +874,30 @@ pub fn run() -> Result<()> {
                     return Ok(());
                 }
 
-                let config = storage
+                let mut config = storage
                     .configurations
                     .get(&alias_name)
                     .ok_or_else(|| anyhow!("Configuration '{}' not found", alias_name))?
                     .clone();
+
+                // Consult daemon state: substitute proxy URL if daemon is alive.
+                let original_url = config.url.clone();
+                match crate::daemon::try_resolve_proxy(&config.url) {
+                    crate::daemon::ProxyResolution::Proxied { proxy_url } => {
+                        config.url = proxy_url;
+                    }
+                    crate::daemon::ProxyResolution::Direct => {
+                        if !original_url.is_empty() {
+                            eprintln!(
+                                "\u{2139} cc daemon is not running — traffic for '{}' will NOT be captured.",
+                                alias_name
+                            );
+                            eprintln!(
+                                "  Run `cc-switch daemon start` and re-run to enable capture."
+                            );
+                        }
+                    }
+                }
 
                 let env_config = EnvironmentConfig::from_config(&config).with_alias(&alias_name);
                 let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
@@ -894,6 +913,9 @@ pub fn run() -> Result<()> {
 
                 println!("Switched to configuration '{}'", alias_name);
                 println!("  URL:   {}", config.url);
+                if config.url != original_url {
+                    println!("  (proxied from: {})", original_url);
+                }
                 println!(
                     "  Token: {}",
                     crate::cli::display_utils::format_token_for_display(&config.token)
@@ -973,6 +995,17 @@ pub fn run() -> Result<()> {
                     handle_codex_interactive(&storage)?;
                 }
             },
+            Commands::Daemon { command } => {
+                use crate::cli::DaemonCommands;
+                use crate::daemon::{DaemonAction, handle_daemon_command};
+                let action = match command {
+                    DaemonCommands::Start { foreground } => DaemonAction::Start { foreground },
+                    DaemonCommands::Stop => DaemonAction::Stop,
+                    DaemonCommands::Status { json } => DaemonAction::Status { json },
+                    DaemonCommands::Restart { foreground } => DaemonAction::Restart { foreground },
+                };
+                handle_daemon_command(action, &storage)?;
+            }
             Commands::Statusline { action } => {
                 let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
                 match action {
