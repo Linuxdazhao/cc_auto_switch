@@ -296,3 +296,38 @@ fn trim_ascii_start(s: &[u8]) -> &[u8] {
     }
     &s[i..]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn find_double_newline_handles_lf() {
+        // "abc\n\ndef" — \n\n at index 3, drain(..end+2) should consume bytes 0..5
+        let buf = b"abc\n\ndef".to_vec();
+        let end = find_double_newline(&buf).expect("expected LF separator");
+        assert_eq!(end, 3);
+        // Caller would drain(..end+2) = drain(..5) -> consumes "abc\n\n"
+    }
+
+    #[test]
+    fn find_double_newline_handles_crlf() {
+        // "abc\r\n\r\ndef" — \r\n\r\n at index 3, drain(..end+2) must consume bytes 0..7
+        let buf = b"abc\r\n\r\ndef".to_vec();
+        let end = find_double_newline(&buf).expect("expected CRLF separator");
+        // With the bug fix, end = 5 (so drain(..7) removes "abc\r\n\r\n")
+        assert_eq!(end, 5);
+    }
+
+    #[test]
+    fn crlf_terminated_frame_reassembles() {
+        let raw: &[u8] = b"event: message_start\r\n\
+            data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"crlf-test\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\r\n\r\n\
+            event: message_stop\r\n\
+            data: {\"type\":\"message_stop\"}\r\n\r\n";
+        let mut r = ClaudeReassembler::new();
+        r.feed(raw);
+        let out = r.finish().expect("message");
+        assert_eq!(out.model.as_deref(), Some("crlf-test"));
+    }
+}
