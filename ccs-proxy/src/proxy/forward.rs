@@ -139,7 +139,10 @@ async fn dispatch(state: AppState, prepared: PreparedRequest) -> Response {
 
 fn build_upstream_url(upstream: &Url, uri: &axum::http::Uri) -> Url {
     let mut url = upstream.clone();
-    url.set_path(uri.path());
+    let base_path = upstream.path().trim_end_matches('/');
+    let req_path = uri.path();
+    let combined = format!("{base_path}{req_path}");
+    url.set_path(&combined);
     url.set_query(uri.query());
     url
 }
