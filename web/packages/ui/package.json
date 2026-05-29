@@ -30,6 +30,9 @@
     "vitest": "^2.1.0"
   },
   "dependencies": {
-    "@ccs/api": "workspace:*"
+    "@ccs/api": "workspace:*",
+    "marked": "^15.0.0",
+    "dompurify": "^3.2.0",
+    "highlight.js": "^11.11.0"
   }
 }
