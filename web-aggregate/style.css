@@ -82,6 +82,28 @@ header {
   display: inline-block;
 }
 
+#view-mode {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.view-btn {
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.view-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 #time-filters {
   display: flex;
   gap: 4px;
@@ -208,6 +230,153 @@ header {
 #pagination button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#session-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+#session-breadcrumb button {
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--accent);
+}
+
+#session-breadcrumb button:hover {
+  background: var(--hover);
+}
+
+#session-breadcrumb #session-title {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+#session-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+#session-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+#session-table tr {
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+#session-table tr:hover {
+  background: var(--hover);
+}
+
+#session-request-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+#session-request-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+#session-request-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+#session-request-table tr {
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+#session-request-table tr:hover {
+  background: var(--hover);
+}
+
+#session-request-table tr.status-error td:nth-child(5) {
+  color: var(--error);
+}
+
+#session-request-table tr.status-ok td:nth-child(5) {
+  color: var(--success);
+}
+
+#session-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+#session-pagination button,
+#session-request-pagination button {
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#session-pagination button:disabled,
+#session-request-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#session-request-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
 }
 
 #detail-panel {

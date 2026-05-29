@@ -8,6 +8,13 @@ let currentPage = 0;
 const PAGE_SIZE = 50;
 let allRequests = [];
 let healthData = null;
+let viewMode = 'requests';
+let allSessions = [];
+let sessionPage = 0;
+const SESSION_PAGE_SIZE = 50;
+let activeSessionId = null;
+let sessionRequests = [];
+let sessionReqPage = 0;
 
 async function init() {
   try {
@@ -44,7 +51,11 @@ function renderUpstreamFilters() {
     cb.addEventListener('change', () => {
       if (cb.checked) activeUpstreams.add(proxy.upstream);
       else activeUpstreams.delete(proxy.upstream);
-      renderRequestTable();
+      if (viewMode === 'sessions' && !activeSessionId) {
+        renderSessionTable();
+      } else {
+        renderRequestTable();
+      }
     });
 
     const dot = document.createElement('span');
@@ -202,6 +213,190 @@ function legacyRenderDetail(data) {
   `;
 }
 
+// ===== Session view =====
+
+function switchView(mode) {
+  viewMode = mode;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.view-btn[data-view="${mode}"]`)?.classList.add('active');
+
+  const requestsView = document.getElementById('requests-view');
+  const sessionView = document.getElementById('session-view');
+
+  if (mode === 'sessions') {
+    requestsView.classList.add('hidden');
+    sessionView.classList.remove('hidden');
+    loadSessions();
+  } else {
+    requestsView.classList.remove('hidden');
+    sessionView.classList.add('hidden');
+    activeSessionId = null;
+  }
+}
+
+async function loadSessions() {
+  try {
+    const resp = await fetch('/api/sessions?limit=500');
+    allSessions = await resp.json();
+    sessionPage = 0;
+    activeSessionId = null;
+    showSessionList();
+  } catch (e) { /* ignore */ }
+}
+
+function showSessionList() {
+  document.getElementById('session-table').classList.remove('hidden');
+  document.getElementById('session-pagination').classList.remove('hidden');
+  document.getElementById('session-breadcrumb').classList.add('hidden');
+  document.getElementById('session-requests-view').classList.add('hidden');
+  renderSessionTable();
+}
+
+function renderSessionTable() {
+  const tbody = document.getElementById('session-list');
+  const since = timeWindowToDate(timeWindow);
+
+  const filtered = allSessions.filter(s => {
+    if (!activeUpstreams.has(s.upstream)) return false;
+    if (since && new Date(s.started_at) < since) return false;
+    return true;
+  });
+
+  const start = sessionPage * SESSION_PAGE_SIZE;
+  const page = filtered.slice(start, start + SESSION_PAGE_SIZE);
+
+  tbody.innerHTML = '';
+  for (const session of page) {
+    const tr = document.createElement('tr');
+    const color = upstreamColors[session.upstream] || '#999';
+    tr.style.borderLeftColor = color;
+
+    const startTime = new Date(session.started_at).toLocaleString();
+    const shortUpstream = session.upstream.replace(/^https?:\/\//, '').slice(0, 25);
+    const aliases = (session.aliases || []).join(', ') || '—';
+    const duration = session.ended_at
+      ? formatUptime(Math.floor((new Date(session.ended_at) - new Date(session.started_at)) / 1000))
+      : 'active';
+
+    const shortId = session.session_id.length > 24
+      ? session.session_id.slice(0, 24) + '...'
+      : session.session_id;
+
+    tr.innerHTML = `
+      <td>${startTime}</td>
+      <td title="${session.session_id}">${shortId}</td>
+      <td>${shortUpstream}</td>
+      <td>${aliases}</td>
+      <td>${session.request_count}</td>
+      <td>${duration}</td>
+    `;
+    tr.addEventListener('click', () => drillIntoSession(session));
+    tbody.appendChild(tr);
+  }
+
+  renderSessionPagination(filtered.length);
+}
+
+function renderSessionPagination(total) {
+  const container = document.getElementById('session-pagination');
+  const pages = Math.ceil(total / SESSION_PAGE_SIZE);
+  if (pages <= 1) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `
+    <button ${sessionPage === 0 ? 'disabled' : ''} id="prev-session-page">&laquo; Prev</button>
+    <span>${sessionPage + 1} / ${pages}</span>
+    <button ${sessionPage >= pages - 1 ? 'disabled' : ''} id="next-session-page">Next &raquo;</button>
+  `;
+  document.getElementById('prev-session-page')?.addEventListener('click', () => { sessionPage--; renderSessionTable(); });
+  document.getElementById('next-session-page')?.addEventListener('click', () => { sessionPage++; renderSessionTable(); });
+}
+
+async function drillIntoSession(session) {
+  activeSessionId = session.session_id;
+
+  document.getElementById('session-table').classList.add('hidden');
+  document.getElementById('session-pagination').classList.add('hidden');
+
+  const breadcrumb = document.getElementById('session-breadcrumb');
+  breadcrumb.classList.remove('hidden');
+  document.getElementById('session-title').textContent =
+    `Session: ${session.session_id} | ${(session.aliases || []).join(', ') || session.upstream}`;
+
+  const reqView = document.getElementById('session-requests-view');
+  reqView.classList.remove('hidden');
+
+  const tbody = document.getElementById('session-request-list');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Loading...</td></tr>';
+
+  try {
+    const resp = await fetch(`/api/sessions/${session.session_id}`);
+    const detail = await resp.json();
+    sessionRequests = (detail.requests || []).map(req => ({
+      ...req,
+      upstream: session.upstream,
+      aliases: session.aliases,
+    }));
+    sessionRequests.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    sessionReqPage = 0;
+    renderSessionRequests();
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--error)">Failed to load session.</td></tr>';
+  }
+}
+
+function renderSessionRequests() {
+  const tbody = document.getElementById('session-request-list');
+  const start = sessionReqPage * PAGE_SIZE;
+  const page = sessionRequests.slice(start, start + PAGE_SIZE);
+
+  tbody.innerHTML = '';
+  for (const req of page) {
+    const tr = document.createElement('tr');
+    const color = upstreamColors[req.upstream] || '#999';
+    tr.style.borderLeftColor = color;
+    tr.className = req.has_error ? 'status-error' : 'status-ok';
+
+    const tokens = (req.input_tokens || 0) + (req.output_tokens || 0);
+    const status = req.status || '—';
+    const duration = req.duration_ms ? `${req.duration_ms}ms` : '—';
+    const time = new Date(req.started_at).toLocaleTimeString();
+    const shortUpstream = req.upstream.replace(/^https?:\/\//, '').slice(0, 25);
+
+    tr.innerHTML = `
+      <td>${time}</td>
+      <td>${shortUpstream}</td>
+      <td>${req.model || '—'}</td>
+      <td>${tokens || '—'}</td>
+      <td>${status}</td>
+      <td>${duration}</td>
+    `;
+    tr.addEventListener('click', () => selectRow(req.session_id, req.seq));
+    tbody.appendChild(tr);
+  }
+
+  renderSessionReqPagination(sessionRequests.length);
+}
+
+function renderSessionReqPagination(total) {
+  const container = document.getElementById('session-request-pagination');
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (pages <= 1) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `
+    <button ${sessionReqPage === 0 ? 'disabled' : ''} id="prev-sess-req-page">&laquo; Prev</button>
+    <span>${sessionReqPage + 1} / ${pages}</span>
+    <button ${sessionReqPage >= pages - 1 ? 'disabled' : ''} id="next-sess-req-page">Next &raquo;</button>
+  `;
+  document.getElementById('prev-sess-req-page')?.addEventListener('click', () => { sessionReqPage--; renderSessionRequests(); });
+  document.getElementById('next-sess-req-page')?.addEventListener('click', () => { sessionReqPage++; renderSessionRequests(); });
+}
+
+function backToSessions() {
+  activeSessionId = null;
+  sessionRequests = [];
+  showSessionList();
+}
+
 function connectStream() {
   const evtSource = new EventSource('/api/stream');
 
@@ -267,6 +462,14 @@ function refreshHeaderCount() {
   renderHeader();
 }
 
+// View mode toggle
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+// Back to sessions button
+document.getElementById('back-to-sessions')?.addEventListener('click', backToSessions);
+
 // Time filter buttons
 document.querySelectorAll('.time-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -275,7 +478,11 @@ document.querySelectorAll('.time-btn').forEach(btn => {
     timeWindow = btn.dataset.window;
     currentPage = 0;
     loadStats();
-    renderRequestTable();
+    if (viewMode === 'sessions' && !activeSessionId) {
+      renderSessionTable();
+    } else {
+      renderRequestTable();
+    }
   });
 });
 

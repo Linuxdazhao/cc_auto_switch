@@ -18,6 +18,11 @@
 <main id="main">
   <aside id="sidebar">
     <section id="filter-section">
+      <h3>View</h3>
+      <div id="view-mode">
+        <button class="view-btn active" data-view="requests">Requests</button>
+        <button class="view-btn" data-view="sessions">Sessions</button>
+      </div>
       <h3>Upstreams</h3>
       <div id="upstream-filters"></div>
       <h3>Time</h3>
@@ -34,20 +39,58 @@
     </section>
   </aside>
   <section id="content">
-    <table id="request-table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Upstream</th>
-          <th>Model</th>
-          <th>Tokens</th>
-          <th>Status</th>
-          <th>Duration</th>
-        </tr>
-      </thead>
-      <tbody id="request-list"></tbody>
-    </table>
-    <div id="pagination"></div>
+    <div id="requests-view">
+      <table id="request-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Upstream</th>
+            <th>Model</th>
+            <th>Tokens</th>
+            <th>Status</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="request-list"></tbody>
+      </table>
+      <div id="pagination"></div>
+    </div>
+    <div id="session-view" class="hidden">
+      <div id="session-breadcrumb" class="hidden">
+        <button id="back-to-sessions">&larr; All Sessions</button>
+        <span id="session-title"></span>
+      </div>
+      <table id="session-table">
+        <thead>
+          <tr>
+            <th>Started</th>
+            <th>Session ID</th>
+            <th>Upstream</th>
+            <th>Alias</th>
+            <th>Requests</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="session-list"></tbody>
+      </table>
+      <div id="session-pagination"></div>
+      <div id="session-requests-view" class="hidden">
+        <table id="session-request-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Upstream</th>
+              <th>Model</th>
+              <th>Tokens</th>
+              <th>Status</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="session-request-list"></tbody>
+        </table>
+        <div id="session-request-pagination"></div>
+      </div>
+    </div>
     <div id="detail-panel" class="hidden">
       <div id="detail-mount"></div>
     </div>
