@@ -2,6 +2,7 @@
 name = "cc-switch"
 version = "0.1.38"
 edition = "2024"
+rust-version = "1.95"
 description = "Switch between multiple Claude / Codex configurations. Optional daemon proxies traffic to a built-in dashboard — requests, conversations, token stats. Cross-platform."
 license = "MIT"
 repository = "https://github.com/Linuxdazhao/cc_auto_switch"
@@ -24,11 +25,11 @@ dirs = "6.0.0"
 tempfile = "3.20.0"
 colored = "3.0"
 crossterm = "0.29.0"
-which = "7"
+which = "8"
 base64 = "0.22.1"
-ccs-proxy = { path = "ccs-proxy", version = "0.1.0" }
-tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
+ccs-proxy = { path = "ccs-proxy", version = "0.1.1" }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net", "sync", "signal", "time"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls", "json"] }
 chrono = { version = "0.4", features = ["serde"] }
 url = "2"
 tracing = "0.1"
