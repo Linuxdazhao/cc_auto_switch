@@ -47,6 +47,8 @@ async fn redacts_token_in_request_body() {
             ended_at: None,
             request_count: 0,
             schema_version: 1,
+            cwd: None,
+            models: vec![],
         })
         .await
         .unwrap();

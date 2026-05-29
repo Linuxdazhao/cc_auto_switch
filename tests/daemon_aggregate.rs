@@ -58,6 +58,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 1,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();
@@ -73,6 +75,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 2,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();
@@ -150,6 +154,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 0,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();

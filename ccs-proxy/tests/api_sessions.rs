@@ -27,6 +27,8 @@ async fn lists_sessions_and_requests() {
             ended_at: None,
             request_count: 0,
             schema_version: 1,
+            cwd: None,
+            models: vec![],
         })
         .await
         .unwrap();

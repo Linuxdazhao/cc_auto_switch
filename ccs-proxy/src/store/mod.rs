@@ -19,6 +19,10 @@ pub struct SessionMeta {
     pub ended_at: Option<DateTime<Utc>>,
     pub request_count: u64,
     pub schema_version: u32,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub models: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
