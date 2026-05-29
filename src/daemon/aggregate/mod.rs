@@ -93,15 +93,21 @@ pub async fn serve(
 }
 
 use axum::Router;
+#[cfg(feature = "web-ui")]
 use axum::http::{StatusCode, header};
+#[cfg(feature = "web-ui")]
 use axum::response::{IntoResponse, Response};
+#[cfg(feature = "web-ui")]
 use axum::routing::get;
+#[cfg(feature = "web-ui")]
 use rust_embed::RustEmbed;
 
+#[cfg(feature = "web-ui")]
 #[derive(RustEmbed)]
 #[folder = "web-aggregate/dist/"]
 struct AggWebAsset;
 
+#[cfg(feature = "web-ui")]
 fn ui_router() -> Router<Arc<AggregateState>> {
     use axum::extract::Path;
     Router::new()
@@ -118,6 +124,12 @@ fn ui_router() -> Router<Arc<AggregateState>> {
         )
 }
 
+#[cfg(not(feature = "web-ui"))]
+fn ui_router() -> Router<Arc<AggregateState>> {
+    Router::new()
+}
+
+#[cfg(feature = "web-ui")]
 fn serve_asset(name: &str) -> Response {
     match AggWebAsset::get(name) {
         Some(asset) => {

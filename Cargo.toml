@@ -10,6 +10,11 @@ homepage = "https://github.com/Linuxdazhao/cc_auto_switch"
 documentation = "https://github.com/Linuxdazhao/cc_auto_switch"
 keywords = ["claude", "codex", "api", "configuration", "cli"]
 categories = ["command-line-utilities"]
+exclude = ["web/", "web-aggregate/dist/"]
+
+[features]
+default = []
+web-ui = []
 
 [[bin]]
 name = "cc-switch"
@@ -44,7 +49,7 @@ rust-embed = "8"
 libc = "0.2"
 
 [package.metadata.docs.rs]
-all-features = true
+features = []
 
 [profile.dev]
 incremental = false
