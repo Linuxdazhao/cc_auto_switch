@@ -523,6 +523,16 @@ function connectStream() {
 function prependLiveRow(data, type) {
   const tbody = document.getElementById('request-list');
   if (!activeUpstreams.has(data.upstream)) return;
+  if (activeModels.size && availableModels.length && activeModels.size < availableModels.length) {
+    if (data.model && !activeModels.has(data.model)) return;
+  }
+
+  // If a brand-new model arrives, register it and re-render the sidebar.
+  if (data.model && !availableModels.includes(data.model)) {
+    availableModels.push(data.model);
+    activeModels.add(data.model);
+    renderModelFilters();
+  }
 
   const tr = document.createElement('tr');
   const color = upstreamColors[data.upstream] || '#999';
