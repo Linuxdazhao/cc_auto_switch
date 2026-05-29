@@ -167,9 +167,15 @@ mod daemon_supervisor {
     }
 
     #[test]
-    fn empty_configurations_yields_zero_upstreams() {
+    fn empty_configurations_yields_only_official_upstream() {
+        // Empty user config still yields exactly the official upstream, so
+        // `cc use official` traffic can be captured by the daemon.
         let storage = make_storage(&[]);
         let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
-        assert!(cfg.upstreams.is_empty());
+        assert_eq!(cfg.upstreams.len(), 1);
+        assert_eq!(
+            cfg.upstreams[0].1,
+            cc_switch::daemon::OFFICIAL_UPSTREAM.to_string()
+        );
     }
 }

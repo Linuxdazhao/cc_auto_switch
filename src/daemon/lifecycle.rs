@@ -53,6 +53,16 @@ fn dedupe_upstreams(storage: &ConfigStorage) -> Vec<Upstream> {
             result.push(key);
         }
     }
+    // Always include the official Anthropic upstream so `cc use official`
+    // routes through the daemon. Dedup naturally handles the (rare) case
+    // where a user-defined alias points at the same URL.
+    let official = (
+        "claude".to_string(),
+        crate::daemon::OFFICIAL_UPSTREAM.to_string(),
+    );
+    if seen.insert(official.clone()) {
+        result.push(official);
+    }
     result
 }
 
@@ -382,5 +392,33 @@ mod tests {
         let h1 = upstream_hash("https://api.anthropic.com");
         let h2 = upstream_hash("https://other.example.com");
         assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn dedupe_upstreams_always_includes_official() {
+        let result = dedupe_upstreams(&make_storage(&[]));
+        assert!(
+            result.contains(&(
+                "claude".to_string(),
+                crate::daemon::OFFICIAL_UPSTREAM.to_string()
+            )),
+            "OFFICIAL_UPSTREAM must always be in dedupe_upstreams output, got {result:?}",
+        );
+    }
+
+    #[test]
+    fn dedupe_upstreams_dedupes_when_user_has_official_url() {
+        // Belt-and-suspenders: user shouldn't normally do this, but if they
+        // configure an alias with the official URL, we must not spawn two
+        // proxies for the same URL.
+        let result = dedupe_upstreams(&make_storage(&[crate::daemon::OFFICIAL_UPSTREAM]));
+        let count = result
+            .iter()
+            .filter(|(_, url)| url == crate::daemon::OFFICIAL_UPSTREAM)
+            .count();
+        assert_eq!(
+            count, 1,
+            "OFFICIAL_UPSTREAM must appear exactly once, got {result:?}"
+        );
     }
 }
