@@ -226,6 +226,87 @@ cc-switch/
     └── release.yml            # Release automation
 ```
 
+## Frontend (web/)
+
+The web dashboards are a **pnpm workspace** under `web/` (pnpm 9+; the
+`web/pnpm-lock.yaml` lockfile **is** committed). Tech stack: Svelte 5, Vite 6,
+TypeScript, Tailwind CSS 3, shadcn-svelte / bits-ui v2, Vitest.
+
+### Workspace layout
+
+```
+web/
+├── packages/
+│   ├── api  (@ccs/api)   # Shared TS API types + typed fetch client + SSE parser
+│   └── ui   (@ccs/ui)    # Design system: Tailwind preset, design tokens
+│                         #   (light/dark via .dark class), shadcn-svelte
+│                         #   components, custom components (StatusBadge,
+│                         #   StatCard, DataTable, FilterGroup, ConversationView
+│                         #   with bundled marked/DOMPurify/highlight.js — no CDN)
+└── apps/
+    ├── aggregate (@ccs/app-aggregate) # Dashboard for the aggregate daemon
+    │                                  #   → Vite outDir web-aggregate/dist/
+    └── proxy     (@ccs/app-proxy)     # Single-instance viewer for ccs-proxy
+                                       #   → Vite outDir ccs-proxy/web/dist/
+```
+
+### Build / test / dev
+
+```bash
+cd web
+pnpm install
+pnpm -r build      # build all packages + apps (outputs to the dist/ dirs above)
+pnpm -r test       # Vitest across the workspace
+pnpm -r check      # type-check / svelte-check
+```
+
+`web/pnpm-workspace.yaml` sets `onlyBuiltDependencies: [esbuild]` and
+`verifyDepsBeforeRun: false` (the latter avoids a pnpm 11
+`ERR_PNPM_IGNORED_BUILDS` pre-run error on esbuild's build script).
+
+**`$lib` alias requirement:** both apps are plain Vite apps (not SvelteKit), but
+the shadcn components import `$lib/utils.js`. Each app's `vite.config.ts` adds a
+`$lib` resolve alias → `../../packages/ui/src/lib`, with a matching `$lib` path
+in each app's `tsconfig`.
+
+### The `web-ui` cargo feature (default OFF)
+
+Both crates expose a `web-ui` cargo feature, **off by default**. The root
+`cc-switch` feature propagates to the proxy: `web-ui = ["ccs-proxy/web-ui"]`
+(cc-switch runs ccs-proxy in-process via `ccs_proxy::serve`, so the proxy
+dashboard ships inside the cc-switch binary).
+
+- `build.rs` in **both** the root crate and `ccs-proxy` is a **no-op unless
+  `web-ui` is enabled** (it checks `CARGO_FEATURE_WEB_UI`). When enabled, it
+  runs `pnpm --filter <app> build` to produce the embedded `dist/`. With the
+  feature off, **no Node/pnpm is required** — for `cargo build`, docs.rs, and
+  downstream consumers.
+- The embedded dashboards (rust-embed) are feature-gated. With `web-ui` OFF,
+  `ui_router()` (aggregate) / `router()` (ccs-proxy) return an empty router and
+  no assets are embedded, so a clean build needs no `dist/`.
+- The Vite `dist/` outputs (`web-aggregate/dist/`, `ccs-proxy/web/dist/`) are
+  **gitignored** and regenerated at build time — never committed.
+- Published crates **exclude** web: root `cc-switch` `exclude = ["web/",
+  "web-aggregate/dist/"]`; `ccs-proxy` `exclude = ["web/", "tests/fixtures/"]`.
+  docs.rs builds with `features = []` (web-ui off), so it needs no Node.
+
+Build a binary **with** the dashboards (requires Node + pnpm + a prior
+`pnpm install` in `web/`, since build.rs shells out to pnpm):
+
+```bash
+cargo build --release --features web-ui
+```
+
+### CI
+
+- `.github/workflows/ci.yml` has a `frontend` job: pnpm install + `pnpm -r test`
+  + `pnpm -r build`.
+- `.github/workflows/release.yml` installs Node/pnpm + frontend deps, then builds
+  the binary with `--features web-ui` (embeds both dashboards).
+- `.github/workflows/publish.yml` stays **Rust-only** (no `--features web-ui`);
+  the published crate is web-free, and it asserts web exclusion via
+  `cargo package --manifest-path ccs-proxy/Cargo.toml --allow-dirty --no-verify --list`.
+
 ## Architecture Overview
 
 ### Library + Binary Structure
