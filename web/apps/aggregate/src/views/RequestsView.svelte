@@ -1,9 +1,8 @@
 <script lang="ts">
   import { DataTable, StatusBadge, Input } from "@ccs/ui";
-  import type { RequestSummary } from "@ccs/api";
-  import { state } from "../store.svelte";
+  import { state as store, openRequest, type RequestRow } from "../store.svelte";
 
-  const cols: { key: keyof RequestSummary & string; label: string; sortable?: boolean }[] = [
+  const cols: { key: keyof RequestRow & string; label: string; sortable?: boolean }[] = [
     { key: "started_at", label: "Time", sortable: true },
     { key: "upstream", label: "Upstream", sortable: true },
     { key: "model", label: "Model", sortable: true },
@@ -13,11 +12,11 @@
   ];
 
   const filtered = $derived(
-    state.requests.filter((r) => {
-      const q = state.search.toLowerCase();
+    store.requests.filter((r) => {
+      const q = store.search.toLowerCase();
       if (q && !`${r.model} ${r.upstream}`.toLowerCase().includes(q)) return false;
-      if (state.filters.upstreams.length && !state.filters.upstreams.includes(r.upstream ?? "")) return false;
-      if (state.filters.models.length && !state.filters.models.includes(r.model ?? "")) return false;
+      if (store.filters.upstreams.length && !store.filters.upstreams.includes(r.upstream ?? "")) return false;
+      if (store.filters.models.length && !store.filters.models.includes(r.model ?? "")) return false;
       return true;
     }),
   );
@@ -27,9 +26,9 @@
   }
 </script>
 
-<div class="mb-3"><Input placeholder="Search model / upstream…" bind:value={state.search} /></div>
-<DataTable columns={cols} rows={filtered}>
-  {#snippet row(r: RequestSummary)}
+<div class="mb-3"><Input placeholder="Search model / upstream…" bind:value={store.search} /></div>
+<DataTable columns={cols} rows={filtered} onRowClick={(r: RequestRow) => openRequest(r.session_id, r.seq)}>
+  {#snippet row(r: RequestRow)}
     <td class="px-3 py-2 tabular-nums">{fmtTime(r.started_at)}</td>
     <td class="px-3 py-2">{r.upstream ?? "—"}</td>
     <td class="px-3 py-2">{r.model ?? "—"}</td>

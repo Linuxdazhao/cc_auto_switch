@@ -25,7 +25,7 @@
   async function openRow(r: RequestSummary) {
     if (!health) return;
     const detail = await client.getRequest(health.session_id, r.seq);
-    const body = detail.request_body as { messages?: { role: string; content: unknown }[] } | undefined;
+    const body = detail.request?.body as { messages?: { role: string; content: unknown }[] } | undefined;
     messages = (body?.messages ?? []).map((m) => ({
       role: m.role,
       content: typeof m.content === "string" ? m.content : JSON.stringify(m.content, null, 2),

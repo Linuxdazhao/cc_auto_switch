@@ -5,6 +5,7 @@
   import Sidebar from "./components/Sidebar.svelte";
   import RequestsView from "./views/RequestsView.svelte";
   import SessionsView from "./views/SessionsView.svelte";
+  import RequestDrawer from "./views/RequestDrawer.svelte";
   import { state, loadAll, loadRequests } from "./store.svelte";
 
   onMount(async () => {
@@ -29,3 +30,5 @@
     </main>
   </div>
 </div>
+
+<RequestDrawer />

@@ -14,10 +14,13 @@ export interface ListSessionsParams {
 }
 
 export interface ApiClient {
+  /** Single-proxy `/api/health`. The aggregate health payload differs; the
+   * aggregate dashboard derives its sidebar data from meta/stats instead. */
   health(): Promise<ProxyHealth>;
   meta(): Promise<AggregateMeta>;
   stats(since?: string): Promise<Stats>;
-  listSessions(params?: ListSessionsParams): Promise<{ items: SessionSummary[]; total?: number }>;
+  /** `/api/sessions` returns a bare JSON array (no envelope). */
+  listSessions(params?: ListSessionsParams): Promise<SessionSummary[]>;
   getSession(sid: string): Promise<SessionDetail>;
   getRequest(sid: string, seq: number): Promise<RequestDetail>;
 }

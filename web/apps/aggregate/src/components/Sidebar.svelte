@@ -9,7 +9,7 @@
 </script>
 
 <aside class="w-64 shrink-0 overflow-y-auto border-r border-border p-3">
-  <FilterGroup title="Upstreams" options={state.meta.upstreams} bind:selected={state.filters.upstreams} />
+  <FilterGroup title="Upstreams" options={state.upstreams} bind:selected={state.filters.upstreams} />
   <FilterGroup title="Models" options={state.meta.models} bind:selected={state.filters.models} />
   <FilterGroup title="Working dirs" options={state.meta.cwds} bind:selected={state.filters.cwds} />
   <section class="border-b border-border py-2">
@@ -23,9 +23,9 @@
   </section>
   {#if state.stats}
     <section class="mt-3 space-y-2">
-      <StatCard label="Requests" value={state.stats.total_requests} />
-      <StatCard label="Tokens" value={state.stats.total_tokens} />
-      <StatCard label="Errors" value={state.stats.error_count} />
+      <StatCard label="Requests" value={state.stats.totals.total_requests} />
+      <StatCard label="Tokens" value={state.stats.totals.total_input_tokens + state.stats.totals.total_output_tokens} />
+      <StatCard label="Errors" value={state.stats.totals.error_count} />
     </section>
   {/if}
 </aside>
