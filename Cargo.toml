@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.1.38"
+version = "0.1.39"
 edition = "2024"
 rust-version = "1.95"
 description = "Switch between multiple Claude / Codex configurations. Optional daemon proxies traffic to a built-in dashboard — requests, conversations, token stats. Cross-platform."
