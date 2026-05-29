@@ -855,9 +855,10 @@ pub fn run() -> Result<()> {
                 r#continue,
                 prompt,
             } => {
-                // Handle special reset aliases
+                // Handle special reset aliases (route through daemon proxy if running)
                 if alias_name == "cc" || alias_name == "official" {
-                    println!("Using official Claude configuration");
+                    use colored::Colorize;
+                    println!("{}", "Using official Claude configuration".blue());
 
                     let mut settings = ClaudeSettings::load(
                         storage.get_claude_settings_dir().map(|s| s.as_str()),
@@ -865,12 +866,10 @@ pub fn run() -> Result<()> {
                     settings.remove_anthropic_env();
                     settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                    launch_claude_with_env(
-                        EnvironmentConfig::empty().with_alias("official"),
-                        None,
-                        None,
-                        r#continue,
-                    )?;
+                    crate::daemon::print_version_mismatch_warning();
+                    let env = crate::daemon::build_official_env();
+
+                    launch_claude_with_env(env, None, None, r#continue)?;
                     return Ok(());
                 }
 
