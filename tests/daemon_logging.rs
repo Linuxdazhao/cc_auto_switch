@@ -1,5 +1,7 @@
 //! Tests for daemon logging: level resolution and log cleanup.
 
+#![cfg(unix)]
+
 mod daemon_logging {
     use cc_switch::daemon::logging::resolve_log_level;
     use tracing::level_filters::LevelFilter;
