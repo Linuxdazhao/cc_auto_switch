@@ -60,8 +60,6 @@ cc-switch codex list            # Codex
 
 ```bash
 brew install Linuxdazhao/cc-switch/cc-switch
-# 等价的显式写法：
-# brew tap Linuxdazhao/cc-switch && brew install cc-switch
 ```
 
 **方式 2 — Cargo：**

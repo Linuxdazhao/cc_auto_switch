@@ -1,8 +1,8 @@
 [package]
 name = "cc-switch"
-version = "0.1.35"
+version = "0.1.36"
 edition = "2024"
-description = "Manage multiple Claude / Codex configurations with an optional Rust daemon that transparently proxies traffic to a built-in aggregate dashboard (request inspection, structured conversation view, token stats — a Rust rewrite of ccglass). Zero background processes when the daemon is off. Cross-platform: Linux / macOS / Windows (x86_64 + ARM64)."
+description = "Switch between multiple Claude / Codex configurations. Optional daemon proxies traffic to a built-in dashboard — requests, conversations, token stats. Cross-platform."
 license = "MIT"
 repository = "https://github.com/Linuxdazhao/cc_auto_switch"
 homepage = "https://github.com/Linuxdazhao/cc_auto_switch"
