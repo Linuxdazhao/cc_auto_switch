@@ -218,7 +218,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Target | File |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
-        
+
         shopt -s nullglob globstar
         for artifact in artifacts/**/*.tar.gz artifacts/**/*.zip; do
           if [ -f "$artifact" ]; then
@@ -227,4 +227,98 @@ jobs:
             echo "| $target_name | $filename |" >> $GITHUB_STEP_SUMMARY
           fi
         done
+
+    - name: Update Homebrew formula
+      env:
+        GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/v}"
+
+        # Read sha256 from sidecar files
+        SHA_AARCH64_DARWIN=$(cat artifacts/cc-switch-aarch64-apple-darwin.tar.gz/cc-switch-aarch64-apple-darwin.tar.gz.sha256)
+        SHA_X86_64_DARWIN=$(cat artifacts/cc-switch-x86_64-apple-darwin.tar.gz/cc-switch-x86_64-apple-darwin.tar.gz.sha256)
+        SHA_AARCH64_LINUX=$(cat artifacts/cc-switch-aarch64-unknown-linux-gnu.tar.gz/cc-switch-aarch64-unknown-linux-gnu.tar.gz.sha256)
+        SHA_X86_64_LINUX=$(cat artifacts/cc-switch-x86_64-unknown-linux-gnu.tar.gz/cc-switch-x86_64-unknown-linux-gnu.tar.gz.sha256)
+
+        # Generate formula
+        cat > /tmp/cc-switch.rb <<FORMULA
+        class CcSwitch < Formula
+          desc "A CLI tool for managing multiple Claude API configurations and automatically switching between them"
+          homepage "https://github.com/Linuxdazhao/cc_auto_switch"
+          version "${VERSION}"
+          license "MIT"
+
+          if OS.mac?
+            if Hardware::CPU.arm?
+              url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-apple-darwin.tar.gz"
+              sha256 "${SHA_AARCH64_DARWIN}"
+            else
+              url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-apple-darwin.tar.gz"
+              sha256 "${SHA_X86_64_DARWIN}"
+            end
+          elsif OS.linux?
+            if Hardware::CPU.arm?
+              url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-aarch64-unknown-linux-gnu.tar.gz"
+              sha256 "${SHA_AARCH64_LINUX}"
+            else
+              url "https://github.com/Linuxdazhao/cc_auto_switch/releases/download/v#{version}/cc-switch-x86_64-unknown-linux-gnu.tar.gz"
+              sha256 "${SHA_X86_64_LINUX}"
+            end
+          end
+
+          def install
+            bin.install "cc-switch"
+          end
+
+          test do
+            assert_match "cc-switch", shell_output("#{bin}/cc-switch --help")
+            assert_match version.to_s, shell_output("#{bin}/cc-switch --version")
+          end
+
+          def caveats
+            <<~EOS
+              To use cc-switch effectively:
+
+              1. Add configurations:
+                 cc-switch add my-config TOKEN_HERE https://api.anthropic.com
+
+              2. Switch between configurations:
+                 cc-switch use my-config
+
+              3. Interactive mode:
+                 cc-switch current
+
+              4. Shell completion:
+                 # For fish
+                 cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
+
+                 # For zsh
+                 cc-switch completion zsh > ~/.zsh/completions/_cc-switch
+
+                 # For bash
+                 cc-switch completion bash > ~/.bash_completion.d/cc-switch
+
+              For more information, visit: https://github.com/Linuxdazhao/cc_auto_switch
+            EOS
+          end
+        end
+        FORMULA
+
+        # Remove leading whitespace (heredoc indentation)
+        sed -i 's/^        //' /tmp/cc-switch.rb
+
+        # Push to homebrew tap repo via API
+        CONTENT=$(base64 -w 0 /tmp/cc-switch.rb)
+        EXISTING_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          "https://api.github.com/repos/Linuxdazhao/homebrew-cc-switch/contents/Formula/cc-switch.rb" \
+          | jq -r '.sha')
+
+        curl -s -X PUT \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          "https://api.github.com/repos/Linuxdazhao/homebrew-cc-switch/contents/Formula/cc-switch.rb" \
+          -d "{\"message\":\"chore: bump cc-switch to ${VERSION}\",\"content\":\"${CONTENT}\",\"sha\":\"${EXISTING_SHA}\"}" \
+          | jq -r '.commit.sha'
+
+        echo "✅ Homebrew formula updated to ${VERSION}"
 
