@@ -14,14 +14,14 @@ fn main() {
     println!("cargo:rerun-if-changed=web/packages/ui/src");
     println!("cargo:rerun-if-changed=web/packages/api/src");
 
-    let pnpm = if cfg!(windows) { "pnpm.cmd" } else { "pnpm" };
-    let status = Command::new(pnpm)
-        .args(["--filter", "@ccs/app-aggregate", "build"])
+    let bun = if cfg!(windows) { "bun.exe" } else { "bun" };
+    let status = Command::new(bun)
+        .args(["run", "--filter", "@ccs/app-aggregate", "build"])
         .current_dir(web_dir)
         .status();
     match status {
         Ok(s) if s.success() => {}
         Ok(s) => panic!("vite build failed with status {s}"),
-        Err(e) => panic!("failed to run pnpm (is Node installed?): {e}"),
+        Err(e) => panic!("failed to run bun (is bun installed?): {e}"),
     }
 }

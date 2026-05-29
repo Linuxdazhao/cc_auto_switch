@@ -6,13 +6,13 @@ Codex traffic. Pure Rust, single binary.
 ## Web dashboard (optional `web-ui` feature)
 
 The web dashboard is gated behind the `web-ui` cargo feature, which is **off by
-default**. Pure-Rust downstream consumers need **no Node/pnpm** — building or
+default**. Pure-Rust downstream consumers need **no Node/bun** — building or
 depending on `ccs-proxy` without `web-ui` embeds no web assets and shells out to
 no JS tooling.
 
 When enabled, the dashboard is a Svelte 5 + Vite SPA built from the repo's
-`web/` pnpm workspace (`web/apps/proxy`) and embedded into the binary at build
-time. Building with the feature requires Node + pnpm and a prior `pnpm install`
+`web/` bun workspace (`web/apps/proxy`) and embedded into the binary at build
+time. Building with the feature requires bun and a prior `bun install`
 in `web/`:
 
     cargo build --release --features web-ui

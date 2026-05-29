@@ -228,8 +228,8 @@ cc-switch/
 
 ## Frontend (web/)
 
-The web dashboards are a **pnpm workspace** under `web/` (pnpm 9+; the
-`web/pnpm-lock.yaml` lockfile **is** committed). Tech stack: Svelte 5, Vite 6,
+The web dashboards are a **bun workspace** under `web/` (bun 1.3+; the
+`web/bun.lock` lockfile **is** committed). Tech stack: Svelte 5, Vite 6,
 TypeScript, Tailwind CSS 3, shadcn-svelte / bits-ui v2, Vitest.
 
 ### Workspace layout
@@ -254,15 +254,20 @@ web/
 
 ```bash
 cd web
-pnpm install
-pnpm -r build      # build all packages + apps (outputs to the dist/ dirs above)
-pnpm -r test       # Vitest across the workspace
-pnpm -r check      # type-check / svelte-check
+bun install
+bun run --filter '*' build   # build all apps (outputs to the dist/ dirs above)
+bun run --filter '*' test    # Vitest across the workspace
+bun run --filter '*' check   # type-check / svelte-check
 ```
 
-`web/pnpm-workspace.yaml` sets `onlyBuiltDependencies: [esbuild]` and
-`verifyDepsBeforeRun: false` (the latter avoids a pnpm 11
-`ERR_PNPM_IGNORED_BUILDS` pre-run error on esbuild's build script).
+The workspace is defined by the `workspaces` array in `web/package.json`
+(`packages/*`, `apps/*`) — bun reads it directly, no separate workspace file.
+`bun install --frozen-lockfile` (used in CI) leaves the working tree untouched
+and exits 0 — unlike pnpm 11, which injected an `allowBuilds` stub and failed
+with `ERR_PNPM_IGNORED_BUILDS` on esbuild. esbuild works under bun via its
+prebuilt platform package (no postinstall build needed). Note: `bun run
+--filter '*' <script>` errors if **no** package defines `<script>`, so the root
+`package.json` only exposes scripts that have at least one target (no `lint`).
 
 **`$lib` alias requirement:** both apps are plain Vite apps (not SvelteKit), but
 the shadcn components import `$lib/utils.js`. Each app's `vite.config.ts` adds a
@@ -278,8 +283,8 @@ dashboard ships inside the cc-switch binary).
 
 - `build.rs` in **both** the root crate and `ccs-proxy` is a **no-op unless
   `web-ui` is enabled** (it checks `CARGO_FEATURE_WEB_UI`). When enabled, it
-  runs `pnpm --filter <app> build` to produce the embedded `dist/`. With the
-  feature off, **no Node/pnpm is required** — for `cargo build`, docs.rs, and
+  runs `bun run --filter <app> build` to produce the embedded `dist/`. With the
+  feature off, **no Node/bun is required** — for `cargo build`, docs.rs, and
   downstream consumers.
 - The embedded dashboards (rust-embed) are feature-gated. With `web-ui` OFF,
   `ui_router()` (aggregate) / `router()` (ccs-proxy) return an empty router and
@@ -290,8 +295,8 @@ dashboard ships inside the cc-switch binary).
   "web-aggregate/dist/"]`; `ccs-proxy` `exclude = ["web/", "tests/fixtures/"]`.
   docs.rs builds with `features = []` (web-ui off), so it needs no Node.
 
-Build a binary **with** the dashboards (requires Node + pnpm + a prior
-`pnpm install` in `web/`, since build.rs shells out to pnpm):
+Build a binary **with** the dashboards (requires bun + a prior
+`bun install` in `web/`, since build.rs shells out to bun):
 
 ```bash
 cargo build --release --features web-ui
@@ -299,9 +304,10 @@ cargo build --release --features web-ui
 
 ### CI
 
-- `.github/workflows/ci.yml` has a `frontend` job: pnpm install + `pnpm -r test`
-  + `pnpm -r build`.
-- `.github/workflows/release.yml` installs Node/pnpm + frontend deps, then builds
+- `.github/workflows/ci.yml` has a `frontend` job (via `oven-sh/setup-bun`):
+  `bun install --frozen-lockfile` + `bun run --filter '*' test` + `bun run
+  --filter '*' build`.
+- `.github/workflows/release.yml` installs bun + frontend deps, then builds
   the binary with `--features web-ui` (embeds both dashboards).
 - `.github/workflows/publish.yml` stays **Rust-only** (no `--features web-ui`);
   the published crate is web-free, and it asserts web exclusion via

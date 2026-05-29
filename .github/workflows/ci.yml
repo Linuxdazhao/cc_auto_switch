@@ -17,18 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          bun-version: 1.3.14
 
       - name: Install, test, and build frontend
-        run: cd web && pnpm install --frozen-lockfile && pnpm -r test && pnpm -r build
+        run: cd web && bun install --frozen-lockfile && bun run --filter '*' test && bun run --filter '*' build
 
   test:
     name: Test on ${{ matrix.os }}
