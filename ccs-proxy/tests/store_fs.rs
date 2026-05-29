@@ -134,7 +134,9 @@ async fn append_does_not_overwrite_existing_cwd() {
     store.init_session(meta).await.unwrap();
     store
         .append(rec_with_system(
-            1, "s_cwd2", "claude-opus-4-7",
+            1,
+            "s_cwd2",
+            "claude-opus-4-7",
             "Primary working directory: /first\n",
         ))
         .await
@@ -142,7 +144,9 @@ async fn append_does_not_overwrite_existing_cwd() {
     // Second request with a different cwd marker — should be ignored.
     store
         .append(rec_with_system(
-            2, "s_cwd2", "claude-opus-4-7",
+            2,
+            "s_cwd2",
+            "claude-opus-4-7",
             "Primary working directory: /second\n",
         ))
         .await
@@ -170,14 +174,26 @@ async fn append_dedupes_and_appends_models() {
     };
     let store: Arc<dyn Store> = Arc::new(FsStore::open(dir.path().to_path_buf()).unwrap());
     store.init_session(meta).await.unwrap();
-    store.append(rec_with_system(1, "s_m", "claude-opus-4-7", "")).await.unwrap();
-    store.append(rec_with_system(2, "s_m", "claude-sonnet-4-6", "")).await.unwrap();
-    store.append(rec_with_system(3, "s_m", "claude-opus-4-7", "")).await.unwrap();
+    store
+        .append(rec_with_system(1, "s_m", "claude-opus-4-7", ""))
+        .await
+        .unwrap();
+    store
+        .append(rec_with_system(2, "s_m", "claude-sonnet-4-6", ""))
+        .await
+        .unwrap();
+    store
+        .append(rec_with_system(3, "s_m", "claude-opus-4-7", ""))
+        .await
+        .unwrap();
 
     let sessions = store.list_sessions().await.unwrap();
     assert_eq!(
         sessions[0].models,
-        vec!["claude-opus-4-7".to_string(), "claude-sonnet-4-6".to_string()]
+        vec![
+            "claude-opus-4-7".to_string(),
+            "claude-sonnet-4-6".to_string()
+        ]
     );
 }
 

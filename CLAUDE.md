@@ -79,23 +79,27 @@ cargo clippy -- -W warnings
 cargo audit
 ```
 
-### Pre-commit Hooks
+### Pre-commit Hooks (prek)
+
+We use [`prek`](https://github.com/j178/prek), a Rust-native drop-in
+replacement for the Python `pre-commit` tool. It reads the same
+`.pre-commit-config.yaml`.
 
 ```bash
-# One-time setup
+# One-time setup (installs prek + the git hook)
 ./scripts/setup-pre-commit.sh
 
 # Run on all files
-pre-commit run --all-files
+prek run --all-files
 
-# Run on specific files
-pre-commit run --files src/main.rs
+# Run a single hook
+prek run cargo-fmt --all-files
 
-# Update hooks
-pre-commit autoupdate
+# Update hook versions
+prek autoupdate
 
-# Uninstall hooks
-pre-commit uninstall
+# Uninstall the git hook
+prek uninstall
 ```
 
 ### Version Management and Release
@@ -451,12 +455,12 @@ cargo test -- --nocapture
 
 **Automatic Checks** (run on every commit):
 
-- `cargo check` - Compilation verification
-- `cargo fmt --check` - Code formatting
+- `cargo fmt --all -- --check` - Code formatting (matches CI; `--all` covers the whole workspace including `ccs-proxy`)
 - `cargo clippy -- -D warnings` - Linting (warnings as errors)
 - `cargo test` - All tests
 - `cargo audit` - Security vulnerability scan
 - `cargo doc --no-deps` - Documentation build
+- `cargo build --release` - Release build (artifacts cleaned after)
 
 **Setup**: `./scripts/setup-pre-commit.sh`
 

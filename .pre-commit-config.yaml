@@ -3,10 +3,10 @@
 repos:
   - repo: local
     hooks:
-      # Format code with rustfmt
+      # Format code with rustfmt (must match CI: `cargo fmt --all -- --check`)
       - id: cargo-fmt
         name: cargo fmt
-        entry: cargo fmt --check
+        entry: cargo fmt --all -- --check
         language: system
         types: [rust]
         pass_filenames: false

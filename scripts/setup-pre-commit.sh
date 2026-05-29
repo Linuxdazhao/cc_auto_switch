@@ -1,68 +1,52 @@
 #!/bin/bash
 
-# Pre-commit setup script for cc_auto_switch
-# This script installs pre-commit and sets up the hooks
+# Pre-commit setup script for cc_auto_switch.
+# Installs `prek` (Rust-based, drop-in compatible with .pre-commit-config.yaml)
+# and wires up its hook into .git/hooks/pre-commit.
 
 set -e
 
-echo "🔧 Setting up pre-commit hooks for cc_auto_switch..."
+echo "🔧 Setting up prek hooks for cc_auto_switch..."
 
-# Check if pre-commit is installed
-if ! command -v pre-commit &> /dev/null; then
-    echo "📦 Installing pre-commit..."
-    
-    # Try different installation methods based on what's available
-    if command -v pipx &> /dev/null; then
-        echo "   Using pipx to install pre-commit..."
-        pipx install pre-commit
-    elif command -v brew &> /dev/null; then
-        echo "   Using Homebrew to install pre-commit..."
-        brew install pre-commit
-    elif command -v pip3 &> /dev/null; then
-        echo "   Using pip3 with --user flag..."
-        pip3 install --user pre-commit
-    elif command -v pip &> /dev/null; then
-        echo "   Using pip with --user flag..."
-        pip install --user pre-commit
+if ! command -v prek &> /dev/null; then
+    echo "📦 Installing prek..."
+
+    if command -v brew &> /dev/null; then
+        echo "   Using Homebrew to install prek..."
+        brew install prek
+    elif command -v cargo &> /dev/null; then
+        echo "   Using cargo to install prek..."
+        cargo install prek
     else
-        echo "❌ Error: No package manager found. Please install pre-commit manually:"
-        echo "   Option 1: brew install pre-commit"
-        echo "   Option 2: pipx install pre-commit"
-        echo "   Option 3: pip3 install --user pre-commit"
+        echo "❌ Error: No supported installer found. Install prek manually:"
+        echo "   Option 1: brew install prek"
+        echo "   Option 2: cargo install prek"
+        echo "   See https://github.com/j178/prek for other options."
         exit 1
     fi
 else
-    echo "✅ pre-commit is already installed"
+    echo "✅ prek is already installed ($(prek --version))"
 fi
 
-# Install the pre-commit hooks
-echo "🔗 Installing pre-commit hooks..."
-pre-commit install
+echo "🔗 Installing prek git hook..."
+prek install --overwrite
 
-# Verify installation
-echo "🔍 Verifying installation..."
-if pre-commit --version &> /dev/null; then
-    echo "✅ Pre-commit setup completed successfully!"
-    echo ""
-    echo "📋 Available hooks:"
-    echo "   • cargo-fmt: Code formatting check" 
-    echo "   • cargo-clippy: Linting with warnings as errors"
-    echo "   • cargo-test: Run all tests"
-    echo "   • cargo-audit: Security vulnerability scan (auto-installs if needed)"
-    echo "   • cargo-doc: Documentation build check"
-    echo "   • cargo-build-release: Release build + compile verification (removes artifacts after)"
-    echo ""
-    echo "🔄 Testing hooks (dry run)..."
-    pre-commit run --all-files --show-diff-on-failure || echo "⚠️  Some hooks may need fixes before committing"
-    echo ""
-    echo "💡 Usage:"
-    echo "   • Run manually: pre-commit run --all-files"
-    echo "   • Run on specific files: pre-commit run --files src/main.rs"
-    echo "   • Skip hooks: git commit --no-verify"
-    echo "   • Update hooks: pre-commit autoupdate"
-    echo ""
-    echo "🚀 Ready to go! All CI checks will now run locally before commits."
-else
-    echo "❌ Error: pre-commit installation failed"
-    exit 1
-fi
+echo ""
+echo "📋 Configured hooks (from .pre-commit-config.yaml):"
+echo "   • cargo-fmt: cargo fmt --all -- --check (matches CI)"
+echo "   • cargo-clippy: Linting with warnings as errors"
+echo "   • cargo-test: Run all tests"
+echo "   • cargo-audit: Security vulnerability scan (auto-installs if needed)"
+echo "   • cargo-doc: Documentation build check"
+echo "   • cargo-build-release: Release build + compile verification"
+echo ""
+echo "🔄 Dry run on all files..."
+prek run --all-files || echo "⚠️  Some hooks reported issues — fix before committing"
+echo ""
+echo "💡 Usage:"
+echo "   • Run manually: prek run --all-files"
+echo "   • Run a single hook: prek run cargo-fmt --all-files"
+echo "   • Skip hooks for one commit: git commit --no-verify"
+echo "   • Update hook versions: prek autoupdate"
+echo ""
+echo "🚀 Ready. CI-equivalent checks will run before every commit."
