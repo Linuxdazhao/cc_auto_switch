@@ -15,3 +15,4 @@ export { default as StatusBadge } from "./components/StatusBadge.svelte";
 export { default as StatCard } from "./components/StatCard.svelte";
 export { sortRows, type SortDir } from "./sort";
 export { default as DataTable } from "./components/DataTable.svelte";
+export { default as FilterGroup } from "./components/FilterGroup.svelte";
