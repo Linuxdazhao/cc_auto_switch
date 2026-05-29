@@ -46,7 +46,7 @@ jobs:
             binary_name: cc-switch.exe
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@v1
@@ -106,7 +106,7 @@ jobs:
         Set-Content -Path "${{ matrix.artifact_name }}.sha256" -Value $hash -NoNewline
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ matrix.artifact_name }}
         path: |
@@ -122,12 +122,12 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         path: artifacts
 
@@ -198,7 +198,7 @@ jobs:
         echo -e "$CHANGELOG" > release_notes.md
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           artifacts/**/*.tar.gz

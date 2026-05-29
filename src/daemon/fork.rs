@@ -11,23 +11,23 @@ use std::path::Path;
 
 /// Double-fork into background and redirect stdio to `log_path`.
 ///
-/// On success this function **does not return in the original process** —
-/// both the parent and intermediate child call `_exit(0)`. Only the final
-/// grandchild (the daemon) returns `Ok(())`.
+/// Returns `true` for the daemon (grandchild) process and `false` for the
+/// original parent. The parent should print any status info then exit.
 ///
 /// # Safety
 /// Uses `libc::fork()` which is inherently unsafe in multi-threaded programs.
 /// Must be called **before** spawning any threads (i.e., before tokio runtime).
-pub fn double_fork_into_background(log_path: &Path) -> Result<()> {
-    // First fork — parent exits, child continues.
+pub fn double_fork_into_background(log_path: &Path) -> Result<bool> {
+    // First fork — parent waits for child then returns, child continues.
     match unsafe { libc::fork() } {
         -1 => {
             return Err(std::io::Error::last_os_error()).context("first fork failed");
         }
         0 => { /* child continues below */ }
-        _parent_pid => {
-            // Parent: exit immediately so the shell gets its prompt back.
-            unsafe { libc::_exit(0) };
+        _child_pid => {
+            // Parent: wait for intermediate child to exit, then return.
+            unsafe { libc::waitpid(_child_pid, std::ptr::null_mut(), 0) };
+            return Ok(false);
         }
     }
 
@@ -53,7 +53,7 @@ pub fn double_fork_into_background(log_path: &Path) -> Result<()> {
     // chdir to / so we don't hold any directory mount busy.
     unsafe { libc::chdir(c"/".as_ptr()) };
 
-    Ok(())
+    Ok(true)
 }
 
 fn redirect_stdio(log_path: &Path) -> Result<()> {

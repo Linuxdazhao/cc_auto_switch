@@ -93,10 +93,35 @@ fn handle_start(
     if !foreground {
         let home = dirs::home_dir().context("could not find home directory")?;
         let log_path = home.join(".cc-switch").join("daemon.log");
-        crate::daemon::fork::double_fork_into_background(&log_path)?;
+        let is_daemon = crate::daemon::fork::double_fork_into_background(&log_path)?;
+        if !is_daemon {
+            // Parent: wait for the daemon to write its state file, then print info.
+            wait_and_print_status(&cfg.state_path);
+            std::process::exit(0);
+        }
     }
 
     crate::daemon::lifecycle::run_daemon_blocking(cfg, log_level, verbose)
+}
+
+#[cfg(unix)]
+fn wait_and_print_status(state_path: &std::path::Path) {
+    for _ in 0..30 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(contents) = std::fs::read_to_string(state_path)
+            && let Ok(state) = serde_json::from_str::<DaemonState>(&contents)
+        {
+            eprintln!("daemon started (PID {})", state.pid);
+            if let Some(port) = state.agg_port {
+                eprintln!("aggregate dashboard: http://localhost:{port}");
+            }
+            for proxy in &state.proxies {
+                eprintln!("  proxy :{} → {}", proxy.proxy_port, proxy.upstream);
+            }
+            return;
+        }
+    }
+    eprintln!("daemon starting in background (state file not yet available)");
 }
 
 #[cfg(unix)]

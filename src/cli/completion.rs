@@ -181,6 +181,10 @@ complete -c cc-switch -n '__fish_cc_switch_using_subcommand switch' -f -a '(cc-s
 # Custom completion for remove subcommand with dynamic aliases
 complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-switch --list-aliases)' -d 'Configuration alias name'
 
+# Completion for 'completion' subcommand with shell types
+complete -c cc-switch -n '__fish_cc_switch_using_subcommand completion' -f -a 'fish zsh bash elvish powershell' -d 'Shell type'
+complete -c cs -n '__fish_seen_subcommand_from completion' -f -a 'fish zsh bash elvish powershell' -d 'Shell type'
+
 # Custom completion for codex subcommand with dynamic aliases
 complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
 complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
