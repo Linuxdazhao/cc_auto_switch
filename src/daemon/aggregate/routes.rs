@@ -28,6 +28,9 @@ pub fn router() -> Router<SharedState> {
 struct SessionsQuery {
     upstream: Option<String>,
     alias: Option<String>,
+    model: Option<String>,
+    cwd: Option<String>,
+    include_empty: Option<bool>,
     limit: Option<usize>,
     offset: Option<usize>,
 }
@@ -82,6 +85,8 @@ async fn list_sessions(
                 "started_at": session.started_at,
                 "ended_at": session.ended_at,
                 "request_count": session.request_count,
+                "cwd": session.cwd,
+                "models": session.models,
             }));
         }
     }
@@ -103,6 +108,44 @@ async fn list_sessions(
                     .any(|a| a.as_str() == Some(alias_filter.as_str()))
             })
         });
+    }
+
+    if let Some(ref model_csv) = params.model {
+        let wanted: Vec<&str> = model_csv
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !wanted.is_empty() {
+            all_sessions.retain(|s| {
+                s["models"].as_array().is_some_and(|arr| {
+                    arr.iter()
+                        .any(|m| m.as_str().is_some_and(|mm| wanted.contains(&mm)))
+                })
+            });
+        }
+    }
+
+    if let Some(ref cwd_csv) = params.cwd {
+        let wanted: Vec<&str> = cwd_csv
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !wanted.is_empty() {
+            all_sessions.retain(|s| {
+                let session_cwd = s["cwd"].as_str();
+                wanted.iter().any(|w| match (*w, session_cwd) {
+                    ("(unknown)", None) => true,
+                    (w, Some(c)) if w == c => true,
+                    _ => false,
+                })
+            });
+        }
+    }
+
+    if !params.include_empty.unwrap_or(false) {
+        all_sessions.retain(|s| s["request_count"].as_u64().unwrap_or(0) > 0);
     }
 
     let offset = params.offset.unwrap_or(0);
