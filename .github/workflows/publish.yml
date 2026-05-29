@@ -35,6 +35,9 @@ jobs:
     - name: Run tests
       run: cargo test
 
+    - name: Assert web excluded from ccs-proxy package
+      run: cargo package --manifest-path ccs-proxy/Cargo.toml --allow-dirty --no-verify --list | (! grep -q '^web/')
+
     - name: Publish to crates.io
       run: |
         cargo publish --allow-dirty --registry crates-io

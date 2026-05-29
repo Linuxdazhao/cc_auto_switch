@@ -93,23 +93,43 @@ pub async fn serve(
 }
 
 use axum::Router;
+#[cfg(feature = "web-ui")]
 use axum::http::{StatusCode, header};
+#[cfg(feature = "web-ui")]
 use axum::response::{IntoResponse, Response};
+#[cfg(feature = "web-ui")]
 use axum::routing::get;
+#[cfg(feature = "web-ui")]
 use rust_embed::RustEmbed;
 
+#[cfg(feature = "web-ui")]
 #[derive(RustEmbed)]
-#[folder = "web-aggregate/"]
+#[folder = "web-aggregate/dist/"]
 struct AggWebAsset;
 
+#[cfg(feature = "web-ui")]
 fn ui_router() -> Router<Arc<AggregateState>> {
+    use axum::extract::Path;
     Router::new()
         .route("/", get(|| async { serve_asset("index.html") }))
-        .route("/index.html", get(|| async { serve_asset("index.html") }))
-        .route("/app.js", get(|| async { serve_asset("app.js") }))
-        .route("/style.css", get(|| async { serve_asset("style.css") }))
+        .route(
+            "/{*path}",
+            get(|Path(path): Path<String>| async move {
+                if AggWebAsset::get(&path).is_some() {
+                    serve_asset(&path)
+                } else {
+                    serve_asset("index.html")
+                }
+            }),
+        )
 }
 
+#[cfg(not(feature = "web-ui"))]
+fn ui_router() -> Router<Arc<AggregateState>> {
+    Router::new()
+}
+
+#[cfg(feature = "web-ui")]
 fn serve_asset(name: &str) -> Response {
     match AggWebAsset::get(name) {
         Some(asset) => {

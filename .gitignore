@@ -27,3 +27,9 @@ bin/cc-switch.exe
 .serena/
 .specify/
 .claude/settings.local.json
+
+# frontend
+web/node_modules/
+web/**/.svelte-kit/
+web-aggregate/dist/
+ccs-proxy/web/dist/

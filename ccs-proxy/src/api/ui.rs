@@ -1,22 +1,43 @@
 use axum::Router;
+#[cfg(feature = "web-ui")]
 use axum::http::StatusCode;
+#[cfg(feature = "web-ui")]
 use axum::http::header;
+#[cfg(feature = "web-ui")]
 use axum::response::{IntoResponse, Response};
+#[cfg(feature = "web-ui")]
 use axum::routing::get;
+#[cfg(feature = "web-ui")]
 use rust_embed::RustEmbed;
 
+#[cfg(feature = "web-ui")]
 #[derive(RustEmbed)]
-#[folder = "web/"]
+#[folder = "web/dist/"]
 struct WebAsset;
 
+#[cfg(feature = "web-ui")]
 pub fn router() -> Router<crate::AppState> {
+    use axum::extract::Path;
     Router::new()
         .route("/", get(|| async { serve_asset("index.html") }))
-        .route("/index.html", get(|| async { serve_asset("index.html") }))
-        .route("/app.js", get(|| async { serve_asset("app.js") }))
-        .route("/style.css", get(|| async { serve_asset("style.css") }))
+        .route(
+            "/{*path}",
+            get(|Path(p): Path<String>| async move {
+                if WebAsset::get(&p).is_some() {
+                    serve_asset(&p)
+                } else {
+                    serve_asset("index.html")
+                }
+            }),
+        )
 }
 
+#[cfg(not(feature = "web-ui"))]
+pub fn router() -> Router<crate::AppState> {
+    Router::new()
+}
+
+#[cfg(feature = "web-ui")]
 fn serve_asset(name: &str) -> Response {
     match WebAsset::get(name) {
         Some(asset) => {

@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["svelte", "vite/client"],
+    "paths": { "$lib": ["../../packages/ui/src/lib"], "$lib/*": ["../../packages/ui/src/lib/*"] }
+  },
+  "include": ["src"]
+}

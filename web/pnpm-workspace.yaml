@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+onlyBuiltDependencies:
+  - esbuild
+# pnpm 11's verify-deps-before-run runs an implicit install before `pnpm run`
+# scripts that hard-errors (ERR_PNPM_IGNORED_BUILDS) on esbuild's build script
+# even though it is allowlisted above, and also injects an `allowBuilds` prompt
+# stub into this file. Disabling the pre-run check stops both, so `build`/`check`
+# (local, build.rs, and CI `pnpm -r build`) run cleanly without per-call flags.
+verifyDepsBeforeRun: false
