@@ -234,7 +234,36 @@ complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import f
 "#;
     out.extend_from_slice(extra.as_bytes());
 
+    generate_cs_completion_file();
     generate_cx_completion_file();
+}
+
+/// Generate separate completion file for cs fish alias.
+///
+/// Fish only auto-loads completions from files named after the command,
+/// so `cs` needs its own `cs.fish`.
+fn generate_cs_completion_file() {
+    let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("~"));
+    let completions_dir = home.join(".config").join("fish").join("completions");
+
+    if !completions_dir.exists()
+        && let Err(e) = fs::create_dir_all(&completions_dir)
+    {
+        eprintln!("Warning: Could not create completions directory: {e}");
+        return;
+    }
+
+    let cs_content = r#"# Completion for 'cs' alias (cc-switch)
+complete -c cs -w cc-switch
+"#;
+
+    let cs_path = completions_dir.join("cs.fish");
+
+    if let Err(e) = fs::write(&cs_path, cs_content) {
+        eprintln!("Warning: Could not write cs.fish: {e}");
+    }
+
+    eprintln!("Created completion file: {}", cs_path.display());
 }
 
 /// Generate separate completion file for cx fish function
