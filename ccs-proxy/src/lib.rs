@@ -77,6 +77,8 @@ pub async fn serve(cfg: ServeConfig) -> Result<ProxyHandle, ServeError> {
         ended_at: None,
         request_count: 0,
         schema_version: 1,
+        cwd: None,
+        models: vec![],
     };
     if let Err(err) = store.init_session(meta).await {
         tracing::warn!(error = %err, "failed to persist initial session metadata");

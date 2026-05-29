@@ -58,6 +58,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 1,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();
@@ -73,6 +75,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 2,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();
@@ -150,6 +154,8 @@ mod daemon_aggregate {
                 ended_at: None,
                 request_count: 0,
                 schema_version: 1,
+                cwd: None,
+                models: vec![],
             })
             .await
             .unwrap();
@@ -205,6 +211,261 @@ mod daemon_aggregate {
         assert_eq!(stats["upstreams"][0]["total_requests"], 1);
         assert_eq!(stats["upstreams"][0]["total_input_tokens"], 100);
         assert_eq!(stats["totals"]["total_requests"], 1);
+
+        handle.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn aggregate_sessions_hides_empty_by_default() {
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
+        // session A: empty
+        store
+            .init_session(SessionMeta {
+                session_id: "empty_one".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 0,
+                schema_version: 1,
+                cwd: None,
+                models: vec![],
+            })
+            .await
+            .unwrap();
+        // session B: has 1 request
+        store
+            .init_session(SessionMeta {
+                session_id: "has_one".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: None,
+                models: vec![],
+            })
+            .await
+            .unwrap();
+
+        let stores = vec![("https://a.example.com".to_string(), store)];
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
+        let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
+            .await
+            .unwrap();
+
+        // default: empty hidden
+        let resp = reqwest::get(format!("http://127.0.0.1:{}/api/sessions", handle.port))
+            .await
+            .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0]["session_id"], "has_one");
+
+        // include_empty=true: both visible
+        let resp = reqwest::get(format!(
+            "http://127.0.0.1:{}/api/sessions?include_empty=true",
+            handle.port
+        ))
+        .await
+        .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        assert_eq!(sessions.len(), 2);
+
+        handle.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn aggregate_sessions_filters_by_model_and_cwd() {
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
+
+        store
+            .init_session(SessionMeta {
+                session_id: "s_opus".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/a".to_string()),
+                models: vec!["claude-opus-4-7".to_string()],
+            })
+            .await
+            .unwrap();
+        store
+            .init_session(SessionMeta {
+                session_id: "s_sonnet".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/b".to_string()),
+                models: vec!["claude-sonnet-4-6".to_string()],
+            })
+            .await
+            .unwrap();
+        store
+            .init_session(SessionMeta {
+                session_id: "s_nocwd".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: None,
+                models: vec!["claude-opus-4-7".to_string()],
+            })
+            .await
+            .unwrap();
+
+        let stores = vec![("https://a.example.com".to_string(), store)];
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
+        let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
+            .await
+            .unwrap();
+
+        // model filter
+        let resp = reqwest::get(format!(
+            "http://127.0.0.1:{}/api/sessions?model=claude-opus-4-7",
+            handle.port
+        ))
+        .await
+        .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        let ids: Vec<&str> = sessions
+            .iter()
+            .map(|s| s["session_id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids.len(), 2);
+        assert!(ids.contains(&"s_opus"));
+        assert!(ids.contains(&"s_nocwd"));
+
+        // cwd filter
+        let resp = reqwest::get(format!(
+            "http://127.0.0.1:{}/api/sessions?cwd=/p/a",
+            handle.port
+        ))
+        .await
+        .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0]["session_id"], "s_opus");
+        // sanity: response carries cwd + models
+        assert_eq!(sessions[0]["cwd"], "/p/a");
+        assert_eq!(sessions[0]["models"][0], "claude-opus-4-7");
+
+        // (unknown) cwd matches sessions with cwd: None
+        let resp = reqwest::get(format!(
+            "http://127.0.0.1:{}/api/sessions?cwd=(unknown)",
+            handle.port
+        ))
+        .await
+        .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0]["session_id"], "s_nocwd");
+
+        // combined: model AND cwd
+        let resp = reqwest::get(format!(
+            "http://127.0.0.1:{}/api/sessions?model=claude-opus-4-7&cwd=/p/a",
+            handle.port
+        ))
+        .await
+        .unwrap();
+        let sessions: Vec<serde_json::Value> = resp.json().await.unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0]["session_id"], "s_opus");
+
+        handle.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn aggregate_meta_returns_dedup_sorted_lists() {
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
+        store
+            .init_session(SessionMeta {
+                session_id: "s1".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/b".to_string()),
+                models: vec![
+                    "claude-sonnet-4-6".to_string(),
+                    "claude-opus-4-7".to_string(),
+                ],
+            })
+            .await
+            .unwrap();
+        store
+            .init_session(SessionMeta {
+                session_id: "s2".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/a".to_string()),
+                models: vec!["claude-opus-4-7".to_string()],
+            })
+            .await
+            .unwrap();
+
+        let stores = vec![("https://a.example.com".to_string(), store)];
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
+        let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
+            .await
+            .unwrap();
+
+        let resp = reqwest::get(format!("http://127.0.0.1:{}/api/meta", handle.port))
+            .await
+            .unwrap();
+        let body: serde_json::Value = resp.json().await.unwrap();
+        let models: Vec<&str> = body["models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        let cwds: Vec<&str> = body["cwds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(models, vec!["claude-opus-4-7", "claude-sonnet-4-6"]);
+        assert_eq!(cwds, vec!["/p/a", "/p/b"]);
 
         handle.shutdown().await;
     }

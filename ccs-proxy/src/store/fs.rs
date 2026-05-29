@@ -72,15 +72,25 @@ impl FsStore {
         *guard = 0;
     }
 
-    async fn bump_request_count(&self, session_id: &str, seq: u64) {
-        let meta_path = self.meta_path(session_id);
+    async fn bump_meta(&self, rec: &CaptureRecord) {
+        let meta_path = self.meta_path(&rec.session_id);
         let Ok(meta_bytes) = fs::read(&meta_path).await else {
             return;
         };
         let Ok(mut meta) = serde_json::from_slice::<SessionMeta>(&meta_bytes) else {
             return;
         };
-        meta.request_count = meta.request_count.max(seq);
+        meta.request_count = meta.request_count.max(rec.seq);
+        if meta.cwd.is_none()
+            && let Some(found) = crate::capture::extract::extract_cwd(&rec.request.body)
+        {
+            meta.cwd = Some(found);
+        }
+        if let Some(m) = rec.model.as_deref()
+            && !meta.models.iter().any(|existing| existing == m)
+        {
+            meta.models.push(m.to_string());
+        }
         let Ok(out) = serde_json::to_vec_pretty(&meta) else {
             return;
         };
@@ -143,7 +153,7 @@ impl Store for FsStore {
         match self.atomic_write(&path, &bytes).await {
             Ok(()) => {
                 self.note_write_success();
-                self.bump_request_count(&rec.session_id, rec.seq).await;
+                self.bump_meta(&rec).await;
                 Ok(())
             }
             Err(err) => {

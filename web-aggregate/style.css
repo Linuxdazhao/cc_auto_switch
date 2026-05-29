@@ -738,3 +738,32 @@ header {
   gap: 4px;
   margin-bottom: 12px;
 }
+
+#model-filters label,
+#cwd-filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#cwd-filters label .cwd-path {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#show-empty-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 12px;
+}

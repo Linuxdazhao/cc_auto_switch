@@ -27,6 +27,41 @@ pub fn extract_model_from_request_body(body: &Value) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// Extract the Claude Code working-directory marker from a request body's
+/// `system` field. Looks for a line starting with `Primary working directory:`
+/// (case-sensitive, anchored to line start) and returns the trimmed path.
+/// Handles both `system: "..."` (string) and
+/// `system: [{"type":"text","text":"..."}]` (block list) shapes.
+pub fn extract_cwd(body: &Value) -> Option<String> {
+    let system = body.get("system")?;
+    if let Some(s) = system.as_str() {
+        return scan_system_text(s);
+    }
+    if let Some(arr) = system.as_array() {
+        for block in arr {
+            if let Some(text) = block.get("text").and_then(|v| v.as_str())
+                && let Some(found) = scan_system_text(text)
+            {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
+
+fn scan_system_text(text: &str) -> Option<String> {
+    const MARKER: &str = "Primary working directory:";
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix(MARKER) {
+            let trimmed = rest.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,5 +101,46 @@ mod tests {
     fn no_model_when_field_absent() {
         let body = json!({"messages": []});
         assert_eq!(extract_model_from_request_body(&body), None);
+    }
+
+    #[test]
+    fn cwd_from_string_system() {
+        let body = json!({
+            "system": "You are Claude Code.\nPrimary working directory: /Users/me/proj\nMore text.",
+        });
+        assert_eq!(extract_cwd(&body), Some("/Users/me/proj".into()));
+    }
+
+    #[test]
+    fn cwd_from_block_list_system() {
+        let body = json!({
+            "system": [
+                {"type": "text", "text": "header"},
+                {"type": "text", "text": "intro\nPrimary working directory: /tmp/x y z\ntail"},
+            ],
+        });
+        assert_eq!(extract_cwd(&body), Some("/tmp/x y z".into()));
+    }
+
+    #[test]
+    fn cwd_ignores_prose_mention() {
+        let body = json!({
+            "system": "Consider the user's working directory when answering questions.",
+        });
+        assert_eq!(extract_cwd(&body), None);
+    }
+
+    #[test]
+    fn cwd_returns_none_when_no_system() {
+        let body = json!({"messages": []});
+        assert_eq!(extract_cwd(&body), None);
+    }
+
+    #[test]
+    fn cwd_takes_first_match_only() {
+        let body = json!({
+            "system": "Primary working directory: /a\nPrimary working directory: /b",
+        });
+        assert_eq!(extract_cwd(&body), Some("/a".into()));
     }
 }

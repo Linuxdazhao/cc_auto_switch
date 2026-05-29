@@ -45,6 +45,8 @@ async fn proxies_messages_endpoint_and_captures_record() {
             ended_at: None,
             request_count: 0,
             schema_version: 1,
+            cwd: None,
+            models: vec![],
         })
         .await
         .unwrap();
