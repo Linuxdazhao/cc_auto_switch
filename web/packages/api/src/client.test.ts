@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createClient } from "./client";
+import { createClient, parseSseEvent } from "./client";
 
 describe("createClient", () => {
   beforeEach(() => {
@@ -31,5 +31,15 @@ describe("createClient", () => {
       .mockResolvedValue(new Response("nope", { status: 500 }));
     const c = createClient({ baseUrl: "", fetch: fetchMock });
     await expect(c.health()).rejects.toThrow(/500/);
+  });
+});
+
+describe("parseSseEvent", () => {
+  it("extracts JSON data line", () => {
+    const ev = parseSseEvent("event: request\ndata: {\"seq\":3}\n");
+    expect(ev).toEqual({ event: "request", data: { seq: 3 } });
+  });
+  it("returns null on heartbeat/comment", () => {
+    expect(parseSseEvent(": keepalive\n")).toBeNull();
   });
 });

@@ -49,3 +49,25 @@ export function createClient(opts: ClientOptions = {}): ApiClient {
     getRequest: (sid, seq) => get(`/api/requests/${encodeURIComponent(sid)}/${seq}`),
   };
 }
+
+export interface SseEvent {
+  event: string;
+  data: unknown;
+}
+
+export function parseSseEvent(chunk: string): SseEvent | null {
+  const lines = chunk.split("\n");
+  let event = "message";
+  let data = "";
+  for (const line of lines) {
+    if (line.startsWith(":")) continue;
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data += line.slice(5).trim();
+  }
+  if (!data) return null;
+  try {
+    return { event, data: JSON.parse(data) };
+  } catch {
+    return { event, data };
+  }
+}
