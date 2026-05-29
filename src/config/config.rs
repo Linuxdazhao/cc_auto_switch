@@ -151,6 +151,15 @@ impl EnvironmentConfig {
         self
     }
 
+    /// Set the `ANTHROPIC_BASE_URL` env var (used to point Claude CLI at a
+    /// proxy without injecting a token — OAuth Authorization headers flow
+    /// through verbatim).
+    pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
+        self.env_vars
+            .insert("ANTHROPIC_BASE_URL".to_string(), url.into());
+        self
+    }
+
     /// Get environment variables as a Vec of (key, value) tuples
     /// for use with Command::envs()
     pub fn as_env_tuples(&self) -> EnvVarTuples {
@@ -190,4 +199,30 @@ pub fn validate_alias_name(alias_name: &str) -> Result<()> {
         anyhow::bail!("Alias name cannot contain whitespace");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn with_base_url_sets_anthropic_base_url() {
+        let env = EnvironmentConfig::empty()
+            .with_alias("official")
+            .with_base_url("http://127.0.0.1:9876");
+        assert_eq!(
+            env.env_vars.get("ANTHROPIC_BASE_URL").map(String::as_str),
+            Some("http://127.0.0.1:9876"),
+        );
+        assert_eq!(
+            env.env_vars
+                .get("CC_SWITCH_CURRENT_ALIAS")
+                .map(String::as_str),
+            Some("official"),
+        );
+        assert!(
+            env.env_vars.get("ANTHROPIC_AUTH_TOKEN").is_none(),
+            "with_base_url must NOT set a token (OAuth must flow through unchanged)"
+        );
+    }
 }
