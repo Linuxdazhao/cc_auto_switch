@@ -9,7 +9,6 @@ export * as Tooltip from "./components/ui/tooltip";
 export * as Sheet from "./components/ui/sheet";
 export { Skeleton } from "./components/ui/skeleton";
 export { Input } from "./components/ui/input";
-export { applyTheme, resolveInitialTheme, type Theme } from "./theme";
 export { statusVariant, type StatusVariant } from "./status";
 export { default as StatusBadge } from "./components/StatusBadge.svelte";
 export { default as StatCard } from "./components/StatCard.svelte";
