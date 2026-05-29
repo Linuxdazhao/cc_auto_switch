@@ -11,6 +11,25 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install, test, and build frontend
+        run: cd web && pnpm install --frozen-lockfile && pnpm -r test && pnpm -r build
+
   test:
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

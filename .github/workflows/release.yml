@@ -70,9 +70,24 @@ jobs:
       run: |
         echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: pnpm
+        cache-dependency-path: web/pnpm-lock.yaml
+
+    - name: Install frontend deps
+      run: |
+        cd web
+        pnpm install --frozen-lockfile
+
     - name: Build for ${{ matrix.target }}
       run: |
-        cargo build --release --target ${{ matrix.target }}
+        cargo build --release --target ${{ matrix.target }} --features web-ui
 
     - name: Package artifacts (Unix)
       if: matrix.os != 'windows-latest'
