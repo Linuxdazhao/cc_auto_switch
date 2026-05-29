@@ -43,6 +43,37 @@ importers:
         specifier: ^6.0.0
         version: 6.4.2(@types/node@25.9.1)(jiti@1.21.7)
 
+  apps/proxy:
+    dependencies:
+      '@ccs/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@ccs/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      svelte:
+        specifier: ^5.15.0
+        version: 5.55.10
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.0
+        version: 5.0.0(svelte@5.55.10)(vite@6.4.2(@types/node@25.9.1)(jiti@1.21.7))
+      autoprefixer:
+        specifier: ^10.4.0
+        version: 10.5.0(postcss@8.5.15)
+      svelte-check:
+        specifier: ^4.1.0
+        version: 4.4.8(picomatch@4.0.4)(svelte@5.55.10)(typescript@5.7.2)
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19
+      typescript:
+        specifier: ^5.7.0
+        version: 5.7.2
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.2(@types/node@25.9.1)(jiti@1.21.7)
+
   packages/api:
     devDependencies:
       typescript:
