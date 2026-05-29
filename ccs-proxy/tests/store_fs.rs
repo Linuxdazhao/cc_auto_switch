@@ -71,6 +71,116 @@ async fn missing_session_returns_none() {
     assert!(store.get_request("nope", 1).await.unwrap().is_none());
 }
 
+fn rec_with_system(seq: u64, sid: &str, model: &str, system_text: &str) -> CaptureRecord {
+    let mut r = rec(seq, sid);
+    r.model = Some(model.into());
+    r.request.body = json!({
+        "system": system_text,
+        "model": model,
+    });
+    r
+}
+
+#[tokio::test]
+async fn append_backfills_cwd_from_system_prompt() {
+    let dir = tempdir().unwrap();
+    let meta = SessionMeta {
+        session_id: "s_cwd".into(),
+        provider: "claude".into(),
+        upstream: "https://api.anthropic.com".into(),
+        proxy_port: 1,
+        api_port: 2,
+        started_at: Utc::now(),
+        ended_at: None,
+        request_count: 0,
+        schema_version: 1,
+        cwd: None,
+        models: vec![],
+    };
+    let store: Arc<dyn Store> = Arc::new(FsStore::open(dir.path().to_path_buf()).unwrap());
+    store.init_session(meta).await.unwrap();
+    store
+        .append(rec_with_system(
+            1,
+            "s_cwd",
+            "claude-opus-4-7",
+            "Primary working directory: /Users/me/proj-a\nrest",
+        ))
+        .await
+        .unwrap();
+
+    let sessions = store.list_sessions().await.unwrap();
+    assert_eq!(sessions[0].cwd.as_deref(), Some("/Users/me/proj-a"));
+    assert_eq!(sessions[0].models, vec!["claude-opus-4-7".to_string()]);
+}
+
+#[tokio::test]
+async fn append_does_not_overwrite_existing_cwd() {
+    let dir = tempdir().unwrap();
+    let meta = SessionMeta {
+        session_id: "s_cwd2".into(),
+        provider: "claude".into(),
+        upstream: "https://api.anthropic.com".into(),
+        proxy_port: 1,
+        api_port: 2,
+        started_at: Utc::now(),
+        ended_at: None,
+        request_count: 0,
+        schema_version: 1,
+        cwd: None,
+        models: vec![],
+    };
+    let store: Arc<dyn Store> = Arc::new(FsStore::open(dir.path().to_path_buf()).unwrap());
+    store.init_session(meta).await.unwrap();
+    store
+        .append(rec_with_system(
+            1, "s_cwd2", "claude-opus-4-7",
+            "Primary working directory: /first\n",
+        ))
+        .await
+        .unwrap();
+    // Second request with a different cwd marker — should be ignored.
+    store
+        .append(rec_with_system(
+            2, "s_cwd2", "claude-opus-4-7",
+            "Primary working directory: /second\n",
+        ))
+        .await
+        .unwrap();
+
+    let sessions = store.list_sessions().await.unwrap();
+    assert_eq!(sessions[0].cwd.as_deref(), Some("/first"));
+}
+
+#[tokio::test]
+async fn append_dedupes_and_appends_models() {
+    let dir = tempdir().unwrap();
+    let meta = SessionMeta {
+        session_id: "s_m".into(),
+        provider: "claude".into(),
+        upstream: "https://api.anthropic.com".into(),
+        proxy_port: 1,
+        api_port: 2,
+        started_at: Utc::now(),
+        ended_at: None,
+        request_count: 0,
+        schema_version: 1,
+        cwd: None,
+        models: vec![],
+    };
+    let store: Arc<dyn Store> = Arc::new(FsStore::open(dir.path().to_path_buf()).unwrap());
+    store.init_session(meta).await.unwrap();
+    store.append(rec_with_system(1, "s_m", "claude-opus-4-7", "")).await.unwrap();
+    store.append(rec_with_system(2, "s_m", "claude-sonnet-4-6", "")).await.unwrap();
+    store.append(rec_with_system(3, "s_m", "claude-opus-4-7", "")).await.unwrap();
+
+    let sessions = store.list_sessions().await.unwrap();
+    assert_eq!(
+        sessions[0].models,
+        vec!["claude-opus-4-7".to_string(), "claude-sonnet-4-6".to_string()]
+    );
+}
+
 #[tokio::test]
 async fn list_sessions_reads_old_meta_without_cwd_or_models() {
     let dir = tempdir().unwrap();
