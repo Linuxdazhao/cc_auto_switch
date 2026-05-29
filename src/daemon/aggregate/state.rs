@@ -22,6 +22,13 @@ impl AliasMap {
                     .push(config.alias_name.clone());
             }
         }
+        // Always attribute the official Anthropic upstream to the "official"
+        // alias so the web view groups daemon-proxied official traffic
+        // correctly. Appended (not replaced) so an overlapping user alias
+        // still appears alongside.
+        map.entry(crate::daemon::OFFICIAL_UPSTREAM.to_string())
+            .or_default()
+            .push("official".to_string());
         Self { map }
     }
 
@@ -80,7 +87,9 @@ mod tests {
         let map = AliasMap::from_storage(&storage);
         let mut aliases = map.aliases_for("https://api.anthropic.com");
         aliases.sort();
-        assert_eq!(aliases, vec!["personal", "work"]);
+        // api.anthropic.com is the official upstream, so "official" is always
+        // attributed alongside the user aliases that point at it.
+        assert_eq!(aliases, vec!["official", "personal", "work"]);
         assert_eq!(map.aliases_for("https://other.example.com"), vec!["other"]);
     }
 
@@ -99,5 +108,31 @@ mod tests {
         )]);
         assert_eq!(map.aliases_for("https://a.example.com"), vec!["alias_a"]);
         assert!(map.aliases_for("https://unknown.com").is_empty());
+    }
+
+    #[test]
+    fn alias_map_always_attributes_official_upstream() {
+        let map = AliasMap::from_storage(&make_storage(&[]));
+        assert_eq!(
+            map.aliases_for(crate::daemon::OFFICIAL_UPSTREAM),
+            vec!["official".to_string()],
+            "OFFICIAL_UPSTREAM must always map to [official] even with empty storage",
+        );
+    }
+
+    #[test]
+    fn alias_map_keeps_user_alias_when_url_overlaps_official() {
+        // User shouldn't normally configure an alias with the official URL,
+        // but if they do, both the user alias and "official" should appear.
+        let map = AliasMap::from_storage(&make_storage(&[(
+            "myofficial",
+            crate::daemon::OFFICIAL_UPSTREAM,
+        )]));
+        let aliases = map.aliases_for(crate::daemon::OFFICIAL_UPSTREAM);
+        assert!(
+            aliases.contains(&"myofficial".to_string()),
+            "got {aliases:?}"
+        );
+        assert!(aliases.contains(&"official".to_string()), "got {aliases:?}");
     }
 }

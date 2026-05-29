@@ -82,7 +82,10 @@ pub fn try_resolve_proxy(upstream: &str) -> ProxyResolution {
     try_resolve_proxy_from_paths(upstream, &state_path, &pidfile_path)
 }
 
-fn try_resolve_proxy_from_paths(
+/// Path-injected core of [`try_resolve_proxy`]. Exposed to integration tests so
+/// they can exercise resolution against a temp `~/.cc-switch` instead of the
+/// real one (which may have a live daemon — see the daemon_integration tests).
+pub fn try_resolve_proxy_from_paths(
     upstream: &str,
     state_path: &std::path::Path,
     pidfile_path: &std::path::Path,
@@ -108,5 +111,44 @@ fn try_resolve_proxy_from_paths(
             proxy_url: format!("http://127.0.0.1:{}", entry.proxy_port),
         },
         None => ProxyResolution::Direct,
+    }
+}
+
+/// Official Anthropic upstream URL. The daemon spawns one ccs-proxy for this
+/// URL at startup so `cc use official` traffic can be captured.
+///
+/// MUST stay byte-identical to Claude CLI's default `ANTHROPIC_BASE_URL`, since
+/// `find_proxy` does literal string match.
+pub const OFFICIAL_UPSTREAM: &str = "https://api.anthropic.com";
+
+/// Build the `EnvironmentConfig` for the "official" launch path, printing
+/// user-facing status in blue. Returns an env with `CC_SWITCH_CURRENT_ALIAS`
+/// set to `"official"`, plus `ANTHROPIC_BASE_URL` pointing at the daemon proxy
+/// if it's running. Never sets `ANTHROPIC_AUTH_TOKEN` — Claude CLI's OAuth
+/// credentials must flow through unchanged.
+pub fn build_official_env() -> crate::config::config::EnvironmentConfig {
+    use crate::config::config::EnvironmentConfig;
+    use colored::Colorize;
+    let env = EnvironmentConfig::empty().with_alias("official");
+    match try_resolve_proxy(OFFICIAL_UPSTREAM) {
+        ProxyResolution::Proxied { proxy_url } => {
+            eprintln!(
+                "{}",
+                format!("\u{2139} Routing official traffic through cc daemon proxy at {proxy_url}")
+                    .blue()
+            );
+            env.with_base_url(proxy_url)
+        }
+        ProxyResolution::Direct => {
+            eprintln!(
+                "{}",
+                "\u{2139} cc daemon is not running — official traffic will NOT be captured.".blue()
+            );
+            eprintln!(
+                "{}",
+                "  Run `cc-switch daemon start` and re-run to enable capture.".blue()
+            );
+            env
+        }
     }
 }
