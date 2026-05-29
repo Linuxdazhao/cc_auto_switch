@@ -888,12 +888,18 @@ pub fn run() -> Result<()> {
                     }
                     crate::daemon::ProxyResolution::Direct => {
                         if !original_url.is_empty() {
+                            use colored::Colorize;
                             eprintln!(
-                                "\u{2139} cc daemon is not running — traffic for '{}' will NOT be captured.",
-                                alias_name
+                                "{}",
+                                format!(
+                                    "\u{2139} cc daemon is not running — traffic for '{alias_name}' will NOT be captured."
+                                )
+                                .blue()
                             );
                             eprintln!(
+                                "{}",
                                 "  Run `cc-switch daemon start` and re-run to enable capture."
+                                    .blue()
                             );
                         }
                     }
