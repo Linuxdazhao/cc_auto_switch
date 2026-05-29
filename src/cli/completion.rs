@@ -69,20 +69,10 @@ pub fn generate_completion(shell: &str) -> Result<()> {
             generate_fish_completion(&mut app, &mut buf);
         }
         "zsh" => {
-            clap_complete::generate(
-                clap_complete::shells::Zsh,
-                &mut app,
-                "cc-switch",
-                &mut buf,
-            );
+            clap_complete::generate(clap_complete::shells::Zsh, &mut app, "cc-switch", &mut buf);
         }
         "bash" => {
-            clap_complete::generate(
-                clap_complete::shells::Bash,
-                &mut app,
-                "cc-switch",
-                &mut buf,
-            );
+            clap_complete::generate(clap_complete::shells::Bash, &mut app, "cc-switch", &mut buf);
         }
         "elvish" => {
             clap_complete::generate(
