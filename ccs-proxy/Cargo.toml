@@ -6,6 +6,7 @@ rust-version = "1.95"
 description = "Local logging reverse-proxy + dashboard for Claude Code / Codex traffic"
 license = "MIT"
 repository = "https://github.com/Linuxdazhao/ccs-proxy"
+exclude = ["web/", "tests/fixtures/"]
 
 [[bin]]
 name = "ccs-proxy"
@@ -45,6 +46,7 @@ wiremock = "0.6"
 [features]
 default = []
 dev-fs-assets = []
+web-ui = []
 
 [[bench]]
 name = "streaming"

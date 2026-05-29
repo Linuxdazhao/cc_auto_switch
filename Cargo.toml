@@ -14,7 +14,7 @@ exclude = ["web/", "web-aggregate/dist/"]
 
 [features]
 default = []
-web-ui = []
+web-ui = ["ccs-proxy/web-ui"]
 
 [[bin]]
 name = "cc-switch"
