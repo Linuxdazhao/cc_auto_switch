@@ -785,7 +785,7 @@ fn handle_simple_interactive_menu(
         match choice.as_str() {
             "r" => {
                 // Official option
-                println!("Using official Claude configuration");
+                println!("{}", "Using official Claude configuration".blue());
 
                 // Update settings.json to remove Anthropic configuration
                 let mut settings = crate::config::types::ClaudeSettings::load(
@@ -794,7 +794,12 @@ fn handle_simple_interactive_menu(
                 settings.remove_anthropic_env();
                 settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                return launch_claude_with_env(EnvironmentConfig::empty(), None, None, false);
+                return launch_claude_with_env(
+                    crate::daemon::build_official_env(),
+                    None,
+                    None,
+                    false,
+                );
             }
             "e" => {
                 // Edit functionality for simple menu
@@ -872,7 +877,7 @@ fn handle_simple_single_page_menu(
     match input.trim().parse::<usize>() {
         Ok(1) => {
             // Official option
-            println!("Using official Claude configuration");
+            println!("{}", "Using official Claude configuration".blue());
 
             // Update settings.json to remove Anthropic configuration
             let mut settings = crate::config::types::ClaudeSettings::load(
@@ -881,7 +886,7 @@ fn handle_simple_single_page_menu(
             settings.remove_anthropic_env();
             settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-            launch_claude_with_env(EnvironmentConfig::empty(), None, None, false)
+            launch_claude_with_env(crate::daemon::build_official_env(), None, None, false)
         }
         Ok(num) if num >= 2 && num <= configs.len() + 1 => {
             let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
@@ -907,7 +912,7 @@ fn handle_selection_action(
 ) -> Result<()> {
     if selected_index == 0 {
         // Official option (reset to default)
-        println!("\nUsing official Claude configuration");
+        println!("{}", "\nUsing official Claude configuration".blue());
 
         // Update settings.json to remove Anthropic configuration
         let mut settings = crate::config::types::ClaudeSettings::load(
@@ -916,12 +921,7 @@ fn handle_selection_action(
         settings.remove_anthropic_env();
         settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-        launch_claude_with_env(
-            EnvironmentConfig::empty().with_alias("official"),
-            None,
-            None,
-            false,
-        )
+        launch_claude_with_env(crate::daemon::build_official_env(), None, None, false)
     } else if selected_index <= configs.len() {
         // Switch to selected configuration
         let config_index = selected_index - 1; // -1 because official is at index 0
