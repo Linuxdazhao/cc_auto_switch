@@ -99,15 +99,23 @@ use axum::routing::get;
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
-#[folder = "web-aggregate/"]
+#[folder = "web-aggregate/dist/"]
 struct AggWebAsset;
 
 fn ui_router() -> Router<Arc<AggregateState>> {
+    use axum::extract::Path;
     Router::new()
         .route("/", get(|| async { serve_asset("index.html") }))
-        .route("/index.html", get(|| async { serve_asset("index.html") }))
-        .route("/app.js", get(|| async { serve_asset("app.js") }))
-        .route("/style.css", get(|| async { serve_asset("style.css") }))
+        .route(
+            "/{*path}",
+            get(|Path(path): Path<String>| async move {
+                if AggWebAsset::get(&path).is_some() {
+                    serve_asset(&path)
+                } else {
+                    serve_asset("index.html")
+                }
+            }),
+        )
 }
 
 fn serve_asset(name: &str) -> Response {
