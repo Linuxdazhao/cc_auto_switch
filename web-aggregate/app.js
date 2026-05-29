@@ -3,6 +3,11 @@
 const COLORS = ['#0066cc', '#e65100', '#2e7d32', '#6a1b9a', '#c62828', '#00838f'];
 let upstreamColors = {};
 let activeUpstreams = new Set();
+let activeModels = new Set();
+let activeCwds = new Set();
+let availableModels = [];
+let availableCwds = [];
+let showEmptySessions = false;
 let timeWindow = '1h';
 let currentPage = 0;
 const PAGE_SIZE = 50;
@@ -15,6 +20,7 @@ const SESSION_PAGE_SIZE = 50;
 let activeSessionId = null;
 let sessionRequests = [];
 let sessionReqPage = 0;
+const UNKNOWN_CWD = '(unknown)';
 
 async function init() {
   try {
@@ -22,11 +28,85 @@ async function init() {
     healthData = await resp.json();
     renderHeader();
     renderUpstreamFilters();
+    await loadMeta();
     await loadStats();
     await loadRequests();
     connectStream();
   } catch (e) {
     document.getElementById('meta').textContent = 'connection failed';
+  }
+}
+
+async function loadMeta() {
+  try {
+    const resp = await fetch('/api/meta');
+    const data = await resp.json();
+    availableModels = data.models || [];
+    availableCwds = [...(data.cwds || []), UNKNOWN_CWD];
+    activeModels = new Set(availableModels);
+    activeCwds = new Set(availableCwds);
+    renderModelFilters();
+    renderCwdFilters();
+  } catch (e) {
+    // Fall back to no model/cwd filters; rest of dashboard still works.
+  }
+}
+
+function renderModelFilters() {
+  const container = document.getElementById('model-filters');
+  container.innerHTML = '';
+  for (const model of availableModels) {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = activeModels.has(model);
+    cb.addEventListener('change', () => {
+      if (cb.checked) activeModels.add(model);
+      else activeModels.delete(model);
+      reloadCurrentView();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(` ${model}`));
+    container.appendChild(label);
+  }
+}
+
+function renderCwdFilters() {
+  const container = document.getElementById('cwd-filters');
+  container.innerHTML = '';
+  for (const cwd of availableCwds) {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = activeCwds.has(cwd);
+    cb.addEventListener('change', () => {
+      if (cb.checked) activeCwds.add(cwd);
+      else activeCwds.delete(cwd);
+      reloadCurrentView();
+    });
+    const basename = cwd === UNKNOWN_CWD
+      ? UNKNOWN_CWD
+      : cwd.split('/').filter(Boolean).pop() || cwd;
+    const path = document.createElement('span');
+    path.className = 'cwd-path';
+    path.textContent = cwd === UNKNOWN_CWD ? '' : cwd;
+    path.title = cwd;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(` ${basename}`));
+    label.appendChild(path);
+    container.appendChild(label);
+  }
+}
+
+function reloadCurrentView() {
+  currentPage = 0;
+  sessionPage = 0;
+  if (viewMode === 'sessions' && !activeSessionId) {
+    loadSessions();
+  } else if (viewMode === 'sessions' && activeSessionId) {
+    // user is drilled into a session — leave it alone
+  } else {
+    loadRequests();
   }
 }
 
@@ -94,9 +174,23 @@ function renderStats(data) {
   `;
 }
 
+function buildFilterQuery({ includeEmpty } = {}) {
+  const parts = [];
+  if (activeModels.size && activeModels.size < availableModels.length) {
+    parts.push('model=' + encodeURIComponent([...activeModels].join(',')));
+  }
+  if (activeCwds.size && activeCwds.size < availableCwds.length) {
+    parts.push('cwd=' + encodeURIComponent([...activeCwds].join(',')));
+  }
+  if (includeEmpty) parts.push('include_empty=true');
+  return parts.length ? '?' + parts.join('&') : '';
+}
+
 async function loadRequests() {
   try {
-    const resp = await fetch('/api/sessions?limit=200');
+    const qs = buildFilterQuery({ includeEmpty: false });
+    const sep = qs ? '&' : '?';
+    const resp = await fetch(`/api/sessions${qs}${sep}limit=200`);
     const sessions = await resp.json();
     allRequests = [];
     for (const session of sessions) {
@@ -107,6 +201,7 @@ async function loadRequests() {
           ...req,
           upstream: session.upstream,
           aliases: session.aliases,
+          cwd: session.cwd,
         });
       }
     }
@@ -121,6 +216,9 @@ function renderRequestTable() {
   const filtered = allRequests.filter(r => {
     if (!activeUpstreams.has(r.upstream)) return false;
     if (since && new Date(r.started_at) < since) return false;
+    if (activeModels.size && activeModels.size < availableModels.length) {
+      if (!r.model || !activeModels.has(r.model)) return false;
+    }
     return true;
   });
 
@@ -222,21 +320,26 @@ function switchView(mode) {
 
   const requestsView = document.getElementById('requests-view');
   const sessionView = document.getElementById('session-view');
+  const emptyWrap = document.getElementById('show-empty-wrap');
 
   if (mode === 'sessions') {
     requestsView.classList.add('hidden');
     sessionView.classList.remove('hidden');
+    emptyWrap.classList.remove('hidden');
     loadSessions();
   } else {
     requestsView.classList.remove('hidden');
     sessionView.classList.add('hidden');
+    emptyWrap.classList.add('hidden');
     activeSessionId = null;
   }
 }
 
 async function loadSessions() {
   try {
-    const resp = await fetch('/api/sessions?limit=500');
+    const qs = buildFilterQuery({ includeEmpty: showEmptySessions });
+    const sep = qs ? '&' : '?';
+    const resp = await fetch(`/api/sessions${qs}${sep}limit=500`);
     allSessions = await resp.json();
     sessionPage = 0;
     activeSessionId = null;
@@ -469,6 +572,12 @@ document.querySelectorAll('.view-btn').forEach(btn => {
 
 // Back to sessions button
 document.getElementById('back-to-sessions')?.addEventListener('click', backToSessions);
+
+// Show-empty-sessions toggle
+document.getElementById('show-empty-sessions')?.addEventListener('change', (e) => {
+  showEmptySessions = e.target.checked;
+  loadSessions();
+});
 
 // Time filter buttons
 document.querySelectorAll('.time-btn').forEach(btn => {
