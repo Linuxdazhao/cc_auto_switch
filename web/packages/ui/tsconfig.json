@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["svelte", "vitest/globals"]
+  },
+  "include": ["src"]
+}
