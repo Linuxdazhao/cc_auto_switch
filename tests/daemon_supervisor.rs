@@ -91,6 +91,7 @@ mod daemon_supervisor {
 
         let mut state = DaemonState {
             schema_version: 2,
+            version: String::new(),
             pid: 42,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,
@@ -126,6 +127,7 @@ mod daemon_supervisor {
 
         let mut state = DaemonState {
             schema_version: 2,
+            version: String::new(),
             pid: 42,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,

@@ -929,6 +929,7 @@ fn handle_selection_action(
 
         // Consult daemon state: substitute proxy URL if daemon is alive.
         let original_url = selected_config.url.clone();
+        crate::daemon::print_version_mismatch_warning();
         match crate::daemon::try_resolve_proxy(&selected_config.url) {
             crate::daemon::ProxyResolution::Proxied { proxy_url } => {
                 selected_config.url = proxy_url;

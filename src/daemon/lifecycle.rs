@@ -178,6 +178,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
 
     let state = DaemonState {
         schema_version: 2,
+        version: crate::daemon::state::CURRENT_VERSION.to_string(),
         pid: std::process::id(),
         started_at: chrono::Utc::now().to_rfc3339(),
         stopped_at: None,
@@ -230,6 +231,7 @@ async fn run_daemon_async(cfg: LifecycleConfig) -> Result<()> {
     // Write final state with stopped_at.
     let final_state = DaemonState {
         schema_version: 2,
+        version: crate::daemon::state::CURRENT_VERSION.to_string(),
         pid: std::process::id(),
         started_at: state.started_at,
         stopped_at: Some(chrono::Utc::now().to_rfc3339()),
@@ -281,6 +283,7 @@ async fn supervisor_loop(
 
                         let state = DaemonState {
                             schema_version: 2,
+                            version: crate::daemon::state::CURRENT_VERSION.to_string(),
                             pid: std::process::id(),
                             started_at: entries.first().map_or_else(
                                 || chrono::Utc::now().to_rfc3339(),

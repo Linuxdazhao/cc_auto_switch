@@ -18,7 +18,47 @@ pub mod logging;
 pub use commands::{DaemonAction, handle_daemon_command};
 
 use crate::daemon::pidfile::{Pidfile, process_alive};
-use crate::daemon::state::DaemonState;
+use crate::daemon::state::{CURRENT_VERSION, DaemonState};
+
+/// If the daemon is alive but was started by a `cc-switch` binary whose version
+/// differs from this one, return a warning message. Returns `None` when the
+/// daemon is stopped or its version matches the current binary.
+///
+/// A stale daemon may expose different proxy/api ports or capture semantics, so
+/// the user should restart it after upgrading `cc-switch`.
+pub fn version_mismatch_warning() -> Option<String> {
+    let home = dirs::home_dir()?;
+    let cc_switch_dir = home.join(".cc-switch");
+    let state = DaemonState::load(&cc_switch_dir.join("daemon-state.json")).ok()??;
+
+    // Only warn when a daemon is actually running.
+    let pidfile = Pidfile::new(cc_switch_dir.join("daemon.pid"));
+    let pid = pidfile.read().ok()??;
+    if !matches!(process_alive(pid), Ok(true)) {
+        return None;
+    }
+
+    if !state.version_mismatch() {
+        return None;
+    }
+
+    let running = if state.version.is_empty() {
+        "unknown (pre-version)".to_string()
+    } else {
+        state.version.clone()
+    };
+    Some(format!(
+        "cc daemon is running an outdated version (daemon {running}, CLI {CURRENT_VERSION}) — proxy ports/capture may be stale. Run `cc-switch daemon restart`."
+    ))
+}
+
+/// Print the version-mismatch warning in red, if one applies. No-op otherwise.
+pub fn print_version_mismatch_warning() {
+    use colored::Colorize;
+    if let Some(msg) = version_mismatch_warning() {
+        eprintln!("{}", format!("\u{26a0} {msg}").red().bold());
+    }
+}
 
 /// Result of attempting to resolve a proxy URL for a given upstream.
 pub enum ProxyResolution {

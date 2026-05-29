@@ -882,6 +882,7 @@ pub fn run() -> Result<()> {
 
                 // Consult daemon state: substitute proxy URL if daemon is alive.
                 let original_url = config.url.clone();
+                crate::daemon::print_version_mismatch_warning();
                 match crate::daemon::try_resolve_proxy(&config.url) {
                     crate::daemon::ProxyResolution::Proxied { proxy_url } => {
                         config.url = proxy_url;

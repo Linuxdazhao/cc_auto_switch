@@ -14,6 +14,7 @@ mod daemon_integration {
     fn sample_state(pid: u32, proxies: Vec<ProxyEntry>) -> DaemonState {
         DaemonState {
             schema_version: 2,
+            version: String::new(),
             pid,
             started_at: "2026-05-28T19:30:00Z".to_owned(),
             stopped_at: None,

@@ -225,6 +225,7 @@ fn handle_status(json: bool, storage: &ConfigStorage) -> Result<()> {
         let text =
             crate::daemon::status::format_status_text(&state, &statuses, &aliases_by_upstream);
         print!("{text}");
+        crate::daemon::print_version_mismatch_warning();
     }
 
     Ok(())

@@ -9,21 +9,29 @@ pub struct ProxyEntry {
     pub provider: String,
     pub upstream: String,
     pub proxy_port: u16,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_port: Option<u16>,
     pub data_dir: PathBuf,
     pub started_at: String,
     pub restart_count: u32,
 }
 
+/// Version of the `cc-switch` binary that built this crate. Recorded into the
+/// daemon state at start time so a newer CLI can detect a stale running daemon.
+pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct DaemonState {
     pub schema_version: u32,
+    /// `cc-switch` version that started the daemon. Empty for state files
+    /// written before version tracking existed (treated as a mismatch).
+    #[serde(default)]
+    pub version: String,
     pub pid: u32,
     pub started_at: String,
     pub stopped_at: Option<String>,
     pub data_root: PathBuf,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agg_port: Option<u16>,
     pub proxies: Vec<ProxyEntry>,
 }
@@ -52,6 +60,13 @@ impl DaemonState {
         let json = serde_json::to_string_pretty(self)
             .context("failed to serialize daemon state to JSON")?;
         write_tmp_then_rename(&tmp_path, path, json.as_bytes())
+    }
+
+    /// True when the running daemon was started by a binary whose version
+    /// differs from this binary (or predates version tracking). Used to warn
+    /// the user that the daemon should be restarted.
+    pub fn version_mismatch(&self) -> bool {
+        self.version != CURRENT_VERSION
     }
 
     /// Exact-match lookup. No URL normalization.
@@ -122,6 +137,7 @@ mod tests {
     fn sample_state(proxies: Vec<ProxyEntry>) -> DaemonState {
         DaemonState {
             schema_version: 2,
+            version: super::CURRENT_VERSION.to_owned(),
             pid: 4242,
             started_at: "2026-05-28T00:00:00Z".to_owned(),
             stopped_at: None,
@@ -142,6 +158,53 @@ mod tests {
         state.save(&path).unwrap();
         let loaded = DaemonState::load(&path).unwrap().expect("file exists");
         assert_eq!(state, loaded);
+    }
+
+    #[test]
+    fn load_save_round_trip_with_none_ports() {
+        // Regression: api_port/agg_port use skip_serializing_if, so when they are
+        // None the fields are omitted on save. Without #[serde(default)] the
+        // reload fails with "missing field". Guard the None path explicitly.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("state.json");
+        let mut proxy = sample_proxy("claude", "https://api.anthropic.com", 8080);
+        proxy.api_port = None;
+        let mut state = sample_state(vec![proxy]);
+        state.agg_port = None;
+        state.save(&path).unwrap();
+        let loaded = DaemonState::load(&path).unwrap().expect("file exists");
+        assert_eq!(state, loaded);
+    }
+
+    #[test]
+    fn version_mismatch_detection() {
+        let mut state = sample_state(vec![]);
+        // sample_state stamps CURRENT_VERSION → matches.
+        assert!(!state.version_mismatch());
+        state.version = "0.0.1-old".to_owned();
+        assert!(state.version_mismatch());
+        // Pre-version state files deserialize to "" → treated as a mismatch.
+        state.version = String::new();
+        assert!(state.version_mismatch());
+    }
+
+    #[test]
+    fn load_pre_version_state_defaults_version_empty() {
+        // A state file written before version tracking has no `version` key.
+        let json = r#"{
+            "schema_version": 2,
+            "pid": 100,
+            "started_at": "2026-05-28T00:00:00Z",
+            "stopped_at": null,
+            "data_root": "/tmp/ccs",
+            "proxies": []
+        }"#;
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("state.json");
+        std::fs::write(&path, json).unwrap();
+        let loaded = DaemonState::load(&path).unwrap().expect("file exists");
+        assert_eq!(loaded.version, "");
+        assert!(loaded.version_mismatch());
     }
 
     #[test]
