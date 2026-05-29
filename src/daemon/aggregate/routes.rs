@@ -22,6 +22,7 @@ pub fn router() -> Router<SharedState> {
         .route("/api/requests/{sid}/{seq}", get(get_request))
         .route("/api/stats", get(stats))
         .route("/api/stream", get(stream))
+        .route("/api/meta", get(meta))
 }
 
 #[derive(Deserialize, Default)]
@@ -307,4 +308,25 @@ async fn stream(
         Err(_) => None,
     });
     Sse::new(sse_stream).keep_alive(KeepAlive::default())
+}
+
+async fn meta(State(state): State<SharedState>) -> Json<Value> {
+    use std::collections::BTreeSet;
+    let mut models: BTreeSet<String> = BTreeSet::new();
+    let mut cwds: BTreeSet<String> = BTreeSet::new();
+    for (_upstream, store) in &state.stores {
+        let sessions = store.list_sessions().await.unwrap_or_default();
+        for s in sessions {
+            for m in s.models {
+                models.insert(m);
+            }
+            if let Some(c) = s.cwd {
+                cwds.insert(c);
+            }
+        }
+    }
+    Json(json!({
+        "models": models.into_iter().collect::<Vec<_>>(),
+        "cwds": cwds.into_iter().collect::<Vec<_>>(),
+    }))
 }

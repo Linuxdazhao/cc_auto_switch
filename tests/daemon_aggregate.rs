@@ -401,6 +401,76 @@ mod daemon_aggregate {
     }
 
     #[tokio::test]
+    async fn aggregate_meta_returns_dedup_sorted_lists() {
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
+        store
+            .init_session(SessionMeta {
+                session_id: "s1".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/b".to_string()),
+                models: vec![
+                    "claude-sonnet-4-6".to_string(),
+                    "claude-opus-4-7".to_string(),
+                ],
+            })
+            .await
+            .unwrap();
+        store
+            .init_session(SessionMeta {
+                session_id: "s2".to_string(),
+                provider: "claude".to_string(),
+                upstream: "https://a.example.com".to_string(),
+                proxy_port: 0,
+                api_port: 0,
+                started_at: chrono::Utc::now(),
+                ended_at: None,
+                request_count: 1,
+                schema_version: 1,
+                cwd: Some("/p/a".to_string()),
+                models: vec!["claude-opus-4-7".to_string()],
+            })
+            .await
+            .unwrap();
+
+        let stores = vec![("https://a.example.com".to_string(), store)];
+        let alias_map = Arc::new(cc_switch::daemon::aggregate::state::AliasMap::from_entries(
+            vec![],
+        ));
+        let handle = cc_switch::daemon::aggregate::serve(stores, vec![], alias_map, 0)
+            .await
+            .unwrap();
+
+        let resp = reqwest::get(format!("http://127.0.0.1:{}/api/meta", handle.port))
+            .await
+            .unwrap();
+        let body: serde_json::Value = resp.json().await.unwrap();
+        let models: Vec<&str> = body["models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        let cwds: Vec<&str> = body["cwds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(models, vec!["claude-opus-4-7", "claude-sonnet-4-6"]);
+        assert_eq!(cwds, vec!["/p/a", "/p/b"]);
+
+        handle.shutdown().await;
+    }
+
+    #[tokio::test]
     async fn aggregate_serves_dashboard_html() {
         let tmp = TempDir::new().unwrap();
         let store = Arc::new(FsStore::open(tmp.path().to_path_buf()).unwrap());
