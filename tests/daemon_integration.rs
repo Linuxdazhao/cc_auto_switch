@@ -7,7 +7,7 @@
 #[cfg(unix)]
 mod daemon_integration {
     use cc_switch::daemon::state::{DaemonState, ProxyEntry};
-    use cc_switch::daemon::{ProxyResolution, try_resolve_proxy};
+    use cc_switch::daemon::{ProxyResolution, try_resolve_proxy_from_paths};
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -77,12 +77,18 @@ mod daemon_integration {
 
     #[test]
     fn try_resolve_proxy_returns_direct_when_no_state_file() {
-        // try_resolve_proxy reads from ~/.cc-switch which won't have a daemon
-        // running in CI. It should gracefully return Direct.
-        match try_resolve_proxy("https://api.anthropic.com") {
+        // Resolution must gracefully return Direct when there is no daemon
+        // state file. Point at a temp dir (not the real ~/.cc-switch) so the
+        // test is hermetic — a real daemon on the dev machine would otherwise
+        // have a live proxy for api.anthropic.com and make this flake.
+        let dir = TempDir::new().unwrap();
+        let state_path = dir.path().join("daemon-state.json");
+        let pidfile_path = dir.path().join("daemon.pid");
+        match try_resolve_proxy_from_paths("https://api.anthropic.com", &state_path, &pidfile_path)
+        {
             ProxyResolution::Direct => {} // expected
             ProxyResolution::Proxied { .. } => {
-                panic!("should not find a proxy when daemon is not running")
+                panic!("should not find a proxy when no state file exists")
             }
         }
     }

@@ -82,7 +82,10 @@ pub fn try_resolve_proxy(upstream: &str) -> ProxyResolution {
     try_resolve_proxy_from_paths(upstream, &state_path, &pidfile_path)
 }
 
-fn try_resolve_proxy_from_paths(
+/// Path-injected core of [`try_resolve_proxy`]. Exposed to integration tests so
+/// they can exercise resolution against a temp `~/.cc-switch` instead of the
+/// real one (which may have a live daemon — see the daemon_integration tests).
+pub fn try_resolve_proxy_from_paths(
     upstream: &str,
     state_path: &std::path::Path,
     pidfile_path: &std::path::Path,
