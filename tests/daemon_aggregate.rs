@@ -470,6 +470,9 @@ mod daemon_aggregate {
         handle.shutdown().await;
     }
 
+    // The dashboard is only embedded/served when the `web-ui` feature is on
+    // (see the feature-gated ui_router in src/daemon/aggregate/mod.rs).
+    #[cfg(feature = "web-ui")]
     #[tokio::test]
     async fn aggregate_serves_dashboard_html() {
         let tmp = TempDir::new().unwrap();
