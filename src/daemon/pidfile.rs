@@ -215,6 +215,7 @@ mod tests {
         assert_eq!(pid, Some(std::process::id()));
     }
 
+    #[cfg(unix)]
     #[test]
     fn process_alive_for_self() {
         let alive = process_alive(std::process::id()).expect("query self");
