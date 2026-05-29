@@ -239,7 +239,9 @@ web/
 ├── packages/
 │   ├── api  (@ccs/api)   # Shared TS API types + typed fetch client + SSE parser
 │   └── ui   (@ccs/ui)    # Design system: Tailwind preset, design tokens
-│                         #   (light/dark via .dark class), shadcn-svelte
+│                         #   (single always-on dark theme, clay accent;
+│                         #   class="dark" is fixed in index.html, no toggle),
+│                         #   shadcn-svelte
 │                         #   components, custom components (StatusBadge,
 │                         #   StatCard, DataTable, FilterGroup, ConversationView
 │                         #   with bundled marked/DOMPurify/highlight.js — no CDN)
