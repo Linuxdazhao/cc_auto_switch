@@ -9,3 +9,4 @@ export * as Tooltip from "./components/ui/tooltip";
 export * as Sheet from "./components/ui/sheet";
 export { Skeleton } from "./components/ui/skeleton";
 export { Input } from "./components/ui/input";
+export { applyTheme, resolveInitialTheme, type Theme } from "./theme";
