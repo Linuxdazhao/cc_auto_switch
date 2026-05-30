@@ -114,8 +114,9 @@ pub fn try_resolve_proxy_from_paths(
     }
 }
 
-/// Official Anthropic upstream URL. The daemon spawns one ccs-proxy for this
-/// URL at startup so `cc use official` traffic can be captured.
+/// Official Anthropic upstream URL. The daemon spawns a ccs-proxy for this
+/// URL **only** when started with `--capture-official`; by default `cc use
+/// official` traffic flows direct to Anthropic and is not captured.
 ///
 /// MUST stay byte-identical to Claude CLI's default `ANTHROPIC_BASE_URL`, since
 /// `find_proxy` does literal string match.
@@ -142,11 +143,12 @@ pub fn build_official_env() -> crate::config::config::EnvironmentConfig {
         ProxyResolution::Direct => {
             eprintln!(
                 "{}",
-                "\u{2139} cc daemon is not running — official traffic will NOT be captured.".blue()
+                "\u{2139} official traffic is going direct to Anthropic (not captured).".blue()
             );
             eprintln!(
                 "{}",
-                "  Run `cc-switch daemon start` and re-run to enable capture.".blue()
+                "  Start the daemon with `cc-switch daemon start --capture-official` to capture it."
+                    .blue()
             );
             env
         }

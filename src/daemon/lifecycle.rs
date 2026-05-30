@@ -23,13 +23,17 @@ pub struct LifecycleConfig {
 }
 
 impl LifecycleConfig {
-    pub fn from_storage(storage: &ConfigStorage, foreground: bool) -> Result<Self> {
+    pub fn from_storage(
+        storage: &ConfigStorage,
+        foreground: bool,
+        capture_official: bool,
+    ) -> Result<Self> {
         let home = dirs::home_dir().context("could not find home directory")?;
         let cc_switch_dir = home.join(".cc-switch");
         std::fs::create_dir_all(&cc_switch_dir)
             .with_context(|| format!("failed to create {}", cc_switch_dir.display()))?;
 
-        let upstreams = dedupe_upstreams(storage);
+        let upstreams = dedupe_upstreams(storage, capture_official);
 
         Ok(Self {
             state_path: cc_switch_dir.join("daemon-state.json"),
@@ -41,7 +45,7 @@ impl LifecycleConfig {
     }
 }
 
-fn dedupe_upstreams(storage: &ConfigStorage) -> Vec<Upstream> {
+fn dedupe_upstreams(storage: &ConfigStorage, capture_official: bool) -> Vec<Upstream> {
     let mut seen = BTreeSet::new();
     let mut result = Vec::new();
     for config in storage.configurations.values() {
@@ -53,15 +57,19 @@ fn dedupe_upstreams(storage: &ConfigStorage) -> Vec<Upstream> {
             result.push(key);
         }
     }
-    // Always include the official Anthropic upstream so `cc use official`
-    // routes through the daemon. Dedup naturally handles the (rare) case
-    // where a user-defined alias points at the same URL.
-    let official = (
-        "claude".to_string(),
-        crate::daemon::OFFICIAL_UPSTREAM.to_string(),
-    );
-    if seen.insert(official.clone()) {
-        result.push(official);
+    // The implicit official Anthropic upstream is opt-in: only spawn a proxy
+    // for `cc use official` when the daemon was started with
+    // `--capture-official`. By default official traffic flows direct to
+    // Anthropic. A user-defined alias that points at the official URL is
+    // handled above and deduped here, so it always gets its proxy.
+    if capture_official {
+        let official = (
+            "claude".to_string(),
+            crate::daemon::OFFICIAL_UPSTREAM.to_string(),
+        );
+        if seen.insert(official.clone()) {
+            result.push(official);
+        }
     }
     result
 }
@@ -365,7 +373,7 @@ mod tests {
             "https://api.anthropic.com",
             "https://other.example.com/v1",
         ]);
-        let result = dedupe_upstreams(&storage);
+        let result = dedupe_upstreams(&storage, false);
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].1, "https://api.anthropic.com");
         assert_eq!(result[1].1, "https://other.example.com/v1");
@@ -374,7 +382,7 @@ mod tests {
     #[test]
     fn dedupe_upstreams_skips_empty_urls() {
         let storage = make_storage(&["", "https://api.anthropic.com"]);
-        let result = dedupe_upstreams(&storage);
+        let result = dedupe_upstreams(&storage, false);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].1, "https://api.anthropic.com");
     }
@@ -395,14 +403,28 @@ mod tests {
     }
 
     #[test]
-    fn dedupe_upstreams_always_includes_official() {
-        let result = dedupe_upstreams(&make_storage(&[]));
+    fn dedupe_upstreams_excludes_official_by_default() {
+        // Default: do NOT spawn the implicit official proxy. `cc use official`
+        // traffic flows direct to Anthropic unless capture is explicitly enabled.
+        let result = dedupe_upstreams(&make_storage(&[]), false);
+        assert!(
+            !result.contains(&(
+                "claude".to_string(),
+                crate::daemon::OFFICIAL_UPSTREAM.to_string()
+            )),
+            "OFFICIAL_UPSTREAM must be absent by default, got {result:?}",
+        );
+    }
+
+    #[test]
+    fn dedupe_upstreams_includes_official_when_capture_enabled() {
+        let result = dedupe_upstreams(&make_storage(&[]), true);
         assert!(
             result.contains(&(
                 "claude".to_string(),
                 crate::daemon::OFFICIAL_UPSTREAM.to_string()
             )),
-            "OFFICIAL_UPSTREAM must always be in dedupe_upstreams output, got {result:?}",
+            "OFFICIAL_UPSTREAM must be present when capture_official=true, got {result:?}",
         );
     }
 
@@ -410,8 +432,8 @@ mod tests {
     fn dedupe_upstreams_dedupes_when_user_has_official_url() {
         // Belt-and-suspenders: user shouldn't normally do this, but if they
         // configure an alias with the official URL, we must not spawn two
-        // proxies for the same URL.
-        let result = dedupe_upstreams(&make_storage(&[crate::daemon::OFFICIAL_UPSTREAM]));
+        // proxies for the same URL even with capture enabled.
+        let result = dedupe_upstreams(&make_storage(&[crate::daemon::OFFICIAL_UPSTREAM]), true);
         let count = result
             .iter()
             .filter(|(_, url)| url == crate::daemon::OFFICIAL_UPSTREAM)
@@ -419,6 +441,21 @@ mod tests {
         assert_eq!(
             count, 1,
             "OFFICIAL_UPSTREAM must appear exactly once, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn dedupe_upstreams_keeps_user_official_alias_without_capture() {
+        // A user-defined alias explicitly pointing at the official URL still
+        // gets its proxy even when implicit official capture is off.
+        let result = dedupe_upstreams(&make_storage(&[crate::daemon::OFFICIAL_UPSTREAM]), false);
+        let count = result
+            .iter()
+            .filter(|(_, url)| url == crate::daemon::OFFICIAL_UPSTREAM)
+            .count();
+        assert_eq!(
+            count, 1,
+            "user-defined official alias must still spawn its proxy, got {result:?}"
         );
     }
 }

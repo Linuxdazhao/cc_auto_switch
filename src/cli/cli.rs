@@ -337,6 +337,11 @@ pub enum DaemonCommands {
         /// Increase verbosity (-v info, -vv debug, -vvv trace)
         #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count)]
         verbose: u8,
+
+        /// Capture `cc use official` traffic through the daemon proxy.
+        /// Off by default — official traffic flows direct to Anthropic.
+        #[arg(long = "capture-official")]
+        capture_official: bool,
     },
     /// Stop the running daemon
     Stop,
@@ -359,6 +364,11 @@ pub enum DaemonCommands {
         /// Increase verbosity (-v info, -vv debug, -vvv trace)
         #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count)]
         verbose: u8,
+
+        /// Capture `cc use official` traffic through the daemon proxy.
+        /// Off by default — official traffic flows direct to Anthropic.
+        #[arg(long = "capture-official")]
+        capture_official: bool,
     },
 }
 

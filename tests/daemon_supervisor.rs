@@ -59,7 +59,7 @@ mod daemon_supervisor {
             ("personal", "https://api.anthropic.com"),
             ("glm", "https://glm.example.com/v1"),
         ]);
-        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false, false).unwrap();
         // Two unique upstreams, not three.
         assert_eq!(cfg.upstreams.len(), 2);
     }
@@ -67,7 +67,7 @@ mod daemon_supervisor {
     #[test]
     fn lifecycle_config_skips_empty_urls() {
         let storage = make_storage(&[("empty", ""), ("work", "https://api.anthropic.com")]);
-        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false, false).unwrap();
         assert_eq!(cfg.upstreams.len(), 1);
         assert_eq!(cfg.upstreams[0].1, "https://api.anthropic.com");
     }
@@ -75,7 +75,7 @@ mod daemon_supervisor {
     #[test]
     fn lifecycle_config_paths_are_in_cc_switch_dir() {
         let storage = make_storage(&[("x", "https://api.anthropic.com")]);
-        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false, false).unwrap();
         let state_str = cfg.state_path.to_string_lossy();
         let pid_str = cfg.pidfile_path.to_string_lossy();
         assert!(state_str.contains(".cc-switch"), "state_path: {state_str}");
@@ -167,11 +167,20 @@ mod daemon_supervisor {
     }
 
     #[test]
-    fn empty_configurations_yields_only_official_upstream() {
-        // Empty user config still yields exactly the official upstream, so
-        // `cc use official` traffic can be captured by the daemon.
+    fn empty_configurations_yields_no_upstreams_by_default() {
+        // Default: no implicit official proxy. Empty user config yields zero
+        // upstreams, so `cc use official` traffic flows direct to Anthropic.
         let storage = make_storage(&[]);
-        let cfg = LifecycleConfig::from_storage(&storage, false).unwrap();
+        let cfg = LifecycleConfig::from_storage(&storage, false, false).unwrap();
+        assert_eq!(cfg.upstreams.len(), 0);
+    }
+
+    #[test]
+    fn empty_configurations_yields_official_upstream_with_capture() {
+        // With `--capture-official`, the daemon spawns the official proxy so
+        // `cc use official` traffic can be captured.
+        let storage = make_storage(&[]);
+        let cfg = LifecycleConfig::from_storage(&storage, false, true).unwrap();
         assert_eq!(cfg.upstreams.len(), 1);
         assert_eq!(
             cfg.upstreams[0].1,

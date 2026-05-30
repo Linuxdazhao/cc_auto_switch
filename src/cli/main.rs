@@ -1009,10 +1009,12 @@ pub fn run() -> Result<()> {
                         foreground,
                         log_level,
                         verbose,
+                        capture_official,
                     } => DaemonAction::Start {
                         foreground,
                         log_level,
                         verbose,
+                        capture_official,
                     },
                     DaemonCommands::Stop => DaemonAction::Stop,
                     DaemonCommands::Status { json } => DaemonAction::Status { json },
@@ -1020,10 +1022,12 @@ pub fn run() -> Result<()> {
                         foreground,
                         log_level,
                         verbose,
+                        capture_official,
                     } => DaemonAction::Restart {
                         foreground,
                         log_level,
                         verbose,
+                        capture_official,
                     },
                 };
                 handle_daemon_command(action, &storage)?;
