@@ -30,6 +30,49 @@
 >
 > Both `cc-switch use <name>` and interactive selection launch Claude **with `--dangerously-skip-permissions` automatically applied** — file reads/writes, Bash calls, and other tool actions no longer prompt one by one. This is the opinionated default for geek / power users.
 
+## 🌟 Strongly recommended: install the aliases first (cs / cx)
+
+> **Every example in this README uses these aliases.** Add them once to your shell config — one paste — and the commands below stay short.
+
+| Alias | Expands to | Purpose |
+|-------|------------|---------|
+| `cs` | `cc-switch` | short form of the main command (typing `cs` drops you into interactive mode) |
+| `cx` | `cc-switch codex` | short form of the Codex subcommand |
+
+**Fish:**
+
+```fish
+echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
+echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
+```
+
+**Zsh:**
+
+```zsh
+cat >> ~/.zshrc <<'EOF'
+alias cs='cc-switch'
+alias cx='cc-switch codex'
+EOF
+```
+
+**Bash:**
+
+```bash
+cat >> ~/.bashrc <<'EOF'
+alias cs='cc-switch'
+alias cx='cc-switch codex'
+EOF
+```
+
+**PowerShell:**
+
+```powershell
+Set-Alias -Name cs -Value cc-switch
+function cx { cc-switch codex @args }
+```
+
+> After adding, **restart your terminal** (or `source` the config), then all examples below work with `cs` / `cx` directly.
+
 ## Quick Start
 
 ```bash
@@ -37,17 +80,17 @@
 cargo install cc-switch
 
 # ===== Claude configurations =====
-cc-switch add work sk-ant-work-xxx https://api.anthropic.com
-cc-switch                       # interactive menu, pick 'work'
-cc-switch use work              # or switch + launch Claude (cc-switch then exits)
+cs add work sk-ant-work-xxx https://api.anthropic.com
+cs                       # interactive menu, pick 'work'
+cs use work              # or switch + launch Claude (cs then exits)
 
 # ===== Codex configurations =====  (full docs: docs/codex_EN.md)
-cc-switch codex add work --from-file              # imports from ~/.codex/auth.json
-cc-switch codex use work        # switch + launch Codex
+cx add work --from-file  # imports from ~/.codex/auth.json
+cx use work              # switch + launch Codex
 
 # List all configurations
-cc-switch list                  # Claude
-cc-switch codex list            # Codex
+cs list                  # Claude
+cx list                  # Codex
 ```
 
 ## Installation
@@ -132,7 +175,7 @@ Full documentation: [docs/codex_EN.md](docs/codex_EN.md).
 
 cc-switch is a **one-shot command**:
 
-1. You run `cc-switch use work`
+1. You run `cs use work`
 2. cc-switch updates `~/.claude/settings.json` (or writes `~/.codex/auth.json`)
 3. cc-switch `exec`s `claude --dangerously-skip-permissions` (or `codex`) with the right env vars
 4. The cc-switch process **exits immediately** — everything that follows is Claude / Codex itself
@@ -140,7 +183,7 @@ cc-switch is a **one-shot command**:
 Which means:
 
 - ✅ No long-lived process, no port, no PID lockfile
-- ✅ No `cc-switch start` / `cc-switch stop` ceremony
+- ✅ No `cs start` / `cs stop` ceremony
 - ✅ Close Claude and the environment ends with it — no leftover state
 - ✅ Once it exits, nothing of cc-switch is visible on the system except its config file
 - 🛡️ The launched Claude has bypass-permissions enabled by default (see Highlights above)
@@ -151,10 +194,10 @@ Which means:
 
 ```bash
 # Claude interactive mode
-cc-switch
+cs
 
 # Codex interactive mode
-cc-switch codex
+cx
 
 # Navigation (arrows AND Vim-style keys both work):
 # - ↑↓ or k/j: move up / down
@@ -170,25 +213,25 @@ cc-switch codex
 
 ```bash
 # Switch to a configuration and launch Claude
-cc-switch use work
+cs use work
 
 # Switch and send a prompt
-cc-switch use work "Write a Python script for me"
+cs use work "Write a Python script for me"
 
 # Switch and resume a previous session
-cc-switch use work --resume c8439f36-44a9-4d85-9e88-de35e004fdd4
-cc-switch use work -r c8439f36-44a9-4d85-9e88-de35e004fdd4
+cs use work --resume c8439f36-44a9-4d85-9e88-de35e004fdd4
+cs use work -r c8439f36-44a9-4d85-9e88-de35e004fdd4
 
 # Switch and continue the most recent session
-cc-switch use work --continue
-cc-switch use work -c
+cs use work --continue
+cs use work -c
 ```
 
 ### Add with Full Configuration
 
 ```bash
 # Every option at once
-cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com \
+cs add work -t sk-ant-xxx -u https://api.anthropic.com \
   -m claude-3-5-sonnet-20241022 \
   --small-fast-model claude-3-haiku-20240307 \
   --max-thinking-tokens 8192 \
@@ -199,14 +242,14 @@ cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com \
   --default-haiku-model claude-3-haiku-20240307
 
 # Force overwrite
-cc-switch add work -t sk-ant-xxx -u https://api.anthropic.com -f
+cs add work -t sk-ant-xxx -u https://api.anthropic.com -f
 
 # Interactive add
-cc-switch add work -i
+cs add work -i
 
 # Import from JSON file (alias required)
-cc-switch add work --from-file                   # import from ~/.claude/settings.json
-cc-switch add work --from-file config.json       # import from a specific file
+cs add work --from-file                   # import from ~/.claude/settings.json
+cs add work --from-file config.json       # import from a specific file
 ```
 
 ### Storage Modes
@@ -217,29 +260,29 @@ cc-switch add work --from-file config.json       # import from a specific file
 > - **`config` mode**: writes to root-level camelCase config fields in `settings.json`. Claude **hot-reads** these at runtime — so flipping cc-switch once will silently switch **every Claude instance already running** onto the new configuration. Avoid this unless you have exactly one window open and *want* the change to apply live.
 
 ```bash
-cc-switch --store env    # Write to env field (default, safe with multiple instances)
-cc-switch --store config # Write root-level camelCase (mutates live instances)
+cs --store env    # Write to env field (default, safe with multiple instances)
+cs --store config # Write root-level camelCase (mutates live instances)
 ```
 
 ### List Configurations
 
 ```bash
-cc-switch list           # JSON format (default)
-cc-switch list -p        # Plain text format
+cs list           # JSON format (default)
+cs list -p        # Plain text format
 ```
 
 ### Remove Multiple Configurations
 
 ```bash
-cc-switch remove work
-cc-switch remove work personal test-config
+cs remove work
+cs remove work personal test-config
 ```
 
 ### Configuration Migration
 
 ```bash
 # Migrate from old path (~/.cc_auto_switch/) to the new one
-cc-switch --migrate
+cs --migrate
 ```
 
 ## Daemon Mode
@@ -248,31 +291,31 @@ cc-switch offers an **optional** Daemon mode: it automatically starts a local cc
 
 ```bash
 # Start the daemon
-cc-switch daemon start
+cs daemon start
 
 # Check status (includes dashboard URL)
-cc-switch daemon status
+cs daemon status
 # Example output:
 #   ccs-daemon: RUNNING (pid 12345, uptime 5m 30s)
 #   dashboard: http://127.0.0.1:55571
 
 # Run in foreground (useful for debugging)
-cc-switch daemon start --foreground
+cs daemon start --foreground
 
 # Adjust log level
-cc-switch daemon start --log-level debug
-cc-switch daemon start -vvv   # trace level
+cs daemon start --log-level debug
+cs daemon start -vvv   # trace level
 
 # Restart (picks up configuration changes)
-cc-switch daemon restart
+cs daemon restart
 
 # Stop
-cc-switch daemon stop
+cs daemon stop
 ```
 
 ### Dashboard Features
 
-Open the dashboard URL shown by `cc-switch daemon status` in your browser to see:
+Open the dashboard URL shown by `cs daemon status` in your browser to see:
 
 - **Request list** — all API requests sorted by time, with live SSE updates
 - **Upstream filter** — filter requests by upstream
@@ -292,10 +335,10 @@ cc-switch can show the **current configuration alias** at the start of Claude Co
 
 ```bash
 # Install (run after first install or after upgrading cc-switch)
-cc-switch statusline install
+cs statusline install
 
 # Uninstall
-cc-switch statusline uninstall
+cs statusline uninstall
 ```
 
 How it works:
@@ -460,45 +503,22 @@ Register-ArgumentCompleter -CommandName cc-switch -Native -ScriptBlock {
 }
 ```
 
-### Built-in aliases (recommended)
+### Alias install (recap)
 
-`cc-switch completion <shell>` prints recommended aliases alongside the completion script. You can also add them manually:
-
-| Alias | Expands to | Purpose |
-|-------|------------|---------|
-| `cs` | `cc-switch` | short form of the main command (typing `cs` drops you into interactive mode) |
-| `ccd` | `claude --dangerously-skip-permissions` | launch Claude without permission prompts |
-| `cx` | `cc-switch codex` | short form of the Codex subcommand |
+Aliases were introduced at the top of this README ([jump back](#-strongly-recommended-install-the-aliases-first-cs--cx)). Reprinting here for convenience:
 
 ```bash
 # Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
-echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.config/fish/config.fish
 echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
 
-# Zsh
-echo "alias cs='cc-switch'" >> ~/.zshrc
-echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.zshrc
+# Zsh / Bash
+echo "alias cs='cc-switch'" >> ~/.zshrc   # or ~/.bashrc
 echo "alias cx='cc-switch codex'" >> ~/.zshrc
-
-# Bash
-echo "alias cs='cc-switch'" >> ~/.bashrc
-echo "alias ccd='claude --dangerously-skip-permissions'" >> ~/.bashrc
-echo "alias cx='cc-switch codex'" >> ~/.bashrc
 
 # PowerShell
 Set-Alias -Name cs -Value cc-switch
-function ccd { claude --dangerously-skip-permissions @args }
-```
-
-Then:
-
-```bash
-cs              # = cc-switch (interactive mode)
-cs use work     # = cc-switch use work
-ccd             # quick Claude launch (permission prompts skipped)
-cx              # = cc-switch codex (Codex interactive mode)
-cx use work     # = cc-switch codex use work
+function cx { cc-switch codex @args }
 ```
 
 > 💡 **Fish tip**: dynamic completion still works through the `cs` alias — Fish expands the alias before completing.
@@ -509,7 +529,7 @@ cx use work     # = cc-switch codex use work
 
 ```bash
 # Provide an explicit alias before --from-file
-cc-switch add my-work --from-file my-work-config.json
+cs add my-work --from-file my-work-config.json
 
 # Expected JSON format:
 # {
@@ -524,7 +544,7 @@ cc-switch add my-work --from-file my-work-config.json
 ### Codex configurations from auth.json
 
 ```bash
-cc-switch codex add work --from-file              # default ~/.codex/auth.json
+cx add work --from-file              # default ~/.codex/auth.json
 ```
 
 Full documentation: [docs/codex_EN.md](docs/codex_EN.md).

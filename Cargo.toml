@@ -1,6 +1,6 @@
 [package]
 name = "cc-switch"
-version = "0.1.39"
+version = "0.1.40"
 edition = "2024"
 rust-version = "1.95"
 description = "Switch between multiple Claude / Codex configurations. Optional daemon proxies traffic to a built-in dashboard — requests, conversations, token stats. Cross-platform."
@@ -13,7 +13,7 @@ categories = ["command-line-utilities"]
 exclude = ["web/", "web-aggregate/dist/"]
 
 [features]
-default = []
+default = ["web-ui"]
 web-ui = ["ccs-proxy/web-ui"]
 
 [[bin]]

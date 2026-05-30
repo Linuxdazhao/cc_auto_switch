@@ -4,24 +4,26 @@
 
 `cc-switch codex` 用于管理 OpenAI Codex CLI 的多个认证配置，支持 OAuth（chatgpt）和 API Key 两种认证模式。
 
+> 💡 **本文档示例统一使用 `cx` 别名**（= `cc-switch codex`）。别名安装见 [主 README](../README.md#-强烈推荐先安装别名cs--cx)；未装别名也可以把 `cx` 替换回 `cc-switch codex`。
+
 ## 快速开始
 
 ```bash
 # 从现有 auth.json 导入配置
-cc-switch codex add work --from-file                       # 默认从 ~/.codex/auth.json 导入
-cc-switch codex add work --from-file ~/.codex/auth.json    # 也支持显式路径
+cx add work --from-file                       # 默认从 ~/.codex/auth.json 导入
+cx add work --from-file ~/.codex/auth.json    # 也支持显式路径
 
 # 交互式创建配置
-cc-switch codex add personal -i
+cx add personal -i
 
 # 通过 API Key 创建配置
-cc-switch codex add api-test --api-key sk-xxx
+cx add api-test --api-key sk-xxx
 
 # 进入交互模式
-cc-switch codex
+cx
 
 # 切换到指定配置并启动 Codex
-cc-switch codex use work
+cx use work
 ```
 
 ## 命令一览
@@ -40,13 +42,13 @@ cc-switch codex use work
 
 ```bash
 # 导入已有配置（别名必须显式提供）
-cc-switch codex add work --from-file
+cx add work --from-file
 ```
 
 ### 交互式创建
 
 ```bash
-cc-switch codex add my-config -i
+cx add my-config -i
 
 # 提示输入：
 # Auth mode (chatgpt/apikey) [chatgpt]:
@@ -59,20 +61,20 @@ cc-switch codex add my-config -i
 ### API Key 模式
 
 ```bash
-cc-switch codex add api-only --api-key sk-xxxxxxxx
+cx add api-only --api-key sk-xxxxxxxx
 ```
 
 ### 强制覆盖
 
 ```bash
-cc-switch codex add work --from-file -f
+cx add work --from-file -f
 ```
 
 ## 交互模式（TUI）
 
 ```bash
 # 进入交互式选择界面
-cc-switch codex
+cx
 ```
 
 交互模式导航：
@@ -96,16 +98,16 @@ cc-switch codex
 
 ```bash
 # 切换并启动 Codex
-cc-switch codex use work
+cx use work
 
 # 切换并发送提示词
-cc-switch codex use work "帮我写一个 Python 脚本"
+cx use work "帮我写一个 Python 脚本"
 
 # 切换并继续最近会话
-cc-switch codex use work -c
+cx use work -c
 
 # 切换并恢复指定会话
-cc-switch codex use work -r <session-id>
+cx use work -r <session-id>
 ```
 
 ## 编辑配置
@@ -135,16 +137,16 @@ cc-switch codex use work -r <session-id>
 
 ```bash
 # 列出所有 Codex 配置（JSON 格式）
-cc-switch codex list
+cx list
 
 # 纯文本格式
-cc-switch codex list -p
+cx list -p
 
 # 删除单个配置
-cc-switch codex remove work
+cx remove work
 
 # 删除多个配置
-cc-switch codex remove work personal test
+cx remove work personal test
 ```
 
 ## 认证模式说明

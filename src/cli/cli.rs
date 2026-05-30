@@ -34,23 +34,19 @@ CODEX CONFIGURATIONS:
 
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
-    cc-switch alias fish       # Generates aliases for eval
 
-    These aliases are available:
-    - cs='cc-switch'                              # Quick access to cc-switch
-    - ccd='claude --dangerously-skip-permissions' # Quick Claude launch
+    Recommended aliases:
+    - cs='cc-switch'           # Quick access to cc-switch
+    - cx='cc-switch codex'     # Quick access to cc-switch codex
 
-    To use aliases immediately:
-    eval \"$(cc-switch alias fish)\"    # Add aliases to current session
-
-    Or add them permanently:
+    Install permanently:
     cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
     echo \"alias cs='cc-switch'\" >> ~/.config/fish/config.fish
-    echo \"alias ccd='claude --dangerously-skip-permissions'\" >> ~/.config/fish/config.fish
+    echo \"alias cx='cc-switch codex'\" >> ~/.config/fish/config.fish
 
     Then use:
     cs current    # Instead of cc-switch current
-    ccd           # Quick Claude launch"
+    cx use work   # Instead of cc-switch codex use work"
 )]
 pub struct Cli {
     #[command(subcommand)]

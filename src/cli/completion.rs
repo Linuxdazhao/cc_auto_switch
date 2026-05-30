@@ -14,19 +14,8 @@ use std::path::PathBuf;
 /// Returns error if shell is not supported
 pub fn generate_aliases(shell: &str) -> Result<()> {
     match shell {
-        "fish" => {
+        "fish" | "zsh" | "bash" => {
             println!("alias cs='cc-switch'");
-            println!("alias ccd='claude --dangerously-skip-permissions'");
-            println!("alias cx='cc-switch codex'");
-        }
-        "zsh" => {
-            println!("alias cs='cc-switch'");
-            println!("alias ccd='claude --dangerously-skip-permissions'");
-            println!("alias cx='cc-switch codex'");
-        }
-        "bash" => {
-            println!("alias cs='cc-switch'");
-            println!("alias ccd='claude --dangerously-skip-permissions'");
             println!("alias cx='cc-switch codex'");
         }
         _ => {

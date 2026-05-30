@@ -4,24 +4,26 @@
 
 `cc-switch codex` manages multiple OpenAI Codex CLI authentication configurations, supporting both OAuth (chatgpt) and API Key modes.
 
+> 💡 **All examples in this doc use the `cx` alias** (= `cc-switch codex`). Install the alias from the [main README](../README_EN.md#-strongly-recommended-install-the-aliases-first-cs--cx); if you haven't, just replace `cx` with `cc-switch codex`.
+
 ## Quick Start
 
 ```bash
 # Import from an existing auth.json
-cc-switch codex add work --from-file                       # default: ~/.codex/auth.json
-cc-switch codex add work --from-file ~/.codex/auth.json    # explicit path also supported
+cx add work --from-file                       # default: ~/.codex/auth.json
+cx add work --from-file ~/.codex/auth.json    # explicit path also supported
 
 # Create interactively
-cc-switch codex add personal -i
+cx add personal -i
 
 # Create with an API key
-cc-switch codex add api-test --api-key sk-xxx
+cx add api-test --api-key sk-xxx
 
 # Enter interactive mode
-cc-switch codex
+cx
 
 # Switch to a configuration and launch Codex
-cc-switch codex use work
+cx use work
 ```
 
 ## Command Reference
@@ -40,13 +42,13 @@ cc-switch codex use work
 
 ```bash
 # Import — alias is required (here: 'work')
-cc-switch codex add work --from-file
+cx add work --from-file
 ```
 
 ### Interactive creation
 
 ```bash
-cc-switch codex add my-config -i
+cx add my-config -i
 
 # Prompts:
 # Auth mode (chatgpt/apikey) [chatgpt]:
@@ -59,20 +61,20 @@ cc-switch codex add my-config -i
 ### API Key mode
 
 ```bash
-cc-switch codex add api-only --api-key sk-xxxxxxxx
+cx add api-only --api-key sk-xxxxxxxx
 ```
 
 ### Force overwrite
 
 ```bash
-cc-switch codex add work --from-file -f
+cx add work --from-file -f
 ```
 
 ## Interactive Mode (TUI)
 
 ```bash
 # Enter the interactive selection interface
-cc-switch codex
+cx
 ```
 
 Navigation:
@@ -96,16 +98,16 @@ Each configuration displays:
 
 ```bash
 # Switch and launch Codex
-cc-switch codex use work
+cx use work
 
 # Switch and send a prompt
-cc-switch codex use work "Write a Python script for me"
+cx use work "Write a Python script for me"
 
 # Switch and continue the most recent session
-cc-switch codex use work -c
+cx use work -c
 
 # Switch and resume a specific session
-cc-switch codex use work -r <session-id>
+cx use work -r <session-id>
 ```
 
 ## Editing Configurations
@@ -135,16 +137,16 @@ Edit mode controls:
 
 ```bash
 # List all Codex configurations (JSON format)
-cc-switch codex list
+cx list
 
 # Plain text format
-cc-switch codex list -p
+cx list -p
 
 # Remove a single configuration
-cc-switch codex remove work
+cx remove work
 
 # Remove multiple configurations
-cc-switch codex remove work personal test
+cx remove work personal test
 ```
 
 ## Auth Mode Reference
