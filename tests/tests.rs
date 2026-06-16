@@ -17,6 +17,7 @@ mod tests {
         Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: None,
             small_fast_model: None,
@@ -552,6 +553,7 @@ mod tests {
         let config = Configuration {
             alias_name: "edge-case".to_string(),
             token: "".to_string(),
+            api_key: None,
             url: "".to_string(),
             model: None,
             small_fast_model: None,
@@ -720,6 +722,7 @@ mod tests {
         let config = Configuration {
             alias_name: "format-test".to_string(),
             token: "sk-ant-format-test".to_string(),
+            api_key: None,
             url: "https://format.test.com".to_string(),
             model: Some("claude-format-model".to_string()),
             small_fast_model: None,
@@ -800,6 +803,7 @@ mod tests {
         let config = Configuration {
             alias_name: "order-test".to_string(),
             token: "sk-ant-order".to_string(),
+            api_key: None,
             url: "https://order.test.com".to_string(),
             model: Some("claude-order-model".to_string()),
             small_fast_model: Some("haiku-order-model".to_string()),
@@ -956,6 +960,7 @@ mod config_edit_tests {
         let config = Configuration {
             alias_name: "test-config".to_string(),
             token: "sk-test-123".to_string(),
+            api_key: None,
             url: "https://api.test.com".to_string(),
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
@@ -987,6 +992,7 @@ mod config_edit_tests {
         let updated_config = Configuration {
             alias_name: "test-config".to_string(),
             token: "sk-updated-456".to_string(),
+            api_key: None,
             url: "https://api.updated.com".to_string(),
             model: Some("updated-model".to_string()),
             small_fast_model: None,
@@ -1025,6 +1031,7 @@ mod config_edit_tests {
         let renamed_config = Configuration {
             alias_name: "renamed-config".to_string(),
             token: "sk-test-123".to_string(),
+            api_key: None,
             url: "https://api.test.com".to_string(),
             model: Some("test-model".to_string()),
             small_fast_model: Some("test-fast-model".to_string()),
@@ -1062,6 +1069,7 @@ mod config_edit_tests {
         let new_config = Configuration {
             alias_name: "new-config".to_string(),
             token: "sk-new-789".to_string(),
+            api_key: None,
             url: "https://api.new.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1094,6 +1102,7 @@ mod config_edit_tests {
         let config2 = Configuration {
             alias_name: "config2".to_string(),
             token: "sk-config2-456".to_string(),
+            api_key: None,
             url: "https://api.config2.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1118,6 +1127,7 @@ mod config_edit_tests {
         let renamed_config = Configuration {
             alias_name: "config2".to_string(),
             token: "sk-overwritten".to_string(),
+            api_key: None,
             url: "https://api.overwritten.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1155,6 +1165,7 @@ mod config_edit_tests {
         let updated_config = Configuration {
             alias_name: "test-config".to_string(),
             token: "sk-test-123".to_string(),
+            api_key: None,
             url: "https://api.test.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1187,6 +1198,7 @@ mod config_edit_tests {
         let config = Configuration {
             alias_name: "test".to_string(),
             token: "sk-ant-test".to_string(),
+            api_key: None,
             url: "https://api.test.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1227,6 +1239,7 @@ mod config_edit_tests {
         let config = Configuration {
             alias_name: "test".to_string(),
             token: "sk-ant-test".to_string(),
+            api_key: None,
             url: "https://api.test.com".to_string(),
             model: None,
             small_fast_model: None,
@@ -1276,6 +1289,7 @@ mod config_edit_tests {
 #[cfg(test)]
 mod claude_settings_tests {
     use cc_switch::config::ClaudeSettings;
+    use cc_switch::config::Configuration;
     use cc_switch::config::types::StorageMode;
     use std::collections::BTreeMap;
     use std::fs;
@@ -1295,6 +1309,7 @@ mod claude_settings_tests {
         cc_switch::config::types::Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: None,
             small_fast_model: None,
@@ -1444,29 +1459,13 @@ mod claude_settings_tests {
         };
 
         // Temporarily unset all Anthropic-related environment variables for this test
-        let original_auth_token = std::env::var("ANTHROPIC_AUTH_TOKEN").ok();
-        let original_base_url = std::env::var("ANTHROPIC_BASE_URL").ok();
-        let original_model = std::env::var("ANTHROPIC_MODEL").ok();
-        let original_small_fast_model = std::env::var("ANTHROPIC_SMALL_FAST_MODEL").ok();
-        let original_disable_traffic =
-            std::env::var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC").ok();
-        let original_sonnet = std::env::var("ANTHROPIC_DEFAULT_SONNET_MODEL").ok();
-        let original_opus = std::env::var("ANTHROPIC_DEFAULT_OPUS_MODEL").ok();
-        let original_haiku = std::env::var("ANTHROPIC_DEFAULT_HAIKU_MODEL").ok();
-        let original_experimental_teams =
-            std::env::var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS").ok();
-        let original_disable_1m_context = std::env::var("CLAUDE_CODE_DISABLE_1M_CONTEXT").ok();
-        unsafe {
-            std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
-            std::env::remove_var("ANTHROPIC_BASE_URL");
-            std::env::remove_var("ANTHROPIC_MODEL");
-            std::env::remove_var("ANTHROPIC_SMALL_FAST_MODEL");
-            std::env::remove_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
-            std::env::remove_var("ANTHROPIC_DEFAULT_SONNET_MODEL");
-            std::env::remove_var("ANTHROPIC_DEFAULT_OPUS_MODEL");
-            std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
-            std::env::remove_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
-            std::env::remove_var("CLAUDE_CODE_DISABLE_1M_CONTEXT");
+        let env_fields = Configuration::get_env_field_names();
+        let mut saved_env: Vec<(String, Option<String>)> = Vec::new();
+        for field in &env_fields {
+            saved_env.push((field.to_string(), std::env::var(field).ok()));
+            unsafe {
+                std::env::remove_var(field);
+            }
         }
 
         // Switch to Config mode
@@ -1478,55 +1477,12 @@ mod claude_settings_tests {
 
         // Restore original environment variables
         unsafe {
-            if let Some(token) = original_auth_token {
-                std::env::set_var("ANTHROPIC_AUTH_TOKEN", token);
-            } else {
-                std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
-            }
-            if let Some(url) = original_base_url {
-                std::env::set_var("ANTHROPIC_BASE_URL", url);
-            } else {
-                std::env::remove_var("ANTHROPIC_BASE_URL");
-            }
-            if let Some(model) = original_model {
-                std::env::set_var("ANTHROPIC_MODEL", model);
-            } else {
-                std::env::remove_var("ANTHROPIC_MODEL");
-            }
-            if let Some(sfm) = original_small_fast_model {
-                std::env::set_var("ANTHROPIC_SMALL_FAST_MODEL", sfm);
-            } else {
-                std::env::remove_var("ANTHROPIC_SMALL_FAST_MODEL");
-            }
-            if let Some(disable) = original_disable_traffic {
-                std::env::set_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", disable);
-            } else {
-                std::env::remove_var("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
-            }
-            if let Some(sonnet) = original_sonnet {
-                std::env::set_var("ANTHROPIC_DEFAULT_SONNET_MODEL", sonnet);
-            } else {
-                std::env::remove_var("ANTHROPIC_DEFAULT_SONNET_MODEL");
-            }
-            if let Some(opus) = original_opus {
-                std::env::set_var("ANTHROPIC_DEFAULT_OPUS_MODEL", opus);
-            } else {
-                std::env::remove_var("ANTHROPIC_DEFAULT_OPUS_MODEL");
-            }
-            if let Some(haiku) = original_haiku {
-                std::env::set_var("ANTHROPIC_DEFAULT_HAIKU_MODEL", haiku);
-            } else {
-                std::env::remove_var("ANTHROPIC_DEFAULT_HAIKU_MODEL");
-            }
-            if let Some(experimental) = original_experimental_teams {
-                std::env::set_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", experimental);
-            } else {
-                std::env::remove_var("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
-            }
-            if let Some(disable_1m) = original_disable_1m_context {
-                std::env::set_var("CLAUDE_CODE_DISABLE_1M_CONTEXT", disable_1m);
-            } else {
-                std::env::remove_var("CLAUDE_CODE_DISABLE_1M_CONTEXT");
+            for (key, value) in &saved_env {
+                if let Some(val) = value {
+                    std::env::set_var(key, val);
+                } else {
+                    std::env::remove_var(key);
+                }
             }
         }
 

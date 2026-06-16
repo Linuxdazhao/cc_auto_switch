@@ -48,6 +48,7 @@ fn parse_config_from_file(
     file_path: &str,
 ) -> Result<(
     String,
+    Option<String>,
     String,
     Option<String>,
     Option<String>,
@@ -77,11 +78,34 @@ fn parse_config_from_file(
         )
     })?;
 
-    let token = env
+    let auth_token = env
         .get("ANTHROPIC_AUTH_TOKEN")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow!("Missing ANTHROPIC_AUTH_TOKEN in file '{}'", file_path))?
-        .to_string();
+        .map(|s| s.to_string());
+
+    let api_key = env
+        .get("ANTHROPIC_API_KEY")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    if auth_token.is_some() && api_key.is_some() {
+        anyhow::bail!(
+            "File '{}' contains both ANTHROPIC_AUTH_TOKEN and ANTHROPIC_API_KEY — only one is allowed",
+            file_path
+        );
+    }
+
+    let token = match (&auth_token, &api_key) {
+        (Some(t), None) => t.clone(),
+        (None, Some(_)) => String::new(),
+        (None, None) => {
+            anyhow::bail!(
+                "Missing ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY in file '{}'",
+                file_path
+            );
+        }
+        _ => unreachable!(),
+    };
 
     let url = env
         .get("ANTHROPIC_BASE_URL")
@@ -161,6 +185,7 @@ fn parse_config_from_file(
 
     Ok((
         token,
+        api_key,
         url,
         model,
         small_fast_model,
@@ -194,6 +219,7 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
 
         let (
             file_token,
+            file_api_key,
             file_url,
             file_model,
             file_small_fast_model,
@@ -212,6 +238,7 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         ) = parse_config_from_file(file_path)?;
 
         params.token = Some(file_token);
+        params.api_key = file_api_key;
         params.url = Some(file_url);
         params.model = file_model;
         params.small_fast_model = file_small_fast_model;
@@ -249,21 +276,44 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         anyhow::bail!("Cannot use --interactive mode with --from-file");
     }
 
-    // Determine token value
-    let final_token = if params.interactive {
-        if params.token.is_some() || params.token_arg.is_some() {
+    // Enforce mutual exclusivity: --token and --api-key cannot both be provided
+    if params.token.is_some() && params.api_key.is_some() {
+        anyhow::bail!(
+            "Cannot use both --token and --api-key. Choose one:\n\
+             --token / -t  → sets ANTHROPIC_AUTH_TOKEN\n\
+             --api-key / -k → sets ANTHROPIC_API_KEY"
+        );
+    }
+
+    // Determine authentication value (token or api_key)
+    let (final_token, final_api_key): (String, Option<String>) = if params.interactive {
+        if params.token.is_some() || params.token_arg.is_some() || params.api_key.is_some() {
             eprintln!(
-                "Warning: Token provided via flags/arguments will be ignored in interactive mode"
+                "Warning: Token/API key provided via flags/arguments will be ignored in interactive mode"
             );
         }
-        read_sensitive_input("Enter API token (sk-ant-xxx): ")?
+        let auth_type = read_input(
+            "Auth type — (1) ANTHROPIC_AUTH_TOKEN  (2) ANTHROPIC_API_KEY [default: 1]: ",
+        )?;
+        if auth_type == "2" {
+            let key = read_sensitive_input("Enter API key (ANTHROPIC_API_KEY): ")?;
+            (String::new(), Some(key))
+        } else {
+            let token = read_sensitive_input("Enter API token (sk-ant-xxx): ")?;
+            (token, None)
+        }
+    } else if let Some(key) = params.api_key {
+        (String::new(), Some(key))
     } else {
         match (&params.token, &params.token_arg) {
-            (Some(t), _) => t.clone(),
-            (None, Some(t)) => t.clone(),
+            (Some(t), _) => (t.clone(), None),
+            (None, Some(t)) => (t.clone(), None),
             (None, None) => {
                 anyhow::bail!(
-                    "Token is required. Use -t flag, provide as argument, or use interactive mode with -i"
+                    "Authentication is required. Use one of:\n\
+                     --token / -t  → sets ANTHROPIC_AUTH_TOKEN\n\
+                     --api-key / -k → sets ANTHROPIC_API_KEY\n\
+                     -i            → interactive mode"
                 );
             }
         }
@@ -568,26 +618,30 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.disable_autoupdater
     };
 
-    // Validate token format with flexible API provider support
-    let is_anthropic_official = final_url.contains("api.anthropic.com");
-    if is_anthropic_official {
-        if !final_token.starts_with("sk-ant-api03-") {
-            eprintln!(
-                "Warning: For official Anthropic API (api.anthropic.com), token should start with 'sk-ant-api03-'"
-            );
+    // Validate token format with flexible API provider support (only for AUTH_TOKEN)
+    if final_api_key.is_none() {
+        let is_anthropic_official = final_url.contains("api.anthropic.com");
+        if is_anthropic_official {
+            if !final_token.starts_with("sk-ant-api03-") {
+                eprintln!(
+                    "Warning: For official Anthropic API (api.anthropic.com), token should start with 'sk-ant-api03-'"
+                );
+            }
+        } else {
+            // For non-official APIs, provide general guidance
+            if final_token.starts_with("sk-ant-api03-") {
+                eprintln!(
+                    "Warning: Using official Claude token format with non-official API endpoint"
+                );
+            }
         }
-    } else {
-        // For non-official APIs, provide general guidance
-        if final_token.starts_with("sk-ant-api03-") {
-            eprintln!("Warning: Using official Claude token format with non-official API endpoint");
-        }
-        // Don't validate format for third-party APIs as they may use different formats
     }
 
     // Create and add configuration
     let config = Configuration {
         alias_name: params.alias_name.clone(),
         token: final_token,
+        api_key: final_api_key,
         url: final_url,
         model: final_model,
         small_fast_model: final_small_fast_model,
@@ -686,6 +740,7 @@ pub fn run() -> Result<()> {
             Commands::Add {
                 alias_name,
                 token,
+                api_key,
                 url,
                 model,
                 small_fast_model,
@@ -736,6 +791,7 @@ pub fn run() -> Result<()> {
                 let params = AddCommandParams {
                     alias_name,
                     token,
+                    api_key,
                     url,
                     model,
                     small_fast_model,
@@ -804,7 +860,9 @@ pub fn run() -> Result<()> {
                     } else {
                         println!("Stored configurations:");
                         for (alias_name, config) in &storage.configurations {
-                            let mut info = format!("token={}, url={}", config.token, config.url);
+                            let (auth_label, auth_value) = config.auth_env_pair();
+                            let mut info =
+                                format!("{}={}, url={}", auth_label, auth_value, config.url);
                             if let Some(model) = &config.model {
                                 info.push_str(&format!(", model={model}"));
                             }
@@ -922,9 +980,11 @@ pub fn run() -> Result<()> {
                 if config.url != original_url {
                     println!("  (proxied from: {})", original_url);
                 }
+                let (auth_label, auth_value) = config.auth_env_pair();
                 println!(
-                    "  Token: {}",
-                    crate::cli::display_utils::format_token_for_display(&config.token)
+                    "  {}: {}",
+                    auth_label,
+                    crate::cli::display_utils::format_token_for_display(auth_value)
                 );
 
                 let prompt_str = if prompt.is_empty() {

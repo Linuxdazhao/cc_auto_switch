@@ -19,6 +19,7 @@ mod daemon_supervisor {
         Configuration {
             alias_name: alias.to_string(),
             token: "sk-test".to_string(),
+            api_key: None,
             url: url.to_string(),
             model: None,
             small_fast_model: None,

@@ -130,7 +130,9 @@ mod tests {
     fn cleanup_removes_old_files() {
         let dir = tempfile::TempDir::new().unwrap();
         let old_file = dir.path().join("daemon.2020-01-01");
-        let recent_file = dir.path().join("daemon.2026-05-27");
+        let today = chrono::Local::now().date_naive();
+        let recent_name = format!("daemon.{}", today.format("%Y-%m-%d"));
+        let recent_file = dir.path().join(&recent_name);
         let unrelated = dir.path().join("other.txt");
 
         std::fs::write(&old_file, "old").unwrap();

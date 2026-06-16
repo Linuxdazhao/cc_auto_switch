@@ -9,6 +9,7 @@ mod tests {
         Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: None,
             small_fast_model: None,
@@ -40,6 +41,7 @@ mod tests {
         Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: model.map(String::from),
             small_fast_model: small_fast_model.map(String::from),
@@ -68,6 +70,7 @@ mod tests {
         let params = AddCommandParams {
             alias_name: "test".to_string(),
             token: Some("sk-ant-test".to_string()),
+            api_key: None,
             url: Some("https://api.test.com".to_string()),
             model: None,
             small_fast_model: None,

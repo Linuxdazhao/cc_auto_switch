@@ -8,6 +8,7 @@ mod tests {
         Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: None,
             small_fast_model: None,
@@ -39,6 +40,7 @@ mod tests {
         Configuration {
             alias_name: alias.to_string(),
             token: token.to_string(),
+            api_key: None,
             url: url.to_string(),
             model: model.map(String::from),
             small_fast_model: small_fast_model.map(String::from),
@@ -243,6 +245,7 @@ mod tests {
         let config = Configuration {
             alias_name: "".to_string(),
             token: "".to_string(),
+            api_key: None,
             url: "".to_string(),
             model: Some("".to_string()),
             small_fast_model: Some("".to_string()),

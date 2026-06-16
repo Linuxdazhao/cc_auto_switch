@@ -92,9 +92,17 @@ pub enum Commands {
         #[arg(
             long = "token",
             short = 't',
-            help = "API token (optional if not using interactive mode)"
+            help = "API token (ANTHROPIC_AUTH_TOKEN, mutually exclusive with --api-key)"
         )]
         token: Option<String>,
+
+        /// ANTHROPIC_API_KEY value (alternative to --token, mutually exclusive)
+        #[arg(
+            long = "api-key",
+            short = 'k',
+            help = "API key (ANTHROPIC_API_KEY, mutually exclusive with --token)"
+        )]
+        api_key: Option<String>,
 
         /// ANTHROPIC_BASE_URL value (API endpoint URL)
         #[arg(

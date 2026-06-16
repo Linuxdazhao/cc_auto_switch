@@ -1165,7 +1165,11 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     let _available_width = terminal_width.saturating_sub(text_display_width(indent) + 8);
 
     // Field labels with consistent width for alignment
-    let token_label = "Token:";
+    let token_label = if config.api_key.is_some() {
+        "API Key:"
+    } else {
+        "Token:"
+    };
     let url_label = "URL:";
     let model_label = "Model:";
     let small_model_label = "Small Fast Model:";
@@ -1206,12 +1210,13 @@ fn format_config_details(config: &Configuration, indent: &str, _compact: bool) -
     .max()
     .unwrap_or(0);
 
-    // Format token with proper alignment
+    // Format token/api_key with proper alignment
+    let (_, auth_value) = config.auth_env_pair();
     let token_line = format!(
         "{}{} {}",
         indent,
         pad_text_to_width(token_label, max_label_width, TextAlignment::Left, ' '),
-        format_token_for_display(&config.token).dimmed()
+        format_token_for_display(auth_value).dimmed()
     );
     lines.push(token_line);
 
@@ -1910,9 +1915,11 @@ fn display_edit_menu(config: &Configuration) {
 
     println!("1. 别名 (alias_name): {}", config.alias_name.green());
 
+    let (auth_label, auth_value) = config.auth_env_pair();
     println!(
-        "2. 令牌 (ANTHROPIC_AUTH_TOKEN): {}",
-        format_token_for_display(&config.token).green()
+        "2. 令牌 ({}): {}",
+        auth_label,
+        format_token_for_display(auth_value).green()
     );
 
     println!("3. URL (ANTHROPIC_BASE_URL): {}", config.url.green());
@@ -2160,16 +2167,44 @@ fn edit_field_alias(config: &mut Configuration) -> Result<()> {
     Ok(())
 }
 
-/// Edit token field
+/// Edit token/api_key field
 fn edit_field_token(config: &mut Configuration) -> Result<()> {
+    let (auth_label, auth_value) = config.auth_env_pair();
+    let label = format!("令牌 ({})", auth_label);
     let no_validator = |_: &str| -> Result<()> { Ok(()) };
-    if let Some(new_value) = edit_string_field(
-        "令牌",
-        &format_token_for_display(&config.token),
-        no_validator,
-    )? {
-        config.token = new_value;
-        println!("{}", "令牌已更新".green());
+
+    let auth_type = read_input("切换认证类型? (1) AUTH_TOKEN (2) API_KEY (Enter 保持不变): ")?;
+    match auth_type.as_str() {
+        "2" => {
+            if let Some(new_value) =
+                edit_string_field(&label, &format_token_for_display(auth_value), no_validator)?
+            {
+                config.api_key = Some(new_value);
+                config.token = String::new();
+                println!("{}", "已切换到 ANTHROPIC_API_KEY 并更新".green());
+            }
+        }
+        "1" => {
+            if let Some(new_value) =
+                edit_string_field(&label, &format_token_for_display(auth_value), no_validator)?
+            {
+                config.token = new_value;
+                config.api_key = None;
+                println!("{}", "已切换到 ANTHROPIC_AUTH_TOKEN 并更新".green());
+            }
+        }
+        _ => {
+            if let Some(new_value) =
+                edit_string_field(&label, &format_token_for_display(auth_value), no_validator)?
+            {
+                if config.api_key.is_some() {
+                    config.api_key = Some(new_value);
+                } else {
+                    config.token = new_value;
+                }
+                println!("{}", "令牌已更新".green());
+            }
+        }
     }
     Ok(())
 }

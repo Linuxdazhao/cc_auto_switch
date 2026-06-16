@@ -31,8 +31,9 @@ impl EnvironmentConfig {
     pub fn from_config(config: &Configuration) -> Self {
         let mut env_vars = EnvVarMap::new();
 
-        // Set required environment variables
-        env_vars.insert("ANTHROPIC_AUTH_TOKEN".to_string(), config.token.clone());
+        // Set authentication: ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN (mutually exclusive)
+        let (auth_env_name, auth_value) = config.auth_env_pair();
+        env_vars.insert(auth_env_name.to_string(), auth_value.to_string());
         env_vars.insert("ANTHROPIC_BASE_URL".to_string(), config.url.clone());
 
         // Set model configurations only if provided

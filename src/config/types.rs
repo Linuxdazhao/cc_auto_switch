@@ -36,6 +36,9 @@ pub struct Configuration {
     pub alias_name: String,
     /// ANTHROPIC_AUTH_TOKEN value (API authentication token)
     pub token: String,
+    /// ANTHROPIC_API_KEY value (alternative to AUTH_TOKEN, mutually exclusive)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
     /// ANTHROPIC_BASE_URL value (API endpoint URL)
     pub url: String,
     /// ANTHROPIC_MODEL value (custom model name)
@@ -97,6 +100,7 @@ impl Configuration {
     pub fn get_env_field_names() -> Vec<&'static str> {
         vec![
             "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
             "ANTHROPIC_MODEL",
             "ANTHROPIC_SMALL_FAST_MODEL",
@@ -117,6 +121,18 @@ impl Configuration {
         ]
     }
 
+    /// Get the authentication credential and its environment variable name.
+    ///
+    /// Returns `("ANTHROPIC_API_KEY", key)` when `api_key` is set,
+    /// otherwise `("ANTHROPIC_AUTH_TOKEN", token)`.
+    pub fn auth_env_pair(&self) -> (&'static str, &str) {
+        if let Some(ref key) = self.api_key {
+            ("ANTHROPIC_API_KEY", key)
+        } else {
+            ("ANTHROPIC_AUTH_TOKEN", &self.token)
+        }
+    }
+
     /// Get environment variable names that should be cleared in env mode
     ///
     /// Returns a vector of UPPERCASE environment variable names that are
@@ -125,6 +141,7 @@ impl Configuration {
     pub fn get_clearable_env_field_names() -> Vec<&'static str> {
         vec![
             "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
             "ANTHROPIC_MODEL",
             "ANTHROPIC_SMALL_FAST_MODEL",
@@ -158,6 +175,7 @@ mod tests {
         // Verify all expected fields are present
         let expected_fields = vec![
             "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
             "ANTHROPIC_MODEL",
             "ANTHROPIC_SMALL_FAST_MODEL",
@@ -180,7 +198,7 @@ mod tests {
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 18 fields"
+            "Should have exactly 19 fields"
         );
 
         for expected_field in expected_fields {
@@ -209,6 +227,7 @@ mod tests {
         // Verify clearable fields (excludes user preference fields)
         let expected_fields = vec![
             "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
             "ANTHROPIC_MODEL",
             "ANTHROPIC_SMALL_FAST_MODEL",
@@ -235,7 +254,7 @@ mod tests {
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 11 clearable fields"
+            "Should have exactly 12 clearable fields"
         );
 
         for expected_field in expected_fields {
@@ -320,6 +339,7 @@ mod tests {
         let config = Configuration {
             alias_name: "test".to_string(),
             token: "new_token".to_string(),
+            api_key: None,
             url: "https://api.new.com".to_string(),
             model: Some("new_model".to_string()),
             small_fast_model: Some("new_fast_model".to_string()),
@@ -403,6 +423,7 @@ mod tests {
         let config = Configuration {
             alias_name: "test".to_string(),
             token: "new_token".to_string(),
+            api_key: None,
             url: "https://api.new.com".to_string(),
             model: Some("new_model".to_string()),
             small_fast_model: Some("new_fast_model".to_string()),
@@ -553,6 +574,7 @@ impl<'de> Deserialize<'de> for ClaudeSettings {
 pub struct AddCommandParams {
     pub alias_name: String,
     pub token: Option<String>,
+    pub api_key: Option<String>,
     pub url: Option<String>,
     pub model: Option<String>,
     pub small_fast_model: Option<String>,
