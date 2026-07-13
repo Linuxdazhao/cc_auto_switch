@@ -194,50 +194,10 @@ complete -c cc-switch -n '__fish_cc_switch_using_subcommand remove' -f -a '(cc-s
 
 # Completion for 'completion' subcommand with shell types
 complete -c cc-switch -n '__fish_cc_switch_using_subcommand completion' -f -a 'fish zsh bash elvish powershell' -d 'Shell type'
-complete -c cs -n '__fish_seen_subcommand_from completion' -f -a 'fish zsh bash elvish powershell' -d 'Shell type'
 
-# Custom completion for codex subcommand with dynamic aliases
-complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
-complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
-
-# Completion for the 'cs' alias
-complete -c cs -w cc-switch
-
-# Completion for 'cs' alias subcommands
-complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex omp statusline' -d 'Subcommand'
-
-
-# Completion for 'cs list' subcommand
-complete -c cs -n '__fish_seen_subcommand_from list' -l plain -s p -d 'Plain text output'
-complete -c cs -n '__fish_seen_subcommand_from list' -l name -s n -d 'Show only name and URL'
-
-
-# Completion for 'cs statusline' subcommand
-complete -c cs -n '__fish_seen_subcommand_from statusline' -f -a 'install uninstall' -d 'Statusline action'
-
-# Completion for the 'cx' alias (cc-switch codex)
-complete -c cx -f
-complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'
-complete -c cx -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
-complete -c cx -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
-complete -c cx -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'
-complete -c cx -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only name and auth mode'
-complete -c cx -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'
-complete -c cx -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from auth.json (defaults to ~/.codex/auth.json if no path)' -r
-
-# Completion for 'omp' subcommand
+# Completion for 'cc-switch omp' subcommand dynamic aliases
 complete -c cc-switch -n '__fish_seen_subcommand_from omp' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
 complete -c cc-switch -n '__fish_seen_subcommand_from omp' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
-
-# Completion for the 'co' alias (cc-switch omp)
-complete -c co -f
-complete -c co -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'OMP subcommand'
-complete -c co -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
-complete -c co -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
-complete -c co -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'
-complete -c co -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only name and auth mode'
-complete -c co -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'
-complete -c co -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from .env file (defaults to ~/.omp/agent/.env if no path)' -r
 "#;
     out.extend_from_slice(extra.as_bytes());
 
