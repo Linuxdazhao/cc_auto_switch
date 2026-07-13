@@ -88,8 +88,8 @@ module-items-ordered-within-groupings = "all"
 # ========================================
 # CRITICAL: Set MSRV to match your project's rust-version in Cargo.toml
 # This disables lints that require newer Rust features
-# Update this to match: rust-version = "1.88" in Cargo.toml
-msrv = "1.88.0"
+# Update this to match: rust-version = "1.95" in Cargo.toml
+msrv = "1.95"
 
 # ========================================
 # Test-Specific Allowances

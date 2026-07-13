@@ -922,7 +922,7 @@ pub fn run() -> Result<()> {
                 r#continue,
                 prompt,
             } => {
-                // Handle special reset aliases (route through daemon proxy if running)
+                // Handle special reset aliases
                 if alias_name == "cc" || alias_name == "official" {
                     use colored::Colorize;
                     println!("{}", "Using official Claude configuration".blue());
@@ -933,44 +933,16 @@ pub fn run() -> Result<()> {
                     settings.remove_anthropic_env();
                     settings.save(storage.get_claude_settings_dir().map(|s| s.as_str()))?;
 
-                    crate::daemon::print_version_mismatch_warning();
-                    let env = crate::daemon::build_official_env();
-
+                    let env = EnvironmentConfig::empty().with_alias("official");
                     launch_claude_with_env(env, None, None, r#continue)?;
                     return Ok(());
                 }
 
-                let mut config = storage
+                let config = storage
                     .configurations
                     .get(&alias_name)
                     .ok_or_else(|| anyhow!("Configuration '{}' not found", alias_name))?
                     .clone();
-
-                // Consult daemon state: substitute proxy URL if daemon is alive.
-                let original_url = config.url.clone();
-                crate::daemon::print_version_mismatch_warning();
-                match crate::daemon::try_resolve_proxy(&config.url) {
-                    crate::daemon::ProxyResolution::Proxied { proxy_url } => {
-                        config.url = proxy_url;
-                    }
-                    crate::daemon::ProxyResolution::Direct => {
-                        if !original_url.is_empty() {
-                            use colored::Colorize;
-                            eprintln!(
-                                "{}",
-                                format!(
-                                    "\u{2139} cc daemon is not running — traffic for '{alias_name}' will NOT be captured."
-                                )
-                                .blue()
-                            );
-                            eprintln!(
-                                "{}",
-                                "  Run `cc-switch daemon start` and re-run to enable capture."
-                                    .blue()
-                            );
-                        }
-                    }
-                }
 
                 let env_config = EnvironmentConfig::from_config(&config).with_alias(&alias_name);
                 let storage_mode = storage.default_storage_mode.clone().unwrap_or_default();
@@ -986,9 +958,6 @@ pub fn run() -> Result<()> {
 
                 println!("Switched to configuration '{}'", alias_name);
                 println!("  URL:   {}", config.url);
-                if config.url != original_url {
-                    println!("  (proxied from: {})", original_url);
-                }
                 let (auth_label, auth_value) = config.auth_env_pair();
                 println!(
                     "  {}: {}",
@@ -1139,37 +1108,6 @@ pub fn run() -> Result<()> {
                     handle_omp_interactive(&storage)?;
                 }
             },
-            Commands::Daemon { command } => {
-                use crate::cli::DaemonCommands;
-                use crate::daemon::{DaemonAction, handle_daemon_command};
-                let action = match command {
-                    DaemonCommands::Start {
-                        foreground,
-                        log_level,
-                        verbose,
-                        capture_official,
-                    } => DaemonAction::Start {
-                        foreground,
-                        log_level,
-                        verbose,
-                        capture_official,
-                    },
-                    DaemonCommands::Stop => DaemonAction::Stop,
-                    DaemonCommands::Status { json } => DaemonAction::Status { json },
-                    DaemonCommands::Restart {
-                        foreground,
-                        log_level,
-                        verbose,
-                        capture_official,
-                    } => DaemonAction::Restart {
-                        foreground,
-                        log_level,
-                        verbose,
-                        capture_official,
-                    },
-                };
-                handle_daemon_command(action, &storage)?;
-            }
             Commands::Statusline { action } => {
                 let custom_dir = storage.get_claude_settings_dir().map(|s| s.as_str());
                 match action {

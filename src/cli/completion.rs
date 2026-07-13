@@ -204,31 +204,13 @@ complete -c cc-switch -n '__fish_seen_subcommand_from codex' -n '__fish_seen_sub
 complete -c cs -w cc-switch
 
 # Completion for 'cs' alias subcommands
-complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex omp daemon statusline' -d 'Subcommand'
+complete -c cs -n '__fish_use_subcommand' -f -a 'add remove list set-default-dir completion alias use switch current codex omp statusline' -d 'Subcommand'
 
-# Completion for 'daemon' subcommand
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and not __fish_seen_subcommand_from start stop status restart' -f -a 'start stop status restart' -d 'Daemon action'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -l foreground -d 'Run in the foreground'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -l log-level -d 'Log level (error/warn/info/debug/trace)' -r -f -a 'error warn info debug trace'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from start' -s v -l verbose -d 'Increase verbosity (-v/-vv/-vvv)'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -l foreground -d 'Run in the foreground after restart'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -l log-level -d 'Log level (error/warn/info/debug/trace)' -r -f -a 'error warn info debug trace'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from restart' -s v -l verbose -d 'Increase verbosity (-v/-vv/-vvv)'
-complete -c cc-switch -n '__fish_cc_switch_using_subcommand daemon; and __fish_seen_subcommand_from status' -l json -d 'Output as JSON'
 
 # Completion for 'cs list' subcommand
 complete -c cs -n '__fish_seen_subcommand_from list' -l plain -s p -d 'Plain text output'
 complete -c cs -n '__fish_seen_subcommand_from list' -l name -s n -d 'Show only name and URL'
 
-# Completion for 'cs daemon' subcommand
-complete -c cs -n '__fish_seen_subcommand_from daemon; and not __fish_seen_subcommand_from start stop status restart' -f -a 'start stop status restart' -d 'Daemon action'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -l foreground -d 'Run in the foreground'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -l log-level -d 'Log level' -r -f -a 'error warn info debug trace'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from start' -s v -l verbose -d 'Increase verbosity'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -l foreground -d 'Run in the foreground after restart'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -l log-level -d 'Log level' -r -f -a 'error warn info debug trace'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from restart' -s v -l verbose -d 'Increase verbosity'
-complete -c cs -n '__fish_seen_subcommand_from daemon; and __fish_seen_subcommand_from status' -l json -d 'Output as JSON'
 
 # Completion for 'cs statusline' subcommand
 complete -c cs -n '__fish_seen_subcommand_from statusline' -f -a 'install uninstall' -d 'Statusline action'

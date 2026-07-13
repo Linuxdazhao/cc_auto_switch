@@ -226,95 +226,6 @@ cc-switch/
     └── release.yml            # Release automation
 ```
 
-## Frontend (web/)
-
-The web dashboards are a **bun workspace** under `web/` (bun 1.3+; the
-`web/bun.lock` lockfile **is** committed). Tech stack: Svelte 5, Vite 6,
-TypeScript, Tailwind CSS 3, shadcn-svelte / bits-ui v2, Vitest.
-
-### Workspace layout
-
-```
-web/
-├── packages/
-│   ├── api  (@ccs/api)   # Shared TS API types + typed fetch client + SSE parser
-│   └── ui   (@ccs/ui)    # Design system: Tailwind preset, design tokens
-│                         #   (single always-on dark theme, clay accent;
-│                         #   class="dark" is fixed in index.html, no toggle),
-│                         #   shadcn-svelte
-│                         #   components, custom components (StatusBadge,
-│                         #   StatCard, DataTable, FilterGroup, ConversationView
-│                         #   with bundled marked/DOMPurify/highlight.js — no CDN)
-└── apps/
-    ├── aggregate (@ccs/app-aggregate) # Dashboard for the aggregate daemon
-    │                                  #   → Vite outDir web-aggregate/dist/
-    └── proxy     (@ccs/app-proxy)     # Single-instance viewer for ccs-proxy
-                                       #   → Vite outDir ccs-proxy/web/dist/
-```
-
-### Build / test / dev
-
-```bash
-cd web
-bun install
-bun run --filter '*' build   # build all apps (outputs to the dist/ dirs above)
-bun run --filter '*' test    # Vitest across the workspace
-bun run --filter '*' check   # type-check / svelte-check
-```
-
-The workspace is defined by the `workspaces` array in `web/package.json`
-(`packages/*`, `apps/*`) — bun reads it directly, no separate workspace file.
-`bun install --frozen-lockfile` (used in CI) leaves the working tree untouched
-and exits 0 — unlike pnpm 11, which injected an `allowBuilds` stub and failed
-with `ERR_PNPM_IGNORED_BUILDS` on esbuild. esbuild works under bun via its
-prebuilt platform package (no postinstall build needed). Note: `bun run
---filter '*' <script>` errors if **no** package defines `<script>`, so the root
-`package.json` only exposes scripts that have at least one target (no `lint`).
-
-**`$lib` alias requirement:** both apps are plain Vite apps (not SvelteKit), but
-the shadcn components import `$lib/utils.js`. Each app's `vite.config.ts` adds a
-`$lib` resolve alias → `../../packages/ui/src/lib`, with a matching `$lib` path
-in each app's `tsconfig`.
-
-### The `web-ui` cargo feature (default OFF)
-
-Both crates expose a `web-ui` cargo feature, **off by default**. The root
-`cc-switch` feature propagates to the proxy: `web-ui = ["ccs-proxy/web-ui"]`
-(cc-switch runs ccs-proxy in-process via `ccs_proxy::serve`, so the proxy
-dashboard ships inside the cc-switch binary).
-
-- `build.rs` in **both** the root crate and `ccs-proxy` is a **no-op unless
-  `web-ui` is enabled** (it checks `CARGO_FEATURE_WEB_UI`). When enabled, it
-  runs `bun run --filter <app> build` to produce the embedded `dist/`. With the
-  feature off, **no Node/bun is required** — for `cargo build`, docs.rs, and
-  downstream consumers.
-- The embedded dashboards (rust-embed) are feature-gated. With `web-ui` OFF,
-  `ui_router()` (aggregate) / `router()` (ccs-proxy) return an empty router and
-  no assets are embedded, so a clean build needs no `dist/`.
-- The Vite `dist/` outputs (`web-aggregate/dist/`, `ccs-proxy/web/dist/`) are
-  **gitignored** and regenerated at build time — never committed.
-- Published crates **exclude** web: root `cc-switch` `exclude = ["web/",
-  "web-aggregate/dist/"]`; `ccs-proxy` `exclude = ["web/", "tests/fixtures/"]`.
-  docs.rs builds with `features = []` (web-ui off), so it needs no Node.
-
-Build a binary **with** the dashboards (requires bun + a prior
-`bun install` in `web/`, since build.rs shells out to bun):
-
-```bash
-cargo build --release --features web-ui
-```
-
-### CI
-
-- `.github/workflows/ci.yml` has a `frontend` job (via `oven-sh/setup-bun`):
-  `bun install --frozen-lockfile` + `bun run --filter '*' test` + `bun run
-  --filter '*' build`.
-- `.github/workflows/release.yml` installs bun + frontend deps, then builds
-  the binary with `--features web-ui` (embeds both dashboards).
-- `.github/workflows/publish.yml` stays **Rust-only** (no `--features web-ui`);
-  the published crate is web-free, and it asserts web exclusion via
-  `cargo package --manifest-path ccs-proxy/Cargo.toml --allow-dirty --no-verify --list`.
-
 ## Architecture Overview
 
 ### Library + Binary Structure
@@ -544,7 +455,7 @@ cargo test -- --nocapture
 
 **Automatic Checks** (run on every commit):
 
-- `cargo fmt --all -- --check` - Code formatting (matches CI; `--all` covers the whole workspace including `ccs-proxy`)
+- `cargo fmt --all -- --check` - Code formatting (matches CI)
 - `cargo clippy -- -D warnings` - Linting (warnings as errors)
 - `cargo test` - All tests
 - `cargo audit` - Security vulnerability scan
