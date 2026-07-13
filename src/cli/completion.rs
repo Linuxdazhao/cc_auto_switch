@@ -309,7 +309,12 @@ fn generate_cx_completion_file() {
     }
 
     let cx_content = r#"# Completion for 'cx' alias (cc-switch codex)
-# cx is a fish function; disable file completion by default
+# Define cx as a fish function
+function cx
+    cc-switch codex $argv
+end
+
+# Disable file completion by default
 complete -c cx -f
 complete -c cx -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'Codex subcommand'
 complete -c cx -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-codex-aliases)' -d 'Codex configuration alias name'
@@ -344,7 +349,12 @@ fn generate_co_completion_file() {
     }
 
     let co_content = r#"# Completion for 'co' alias (cc-switch omp)
-# co is a fish function; disable file completion by default
+# Define co as a fish function
+function co
+    cc-switch omp $argv
+end
+
+# Disable file completion by default
 complete -c co -f
 complete -c co -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'OMP subcommand'
 complete -c co -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
