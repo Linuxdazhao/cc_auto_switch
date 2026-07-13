@@ -50,6 +50,7 @@ mod daemon_supervisor {
             claude_settings_dir: None,
             default_storage_mode: None,
             codex_configurations: None,
+            omp_configurations: None,
         }
     }
 

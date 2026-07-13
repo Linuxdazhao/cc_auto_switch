@@ -30,7 +30,14 @@ CODEX CONFIGURATIONS:
     cc-switch codex add personal -i  # Interactive mode
     cc-switch codex list
     cc-switch codex use work  # Switch and launch Codex
-    cc-switch codex remove work
+OMP CONFIGURATIONS:
+    cc-switch omp add work --from-file                       # Import from ~/.omp/agent/.env
+    cc-switch omp add work --from-file ~/other/.env          # Import from an explicit path
+    cc-switch omp add personal -i                            # Interactive mode
+    cc-switch omp add gpt --api-key sk-... --slow-model openai/gpt-5.3-codex:high
+    cc-switch omp list
+    cc-switch omp use work                                   # Switch and launch OMP
+    cc-switch omp remove work
 
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
@@ -38,15 +45,18 @@ SHELL COMPLETION AND ALIASES:
     Recommended aliases:
     - cs='cc-switch'           # Quick access to cc-switch
     - cx='cc-switch codex'     # Quick access to cc-switch codex
+    - co='cc-switch omp'       # Quick access to cc-switch omp
 
     Install permanently:
     cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
     echo \"alias cs='cc-switch'\" >> ~/.config/fish/config.fish
     echo \"alias cx='cc-switch codex'\" >> ~/.config/fish/config.fish
+    echo \"alias co='cc-switch omp'\" >> ~/.config/fish/config.fish
 
     Then use:
     cs current    # Instead of cc-switch current
-    cx use work   # Instead of cc-switch codex use work"
+    cx use work   # Instead of cc-switch codex use work
+    co use work   # Instead of cc-switch omp use work"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -59,6 +69,9 @@ pub struct Cli {
     /// List available Codex configuration aliases (for shell completion)
     #[arg(long = "list-codex-aliases", hide = true)]
     pub list_codex_aliases: bool,
+    /// List available OMP configuration aliases (for shell completion)
+    #[arg(long = "list-omp-aliases", hide = true)]
+    pub list_omp_aliases: bool,
 
     /// Migrate old config path (~/.cc_auto_switch/configurations.json) to new path
     #[arg(
@@ -296,6 +309,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<CodexCommands>,
     },
+    /// Manage OMP (omp.sh) configurations
+    Omp {
+        #[command(subcommand)]
+        command: Option<OmpCommands>,
+    },
     /// Manage the ccs-proxy daemon (start/stop/status/restart)
     ///
     /// The daemon supervises one local ccs-proxy per unique upstream URL,
@@ -408,6 +426,67 @@ pub enum CodexCommands {
             help = "Import from auth.json (defaults to ~/.codex/auth.json if no path)"
         )]
         from_file: Option<Option<String>>,
+    },
+    List {
+        #[arg(long = "plain", short = 'p')]
+        plain: bool,
+        #[arg(long = "name", short = 'n', help = "Show only name and auth mode")]
+        name: bool,
+    },
+    #[command(trailing_var_arg = true)]
+    Use {
+        alias_name: String,
+        #[arg(long = "continue", short = 'c')]
+        r#continue: bool,
+        #[arg(long = "resume", short = 'r')]
+        resume: Option<String>,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        prompt: Vec<String>,
+    },
+    Remove {
+        #[arg(required = true)]
+        alias_names: Vec<String>,
+    },
+}
+/// Available subcommands for OMP configuration management
+#[derive(Subcommand)]
+pub enum OmpCommands {
+    /// Add a new OMP (omp.sh) configuration
+    Add {
+        #[arg(help = "Configuration alias name")]
+        alias_name: String,
+        #[arg(long = "api-key", help = "API key (Anthropic or OpenAI)")]
+        api_key: Option<String>,
+        #[arg(long = "force", short = 'f', help = "Overwrite existing configuration")]
+        force: bool,
+        #[arg(
+            long = "interactive",
+            short = 'i',
+            help = "Enter configuration values interactively"
+        )]
+        interactive: bool,
+        /// Import from existing .env file
+        ///
+        /// With no value, imports from `~/.omp/agent/.env`.
+        /// With a value, imports from the given path.
+        #[arg(
+            long = "from-file",
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import from .env file (defaults to ~/.omp/agent/.env if no path)"
+        )]
+        from_file: Option<Option<String>>,
+        #[arg(
+            long = "base-url",
+            help = "ANTHROPIC_BASE_URL value (for Anthropic-compatible endpoints)"
+        )]
+        base_url: Option<String>,
+        #[arg(long = "slow-model", help = "PI_SLOW_MODEL value (optional)")]
+        slow_model: Option<String>,
+        #[arg(long = "smol-model", help = "PI_SMOL_MODEL value (optional)")]
+        smol_model: Option<String>,
+        #[arg(long = "plan-model", help = "PI_PLAN_MODEL value (optional)")]
+        plan_model: Option<String>,
     },
     List {
         #[arg(long = "plain", short = 'p')]

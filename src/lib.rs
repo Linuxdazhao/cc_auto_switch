@@ -8,6 +8,7 @@ pub mod codex;
 pub mod config;
 pub mod daemon;
 pub mod interactive;
+pub mod omp;
 
 pub mod claude_settings;
 pub mod platform;
@@ -16,6 +17,7 @@ pub mod utils;
 
 pub use codex::CodexConfiguration;
 pub use daemon::handle_daemon_command;
+pub use omp::OmpConfiguration;
 
 // Re-export commonly used types and functions for easier importing
 pub use crate::cli::completion::{

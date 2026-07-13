@@ -1,5 +1,6 @@
 use crate::cli::completion::{
     generate_completion, list_aliases_for_completion, list_codex_aliases_for_completion,
+    list_omp_aliases_for_completion,
 };
 use crate::cli::{Cli, Commands};
 use crate::codex::{
@@ -10,6 +11,9 @@ use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
 use crate::interactive::{
     handle_interactive_selection, launch_claude_with_env, read_input, read_sensitive_input,
+};
+use crate::omp::{
+    handle_omp_add, handle_omp_interactive, handle_omp_list, handle_omp_remove, handle_omp_use,
 };
 use anyhow::{Result, anyhow};
 use clap::Parser;
@@ -701,6 +705,11 @@ pub fn run() -> Result<()> {
         list_codex_aliases_for_completion()?;
         return Ok(());
     }
+    // Handle --list-omp-aliases flag for completion
+    if cli.list_omp_aliases {
+        list_omp_aliases_for_completion()?;
+        return Ok(());
+    }
 
     // Reap per-PID alias files for terminated sessions on every invocation.
     // Skipped for completion-only paths above to keep shell completion fast.
@@ -1059,6 +1068,75 @@ pub fn run() -> Result<()> {
                 None => {
                     // Enter interactive mode for Codex configurations
                     handle_codex_interactive(&storage)?;
+                }
+            },
+            Commands::Omp { command } => match command {
+                Some(crate::cli::OmpCommands::Add {
+                    alias_name,
+                    api_key,
+                    force,
+                    interactive,
+                    from_file,
+                    base_url,
+                    slow_model,
+                    smol_model,
+                    plan_model,
+                }) => {
+                    let resolved_from_file: Option<String> = match from_file {
+                        Some(Some(path)) => {
+                            if !std::path::Path::new(&path).exists() {
+                                anyhow::bail!("OMP env file not found: {}", path);
+                            }
+                            Some(path)
+                        }
+                        Some(None) => {
+                            let default_path = crate::omp::default_omp_env_path()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .map_err(|e| {
+                                    anyhow!("Failed to resolve default OMP env path: {}", e)
+                                })?;
+                            if !std::path::Path::new(&default_path).exists() {
+                                anyhow::bail!(
+                                    "Default OMP env file not found at: {}\n\
+                                     Run `omp` once to create it, or pass an explicit path: --from-file <path>",
+                                    default_path
+                                );
+                            }
+                            Some(default_path)
+                        }
+                        None => None,
+                    };
+
+                    handle_omp_add(
+                        alias_name,
+                        api_key,
+                        force,
+                        interactive,
+                        resolved_from_file,
+                        base_url,
+                        slow_model,
+                        smol_model,
+                        plan_model,
+                        &mut storage,
+                    )?;
+                }
+                Some(crate::cli::OmpCommands::List { plain, name }) => {
+                    handle_omp_list(plain, name, &storage)?;
+                }
+                Some(crate::cli::OmpCommands::Use {
+                    alias_name,
+                    r#continue,
+                    resume,
+                    prompt,
+                }) => {
+                    handle_omp_use(alias_name, r#continue, resume, prompt, &mut storage)?;
+                }
+                Some(crate::cli::OmpCommands::Remove { alias_names }) => {
+                    handle_omp_remove(alias_names, &mut storage)?;
+                }
+                None => {
+                    // Enter interactive mode for OMP configurations
+                    handle_omp_interactive(&storage)?;
                 }
             },
             Commands::Daemon { command } => {

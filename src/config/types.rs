@@ -9,6 +9,8 @@ type EnvMap = BTreeMap<String, String>;
 type JsonMap = BTreeMap<String, serde_json::Value>;
 /// Type alias for Codex configuration map
 type CodexConfigMap = BTreeMap<String, crate::codex::CodexConfiguration>;
+/// Type alias for OMP configuration map
+type OmpConfigMap = BTreeMap<String, crate::omp::OmpConfiguration>;
 
 /// Storage mode for how configuration should be written to settings.json
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -508,6 +510,9 @@ pub struct ConfigStorage {
     /// Codex (OpenAI) configurations, stored separately from Claude configurations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub codex_configurations: Option<CodexConfigMap>,
+    /// OMP configurations, stored separately from Claude configurations
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omp_configurations: Option<OmpConfigMap>,
 }
 
 /// Claude settings manager for API configuration
