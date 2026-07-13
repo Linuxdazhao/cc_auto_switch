@@ -31,20 +31,22 @@
 >
 > 无论是 `cc-switch use <name>` 还是交互模式选择配置，cc-switch 都会**自动以 `--dangerously-skip-permissions` 启动 Claude**——文件读写、Bash 执行等操作不再逐条弹出确认。这是为极客 / 重度用户优化的默认行为。
 
-## 🌟 强烈推荐：先安装别名（cs / cx）
+## 🌟 强烈推荐：先安装别名（cs / cx / co）
 
-> 本文档**所有示例都使用别名**，请先一次性把下面两个别名加到 shell 配置里 —— 一行回车即可，后面的命令会短很多。
+> 本文档**所有示例都使用别名**，请先一次性把下面三个别名加到 shell 配置里 —— 一行回车即可，后面的命令会短很多。
 
 | 别名 | 等价命令 | 用途 |
 |------|----------|------|
 | `cs` | `cc-switch` | 主命令的短别名（输入 `cs` 即进入交互模式） |
 | `cx` | `cc-switch codex` | Codex 子命令的短别名 |
+| `co` | `cc-switch omp` | OMP 子命令的短别名 |
 
 **Fish：**
 
 ```fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
+echo "alias co='cc-switch omp'" >> ~/.config/fish/config.fish
 ```
 
 **Zsh：**
@@ -53,6 +55,7 @@ echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
 cat >> ~/.zshrc <<'EOF'
 alias cs='cc-switch'
 alias cx='cc-switch codex'
+alias co='cc-switch omp'
 EOF
 ```
 
@@ -62,6 +65,7 @@ EOF
 cat >> ~/.bashrc <<'EOF'
 alias cs='cc-switch'
 alias cx='cc-switch codex'
+alias co='cc-switch omp'
 EOF
 ```
 
@@ -70,9 +74,10 @@ EOF
 ```powershell
 Set-Alias -Name cs -Value cc-switch
 function cx { cc-switch codex @args }
+function co { cc-switch omp @args }
 ```
 
-> 加完后**重开终端**（或 `source` 一下配置），下面所有示例就能直接用 `cs` / `cx`。
+> 加完后**重开终端**（或 `source` 一下配置），下面所有示例就能直接用 `cs` / `cx` / `co`。
 
 ## 快速开始
 
@@ -464,20 +469,23 @@ Register-ArgumentCompleter -CommandName cc-switch -Native -ScriptBlock {
 
 ### 别名安装回顾
 
-别名在文档开头已经介绍（[跳转](#-强烈推荐先安装别名cs--cx)）。这里再贴一遍便于查阅：
+别名在文档开头已经介绍（[跳转](#-强烈推荐先安装别名cs--cx--co)）。这里再贴一遍便于查阅：
 
 ```bash
 # Fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
+echo "alias co='cc-switch omp'" >> ~/.config/fish/config.fish
 
 # Zsh / Bash
 echo "alias cs='cc-switch'" >> ~/.zshrc   # 或 ~/.bashrc
 echo "alias cx='cc-switch codex'" >> ~/.zshrc
+echo "alias co='cc-switch omp'" >> ~/.zshrc
 
 # PowerShell
 Set-Alias -Name cs -Value cc-switch
 function cx { cc-switch codex @args }
+function co { cc-switch omp @args }
 ```
 
 > 💡 **Fish 用户提示**：使用 `cs` 别名时，按 `Tab` 同样能享受动态补全——Fish 会把别名解开到原命令进行补全。

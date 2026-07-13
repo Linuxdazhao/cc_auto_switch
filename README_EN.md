@@ -29,7 +29,7 @@
 >
 > Both `cc-switch use <name>` and interactive selection launch Claude **with `--dangerously-skip-permissions` automatically applied** — file reads/writes, Bash calls, and other tool actions no longer prompt one by one. This is the opinionated default for geek / power users.
 
-## 🌟 Strongly recommended: install the aliases first (cs / cx)
+## 🌟 Strongly recommended: install the aliases first (cs / cx / co)
 
 > **Every example in this README uses these aliases.** Add them once to your shell config — one paste — and the commands below stay short.
 
@@ -37,12 +37,14 @@
 |-------|------------|---------|
 | `cs` | `cc-switch` | short form of the main command (typing `cs` drops you into interactive mode) |
 | `cx` | `cc-switch codex` | short form of the Codex subcommand |
+| `co` | `cc-switch omp` | short form of the OMP subcommand |
 
 **Fish:**
 
 ```fish
 echo "alias cs='cc-switch'" >> ~/.config/fish/config.fish
 echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
+echo "alias co='cc-switch omp'" >> ~/.config/fish/config.fish
 ```
 
 **Zsh:**
@@ -51,6 +53,7 @@ echo "alias cx='cc-switch codex'" >> ~/.config/fish/config.fish
 cat >> ~/.zshrc <<'EOF'
 alias cs='cc-switch'
 alias cx='cc-switch codex'
+alias co='cc-switch omp'
 EOF
 ```
 
@@ -60,6 +63,7 @@ EOF
 cat >> ~/.bashrc <<'EOF'
 alias cs='cc-switch'
 alias cx='cc-switch codex'
+alias co='cc-switch omp'
 EOF
 ```
 
@@ -68,9 +72,10 @@ EOF
 ```powershell
 Set-Alias -Name cs -Value cc-switch
 function cx { cc-switch codex @args }
+function co { cc-switch omp @args }
 ```
 
-> After adding, **restart your terminal** (or `source` the config), then all examples below work with `cs` / `cx` directly.
+> After adding, **restart your terminal** (or `source` the config), then all examples below work with `cs` / `cx` / `co` directly.
 
 ## Quick Start
 
