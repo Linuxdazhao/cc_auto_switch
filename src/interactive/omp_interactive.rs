@@ -86,15 +86,15 @@ fn format_omp_config_details(config: &OmpConfiguration, indent: &str) -> Vec<Str
     let _available_width = terminal_width.saturating_sub(text_display_width(indent) + 8);
 
     // Field labels with consistent width for alignment
-    let auth_mode_label = "Auth Mode:";
     let api_key_label = "API Key:";
+    let base_url_label = "Base URL:";
     let slow_model_label = "Slow Model:";
     let smol_model_label = "Smol Model:";
     let plan_model_label = "Plan Model:";
 
     let max_label_width = [
-        auth_mode_label,
         api_key_label,
+        base_url_label,
         slow_model_label,
         smol_model_label,
         plan_model_label,
@@ -104,34 +104,26 @@ fn format_omp_config_details(config: &OmpConfiguration, indent: &str) -> Vec<Str
     .max()
     .unwrap_or(0);
 
-    // Auth mode
-    lines.push(format!(
-        "{}{} {:<width$} {}",
-        indent,
-        "•".blue(),
-        auth_mode_label.blue().bold(),
-        config.auth_mode.green(),
-        width = max_label_width
-    ));
-
     // API Key (masked)
-    let api_key_display = match config.auth_mode.as_str() {
-        "anthropic" => config
-            .anthropic_api_key
-            .as_ref()
-            .map(|k| mask_key(k))
-            .or_else(|| config.anthropic_oauth_token.as_ref().map(|t| mask_key(t))),
-        "openai" => config.openai_api_key.as_ref().map(|k| mask_key(k)),
-        _ => None,
-    };
-
-    if let Some(key) = api_key_display {
+    if let Some(key) = config.openai_api_key.as_ref().map(|k| mask_key(k)) {
         lines.push(format!(
             "{}{} {:<width$} {}",
             indent,
             "•".blue(),
             api_key_label.blue().bold(),
             key,
+            width = max_label_width
+        ));
+    }
+
+    // Base URL
+    if let Some(ref url) = config.base_url {
+        lines.push(format!(
+            "{}{} {:<width$} {}",
+            indent,
+            "•".blue(),
+            base_url_label.blue().bold(),
+            url,
             width = max_label_width
         ));
     }
@@ -403,10 +395,14 @@ fn handle_omp_simple_interactive_menu(configs: &[OmpConfiguration]) -> Result<()
         for (i, config) in configs[start_idx..end_idx].iter().enumerate() {
             let number = start_idx + i + 1;
             println!(
-                "{:>2}. {} ({})",
+                "{:>2}. {}{}",
                 number,
                 config.alias_name.bold(),
-                config.auth_mode
+                config
+                    .slow_model
+                    .as_ref()
+                    .map(|m| format!(" ({})", m))
+                    .unwrap_or_default()
             );
         }
 
@@ -447,12 +443,7 @@ fn handle_omp_simple_single_page_menu(configs: &[OmpConfiguration]) -> Result<()
     println!("\n{}", "Available OMP Configurations:".blue().bold());
 
     for (index, config) in configs.iter().enumerate() {
-        println!(
-            "{:>2}. {} ({})",
-            index + 1,
-            config.alias_name.bold(),
-            config.auth_mode
-        );
+        println!("{:>2}. {}", index + 1, config.alias_name.bold());
 
         let details = format_omp_config_details(config, "   ");
         for detail_line in details {
@@ -487,8 +478,8 @@ fn handle_omp_simple_single_page_menu(configs: &[OmpConfiguration]) -> Result<()
 fn handle_omp_selection_action(configs: &[OmpConfiguration], index: usize) -> Result<()> {
     let config = &configs[index];
     println!(
-        "\nSwitching to OMP configuration '{}' (mode: {})...",
-        config.alias_name, config.auth_mode
+        "\nSwitching to OMP configuration '{}'...",
+        config.alias_name
     );
 
     // Write the .env file
@@ -528,58 +519,26 @@ fn handle_omp_config_edit(config: &OmpConfiguration) -> Result<()> {
         }
     }
 
-    // Edit API key based on auth mode
-    match edited_config.auth_mode.as_str() {
-        "anthropic" => {
-            if let Some(ref key) = edited_config.anthropic_api_key {
-                match edit_string_field("Anthropic API Key", key, |_| Ok(())) {
-                    Ok(Some(new_key)) => {
-                        edited_config.anthropic_api_key = Some(new_key);
-                    }
-                    Ok(None) => {}
-                    Err(e) => {
-                        if e.downcast_ref::<EditModeError>() == Some(&EditModeError::ReturnToMenu) {
-                            println!("Edit cancelled.");
-                            return Ok(());
-                        }
-                        return Err(e);
-                    }
-                }
-            }
-            if let Some(ref token) = edited_config.anthropic_oauth_token {
-                match edit_string_field("Anthropic OAuth Token", token, |_| Ok(())) {
-                    Ok(Some(new_token)) => {
-                        edited_config.anthropic_oauth_token = Some(new_token);
-                    }
-                    Ok(None) => {}
-                    Err(e) => {
-                        if e.downcast_ref::<EditModeError>() == Some(&EditModeError::ReturnToMenu) {
-                            println!("Edit cancelled.");
-                            return Ok(());
-                        }
-                        return Err(e);
-                    }
-                }
-            }
+    // Edit OpenAI API key
+    let current_key = edited_config.openai_api_key.clone().unwrap_or_default();
+    match edit_string_field("OpenAI API Key", &current_key, |_| Ok(())) {
+        Ok(Some(new_key)) => {
+            edited_config.openai_api_key = Some(new_key);
         }
-        "openai" => {
-            if let Some(ref key) = edited_config.openai_api_key {
-                match edit_string_field("OpenAI API Key", key, |_| Ok(())) {
-                    Ok(Some(new_key)) => {
-                        edited_config.openai_api_key = Some(new_key);
-                    }
-                    Ok(None) => {}
-                    Err(e) => {
-                        if e.downcast_ref::<EditModeError>() == Some(&EditModeError::ReturnToMenu) {
-                            println!("Edit cancelled.");
-                            return Ok(());
-                        }
-                        return Err(e);
-                    }
-                }
+        Ok(None) => {}
+        Err(e) => {
+            if e.downcast_ref::<EditModeError>() == Some(&EditModeError::ReturnToMenu) {
+                println!("Edit cancelled.");
+                return Ok(());
             }
+            return Err(e);
         }
-        _ => {}
+    }
+
+    // Edit base URL
+    if let Some(result) = edit_optional_string_field("Base URL", edited_config.base_url.as_deref())?
+    {
+        edited_config.base_url = result;
     }
 
     // Edit model configurations

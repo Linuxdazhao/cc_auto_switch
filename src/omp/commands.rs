@@ -37,32 +37,15 @@ pub fn handle_omp_add(
     } else if interactive {
         parse_interactive_omp_config(&alias_name)?
     } else {
-        // Determine auth mode from the provided key and base_url
-        let (auth_mode, anthropic_api_key, anthropic_oauth_token, openai_api_key) = if let Some(
-            key,
-        ) = api_key
-        {
-            if base_url.is_some() {
-                // When base_url is provided, it's an Anthropic-compatible endpoint
-                ("anthropic".to_string(), Some(key), None, None)
-            } else if key.starts_with("sk-ant-") {
-                ("anthropic".to_string(), Some(key), None, None)
-            } else {
-                // Default to OpenAI for other key formats
-                ("openai".to_string(), None, None, Some(key))
-            }
-        } else {
-            anyhow::bail!(
+        let key = api_key.ok_or_else(|| {
+            anyhow!(
                 "API key is required. Use --api-key <key>, --from-file [<path>], or -i for interactive mode."
             )
-        };
+        })?;
 
         OmpConfiguration {
             alias_name: alias_name.clone(),
-            auth_mode,
-            anthropic_api_key,
-            anthropic_oauth_token,
-            openai_api_key,
+            openai_api_key: Some(key),
             base_url,
             slow_model,
             smol_model,
@@ -82,8 +65,6 @@ pub fn parse_omp_env_file(file_path: &str, alias_name: &str) -> Result<OmpConfig
     let content = std::fs::read_to_string(file_path)
         .map_err(|e| anyhow!("Failed to read .env file '{}': {}", file_path, e))?;
 
-    let mut anthropic_api_key = None;
-    let mut anthropic_oauth_token = None;
     let mut openai_api_key = None;
     let mut base_url = None;
     let mut slow_model = None;
@@ -99,10 +80,9 @@ pub fn parse_omp_env_file(file_path: &str, alias_name: &str) -> Result<OmpConfig
             let key = key.trim();
             let value = value.trim().trim_matches('"').trim_matches('\'');
             match key {
-                "ANTHROPIC_API_KEY" => anthropic_api_key = Some(value.to_string()),
-                "ANTHROPIC_OAUTH_TOKEN" => anthropic_oauth_token = Some(value.to_string()),
                 "OPENAI_API_KEY" => openai_api_key = Some(value.to_string()),
-                "ANTHROPIC_BASE_URL" => base_url = Some(value.to_string()),
+                // Accept either the OpenAI or legacy Anthropic base-url var on import
+                "OPENAI_BASE_URL" | "ANTHROPIC_BASE_URL" => base_url = Some(value.to_string()),
                 "PI_SLOW_MODEL" => slow_model = Some(value.to_string()),
                 "PI_SMOL_MODEL" => smol_model = Some(value.to_string()),
                 "PI_PLAN_MODEL" => plan_model = Some(value.to_string()),
@@ -111,23 +91,12 @@ pub fn parse_omp_env_file(file_path: &str, alias_name: &str) -> Result<OmpConfig
         }
     }
 
-    // Determine auth mode from what's present
-    let auth_mode = if anthropic_api_key.is_some() || anthropic_oauth_token.is_some() {
-        "anthropic"
-    } else if openai_api_key.is_some() {
-        "openai"
-    } else {
-        anyhow::bail!(
-            "Could not determine auth mode from .env file '{}'. Expected ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN, or OPENAI_API_KEY.",
-            file_path
-        );
-    };
+    if openai_api_key.is_none() {
+        anyhow::bail!("No OPENAI_API_KEY found in .env file '{}'.", file_path);
+    }
 
     Ok(OmpConfiguration {
         alias_name: alias_name.to_string(),
-        auth_mode: auth_mode.to_string(),
-        anthropic_api_key,
-        anthropic_oauth_token,
         openai_api_key,
         base_url,
         slow_model,
@@ -138,71 +107,27 @@ pub fn parse_omp_env_file(file_path: &str, alias_name: &str) -> Result<OmpConfig
 
 /// Interactive mode for creating an OMP configuration
 fn parse_interactive_omp_config(alias_name: &str) -> Result<OmpConfiguration> {
-    use crate::interactive::{read_input, read_sensitive_input};
+    use crate::interactive::read_input;
 
-    let mode_input = read_input("Auth mode (anthropic/openai) [anthropic]: ")?;
-    let auth_mode = if mode_input.is_empty() {
-        "anthropic".to_string()
-    } else {
-        mode_input.to_lowercase()
-    };
+    let key = read_input("OpenAI API key: ")?;
+    if key.is_empty() {
+        anyhow::bail!("OpenAI API key is required.");
+    }
 
-    let (anthropic_api_key, anthropic_oauth_token, openai_api_key) = match auth_mode.as_str() {
-        "anthropic" => {
-            let key = read_input("Anthropic API key (press Enter to skip): ")?;
-            let oauth = read_sensitive_input("Anthropic OAuth token (press Enter to skip): ")?;
-            (
-                if key.is_empty() { None } else { Some(key) },
-                if oauth.is_empty() { None } else { Some(oauth) },
-                None,
-            )
-        }
-        "openai" => {
-            let key = read_input("OpenAI API key: ")?;
-            if key.is_empty() {
-                anyhow::bail!("OpenAI API key is required for openai mode.");
-            }
-            (None, None, Some(key))
-        }
-        _ => {
-            anyhow::bail!(
-                "Invalid auth mode '{}'. Must be 'anthropic' or 'openai'.",
-                auth_mode
-            );
-        }
-    };
-
-    let base_url = read_input("Base URL (ANTHROPIC_BASE_URL, press Enter to skip): ")?;
+    let base_url = read_input("Base URL for a custom gateway (press Enter to skip): ")?;
     let slow_model = read_input("PI_SLOW_MODEL (press Enter to skip): ")?;
     let smol_model = read_input("PI_SMOL_MODEL (press Enter to skip): ")?;
     let plan_model = read_input("PI_PLAN_MODEL (press Enter to skip): ")?;
 
+    let opt = |s: String| if s.is_empty() { None } else { Some(s) };
+
     Ok(OmpConfiguration {
         alias_name: alias_name.to_string(),
-        auth_mode,
-        anthropic_api_key,
-        anthropic_oauth_token,
-        openai_api_key,
-        base_url: if base_url.is_empty() {
-            None
-        } else {
-            Some(base_url)
-        },
-        slow_model: if slow_model.is_empty() {
-            None
-        } else {
-            Some(slow_model)
-        },
-        smol_model: if smol_model.is_empty() {
-            None
-        } else {
-            Some(smol_model)
-        },
-        plan_model: if plan_model.is_empty() {
-            None
-        } else {
-            Some(plan_model)
-        },
+        openai_api_key: Some(key),
+        base_url: opt(base_url),
+        slow_model: opt(slow_model),
+        smol_model: opt(smol_model),
+        plan_model: opt(plan_model),
     })
 }
 /// List OMP configurations
@@ -220,14 +145,13 @@ pub fn handle_omp_list(plain: bool, name: bool, storage: &ConfigStorage) -> Resu
     if name {
         if plain {
             for config in configs {
-                println!("{:<20} {}", config.alias_name, config.auth_mode);
+                println!("{}", config.alias_name);
             }
         } else {
             let mut json_array = Vec::new();
             for config in &configs {
                 json_array.push(serde_json::json!({
                     "alias_name": config.alias_name,
-                    "auth_mode": config.auth_mode,
                 }));
             }
             println!(
@@ -239,27 +163,15 @@ pub fn handle_omp_list(plain: bool, name: bool, storage: &ConfigStorage) -> Resu
     }
 
     if plain {
-        println!("{:<20} {:<12} Key", "Name", "Mode");
-        println!("{}", "-".repeat(56));
+        println!("{:<20} Key", "Name");
+        println!("{}", "-".repeat(44));
         for config in &configs {
-            let key_display = match config.auth_mode.as_str() {
-                "anthropic" => config
-                    .anthropic_api_key
-                    .as_deref()
-                    .or(config.anthropic_oauth_token.as_deref())
-                    .map(mask_key)
-                    .unwrap_or_else(|| "(none)".to_string()),
-                "openai" => config
-                    .openai_api_key
-                    .as_deref()
-                    .map(mask_key)
-                    .unwrap_or_else(|| "(none)".to_string()),
-                _ => "(unknown)".to_string(),
-            };
-            println!(
-                "{:<20} {:<12} {}",
-                config.alias_name, config.auth_mode, key_display
-            );
+            let key_display = config
+                .openai_api_key
+                .as_deref()
+                .map(mask_key)
+                .unwrap_or_else(|| "(none)".to_string());
+            println!("{:<20} {}", config.alias_name, key_display);
             if let Some(url) = &config.base_url {
                 println!("  base_url: {}", url);
             }
@@ -269,26 +181,11 @@ pub fn handle_omp_list(plain: bool, name: bool, storage: &ConfigStorage) -> Resu
         for config in &configs {
             let mut json_obj = serde_json::json!({
                 "alias_name": config.alias_name,
-                "auth_mode": config.auth_mode,
             });
 
-            match config.auth_mode.as_str() {
-                "anthropic" => {
-                    if let Some(ref key) = config.anthropic_api_key {
-                        json_obj["anthropic_api_key"] = serde_json::json!(mask_key(key));
-                    }
-                    if let Some(ref token) = config.anthropic_oauth_token {
-                        json_obj["anthropic_oauth_token"] = serde_json::json!(mask_key(token));
-                    }
-                }
-                "openai" => {
-                    if let Some(ref key) = config.openai_api_key {
-                        json_obj["openai_api_key"] = serde_json::json!(mask_key(key));
-                    }
-                }
-                _ => {}
+            if let Some(ref key) = config.openai_api_key {
+                json_obj["openai_api_key"] = serde_json::json!(mask_key(key));
             }
-
             if let Some(ref model) = config.slow_model {
                 json_obj["slow_model"] = serde_json::json!(model);
             }
@@ -328,10 +225,7 @@ pub fn handle_omp_use(
 
     write_env_file(&config)?;
     crate::omp::env_writer::update_config_yml(&config)?;
-    println!(
-        "Switched to OMP configuration '{}' (mode: {}).",
-        config.alias_name, config.auth_mode
-    );
+    println!("Switched to OMP configuration '{}'.", config.alias_name);
 
     launch_omp(r#continue, resume, prompt)?;
     Ok(())

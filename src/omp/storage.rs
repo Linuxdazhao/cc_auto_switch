@@ -58,26 +58,9 @@ impl ConfigStorage {
 mod tests {
     use super::*;
 
-    fn make_anthropic_config(alias: &str) -> OmpConfiguration {
+    fn make_config(alias: &str) -> OmpConfiguration {
         OmpConfiguration {
             alias_name: alias.to_string(),
-            auth_mode: "anthropic".to_string(),
-            anthropic_api_key: Some("sk-ant-test".to_string()),
-            anthropic_oauth_token: None,
-            openai_api_key: None,
-            base_url: None,
-            slow_model: None,
-            smol_model: None,
-            plan_model: None,
-        }
-    }
-
-    fn make_openai_config(alias: &str) -> OmpConfiguration {
-        OmpConfiguration {
-            alias_name: alias.to_string(),
-            auth_mode: "openai".to_string(),
-            anthropic_api_key: None,
-            anthropic_oauth_token: None,
             openai_api_key: Some("sk-test".to_string()),
             base_url: None,
             slow_model: None,
@@ -91,7 +74,7 @@ mod tests {
         let mut storage = ConfigStorage::default();
         assert!(storage.omp_configurations.is_none());
 
-        let config = make_anthropic_config("test");
+        let config = make_config("test");
         storage.add_omp_configuration(config.clone());
 
         assert!(storage.omp_configurations.is_some());
@@ -105,10 +88,10 @@ mod tests {
     #[test]
     fn test_add_overwrites_existing() {
         let mut storage = ConfigStorage::default();
-        storage.add_omp_configuration(make_anthropic_config("test"));
+        storage.add_omp_configuration(make_config("test"));
 
-        let mut updated = make_anthropic_config("test");
-        updated.anthropic_api_key = Some("sk-ant-updated".to_string());
+        let mut updated = make_config("test");
+        updated.openai_api_key = Some("sk-updated".to_string());
         storage.add_omp_configuration(updated.clone());
 
         assert_eq!(storage.omp_configurations.as_ref().unwrap().len(), 1);
@@ -116,15 +99,15 @@ mod tests {
             storage
                 .get_omp_configuration("test")
                 .unwrap()
-                .anthropic_api_key,
-            Some("sk-ant-updated".to_string())
+                .openai_api_key,
+            Some("sk-updated".to_string())
         );
     }
 
     #[test]
     fn test_get_omp_configuration() {
         let mut storage = ConfigStorage::default();
-        let config = make_openai_config("foo");
+        let config = make_config("foo");
         storage.add_omp_configuration(config.clone());
 
         assert_eq!(storage.get_omp_configuration("foo"), Some(&config));
@@ -140,7 +123,7 @@ mod tests {
     #[test]
     fn test_remove_omp_configuration() {
         let mut storage = ConfigStorage::default();
-        storage.add_omp_configuration(make_anthropic_config("test"));
+        storage.add_omp_configuration(make_config("test"));
 
         assert!(storage.remove_omp_configuration("test"));
         assert_eq!(storage.get_omp_configuration("test"), None);
@@ -150,7 +133,7 @@ mod tests {
     #[test]
     fn test_remove_nonexistent_omp_configuration() {
         let mut storage = ConfigStorage::default();
-        storage.add_omp_configuration(make_anthropic_config("test"));
+        storage.add_omp_configuration(make_config("test"));
 
         assert!(!storage.remove_omp_configuration("nonexistent"));
         assert_eq!(storage.omp_configurations.as_ref().unwrap().len(), 1);
@@ -165,9 +148,9 @@ mod tests {
     #[test]
     fn test_update_omp_configuration() {
         let mut storage = ConfigStorage::default();
-        storage.add_omp_configuration(make_anthropic_config("old"));
+        storage.add_omp_configuration(make_config("old"));
 
-        let mut updated = make_anthropic_config("new");
+        let mut updated = make_config("new");
         updated.slow_model = Some("claude-3-5-sonnet".to_string());
         storage.update_omp_configuration("old", updated).unwrap();
 
@@ -179,9 +162,9 @@ mod tests {
     #[test]
     fn test_update_nonexistent_omp_configuration() {
         let mut storage = ConfigStorage::default();
-        storage.add_omp_configuration(make_anthropic_config("test"));
+        storage.add_omp_configuration(make_config("test"));
 
-        let result = storage.update_omp_configuration("nonexistent", make_anthropic_config("new"));
+        let result = storage.update_omp_configuration("nonexistent", make_config("new"));
         assert!(result.is_err());
     }
 }

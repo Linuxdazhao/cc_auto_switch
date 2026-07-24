@@ -50,30 +50,16 @@ fn write_env_file_to_path(config: &OmpConfiguration, env_path: &PathBuf) -> Resu
     ));
     lines.push(String::new());
 
-    match config.auth_mode.as_str() {
-        "anthropic" => {
-            if let Some(ref token) = config.anthropic_oauth_token {
-                lines.push(format!("ANTHROPIC_OAUTH_TOKEN={}", token));
-            } else if let Some(ref key) = config.anthropic_api_key {
-                lines.push(format!("ANTHROPIC_API_KEY={}", key));
-            }
-        }
-        "openai" => {
-            if let Some(ref key) = config.openai_api_key {
-                lines.push(format!("OPENAI_API_KEY={}", key));
-            }
-        }
-        _ => {
-            return Err(anyhow!(
-                "Unknown auth mode: {}. Expected 'anthropic' or 'openai'.",
-                config.auth_mode
-            ));
-        }
-    }
-    // Optional base URL
-    if let Some(ref url) = config.base_url {
-        lines.push(format!("ANTHROPIC_BASE_URL={}", url));
-    }
+    let key = config.openai_api_key.as_ref().ok_or_else(|| {
+        anyhow!(
+            "OMP configuration '{}' has no OpenAI API key.",
+            config.alias_name
+        )
+    })?;
+    lines.push(format!("OPENAI_API_KEY={}", key));
+
+    // The OpenAI base URL for a custom gateway is registered in models.yml as the
+    // provider `baseUrl`, so it is not written to .env.
 
     // Optional model knobs
     if let Some(ref model) = config.slow_model {
@@ -100,6 +86,7 @@ fn write_env_file_to_path(config: &OmpConfiguration, env_path: &PathBuf) -> Resu
 
     Ok(())
 }
+
 /// Update ~/.omp/agent/config.yml modelRoles.default with the slow_model from config
 pub fn update_config_yml(config: &OmpConfiguration) -> Result<()> {
     let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
@@ -154,6 +141,35 @@ pub fn update_config_yml(config: &OmpConfiguration) -> Result<()> {
 
     Ok(())
 }
+
+/// Build the indented `models.yml` provider block (YAML lines) for a config.
+///
+/// omp is registered as an OpenAI-standard provider, so the `api` value is
+/// always `openai-completions` (the OpenAI `/v1/chat/completions` protocol) and
+/// the resolved key is sent as an `Authorization: Bearer` header.
+fn build_models_yml_provider_block(
+    config: &OmpConfiguration,
+    base_url: &str,
+    model_ids: &[String],
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("  {}:", config.alias_name));
+    lines.push(format!("    baseUrl: {}", base_url));
+    if let Some(ref key) = config.openai_api_key {
+        lines.push(format!("    apiKey: \"{}\"", key));
+    }
+    lines.push("    api: openai-completions".to_string());
+    lines.push("    authHeader: true".to_string());
+    lines.push("    models:".to_string());
+    for model_id in model_ids {
+        lines.push(format!("      - id: {}", model_id));
+        lines.push(format!("        name: {}", model_id));
+        lines.push("        contextWindow: 1000000".to_string());
+        lines.push("        maxTokens: 16384".to_string());
+    }
+    lines
+}
+
 /// Update ~/.omp/agent/models.yml with the provider and models from config
 ///
 /// When a config has a base_url, creates/updates a provider entry in models.yml
@@ -193,23 +209,6 @@ pub fn update_models_yml(config: &OmpConfiguration) -> Result<()> {
     // Determine provider name from alias
     let provider_name = &config.alias_name;
 
-    // Determine API type from auth mode
-    let api_type = match config.auth_mode.as_str() {
-        "anthropic" => "anthropic-messages",
-        "openai" => "openai-chat",
-        _ => "anthropic-messages",
-    };
-
-    // Get API key
-    let api_key = match config.auth_mode.as_str() {
-        "anthropic" => config
-            .anthropic_api_key
-            .as_deref()
-            .or(config.anthropic_oauth_token.as_deref()),
-        "openai" => config.openai_api_key.as_deref(),
-        _ => None,
-    };
-
     // Ensure agent directory exists
     if !agent_dir.exists() {
         fs::create_dir_all(&agent_dir)
@@ -248,22 +247,7 @@ pub fn update_models_yml(config: &OmpConfiguration) -> Result<()> {
     }
 
     // Build new provider entry
-    let mut provider_lines = Vec::new();
-    provider_lines.push(format!("  {}:", provider_name));
-    provider_lines.push(format!("    baseUrl: {}", base_url));
-    if let Some(key) = api_key {
-        provider_lines.push(format!("    apiKey: \"{}\"", key));
-    }
-    provider_lines.push(format!("    api: {}", api_type));
-    provider_lines.push("    authHeader: true".to_string());
-    provider_lines.push("    disableStrictTools: true".to_string());
-    provider_lines.push("    models:".to_string());
-    for model_id in &model_ids {
-        provider_lines.push(format!("      - id: {}", model_id));
-        provider_lines.push(format!("        name: {}", model_id));
-        provider_lines.push("        contextWindow: 1000000".to_string());
-        provider_lines.push("        maxTokens: 16384".to_string());
-    }
+    let provider_lines = build_models_yml_provider_block(config, base_url, &model_ids);
 
     // Append provider entry to end of file
     // Remove trailing empty lines first
@@ -280,77 +264,15 @@ pub fn update_models_yml(config: &OmpConfiguration) -> Result<()> {
     Ok(())
 }
 
-/// Parse a .env file into an OmpConfiguration
-pub fn parse_env_file(file_path: &str, alias_name: &str) -> Result<OmpConfiguration> {
-    let content = fs::read_to_string(file_path)
-        .map_err(|e| anyhow!("Failed to read .env file '{}': {}", file_path, e))?;
-
-    let mut anthropic_api_key = None;
-    let mut anthropic_oauth_token = None;
-    let mut openai_api_key = None;
-    let mut base_url = None;
-    let mut slow_model = None;
-    let mut smol_model = None;
-    let mut plan_model = None;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-        if let Some((key, value)) = trimmed.split_once('=') {
-            let key = key.trim();
-            let value = value.trim().trim_matches('"').trim_matches('\'');
-            match key {
-                "ANTHROPIC_API_KEY" => anthropic_api_key = Some(value.to_string()),
-                "ANTHROPIC_OAUTH_TOKEN" => anthropic_oauth_token = Some(value.to_string()),
-                "OPENAI_API_KEY" => openai_api_key = Some(value.to_string()),
-                "PI_SLOW_MODEL" => slow_model = Some(value.to_string()),
-                "PI_SMOL_MODEL" => smol_model = Some(value.to_string()),
-                "ANTHROPIC_BASE_URL" => base_url = Some(value.to_string()),
-                "PI_PLAN_MODEL" => plan_model = Some(value.to_string()),
-                _ => {} // ignore unknown keys
-            }
-        }
-    }
-
-    // Determine auth mode from what's present
-    let auth_mode = if anthropic_api_key.is_some() || anthropic_oauth_token.is_some() {
-        "anthropic"
-    } else if openai_api_key.is_some() {
-        "openai"
-    } else {
-        anyhow::bail!(
-            "Could not determine auth mode from .env file '{}'. Expected ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN, or OPENAI_API_KEY.",
-            file_path
-        );
-    };
-
-    Ok(OmpConfiguration {
-        alias_name: alias_name.to_string(),
-        auth_mode: auth_mode.to_string(),
-        anthropic_api_key,
-        anthropic_oauth_token,
-        openai_api_key,
-        base_url,
-        slow_model,
-        smol_model,
-        plan_model,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn make_anthropic_config(alias: &str) -> OmpConfiguration {
+    fn make_config(alias: &str) -> OmpConfiguration {
         OmpConfiguration {
             alias_name: alias.to_string(),
-            auth_mode: "anthropic".to_string(),
-            anthropic_api_key: Some("sk-ant-test".to_string()),
-            anthropic_oauth_token: None,
-            openai_api_key: None,
+            openai_api_key: Some("sk-test".to_string()),
             base_url: None,
             slow_model: None,
             smol_model: None,
@@ -359,54 +281,28 @@ mod tests {
     }
 
     #[test]
-    fn test_write_anthropic_api_key() {
+    fn test_write_openai_api_key() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let env_path = temp_dir.path().join(".omp").join("agent").join(".env");
 
-        let config = make_anthropic_config("test");
+        let config = make_config("test");
         write_env_file_to_path(&config, &env_path).expect("Should write");
 
         let content = fs::read_to_string(&env_path).expect("Should read");
-        assert!(content.contains("ANTHROPIC_API_KEY=sk-ant-test"));
+        assert!(content.contains("OPENAI_API_KEY=sk-test"));
         assert!(content.contains("# Managed by cc-switch (alias: test)"));
+        assert!(!content.contains("ANTHROPIC"));
     }
 
     #[test]
-    fn test_write_anthropic_oauth_token() {
-        let temp_dir = TempDir::new().expect("Should create temp dir");
-        let env_path = temp_dir.path().join(".omp").join("agent").join(".env");
-
-        let config = OmpConfiguration {
-            alias_name: "test".to_string(),
-            auth_mode: "anthropic".to_string(),
-            anthropic_api_key: Some("sk-ant-test".to_string()),
-            anthropic_oauth_token: Some("oauth-token-123".to_string()),
-            openai_api_key: None,
-            base_url: None,
-            slow_model: None,
-            smol_model: None,
-            plan_model: None,
-        };
-        write_env_file_to_path(&config, &env_path).expect("Should write");
-
-        let content = fs::read_to_string(&env_path).expect("Should read");
-        // OAuth token takes precedence
-        assert!(content.contains("ANTHROPIC_OAUTH_TOKEN=oauth-token-123"));
-        assert!(!content.contains("ANTHROPIC_API_KEY"));
-    }
-
-    #[test]
-    fn test_write_openai_mode() {
+    fn test_write_with_models() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let env_path = temp_dir.path().join(".omp").join("agent").join(".env");
 
         let config = OmpConfiguration {
             alias_name: "gpt".to_string(),
-            auth_mode: "openai".to_string(),
-            anthropic_api_key: None,
-            anthropic_oauth_token: None,
             openai_api_key: Some("sk-openai-test".to_string()),
-            base_url: None,
+            base_url: Some("https://api.example.com/v1".to_string()),
             slow_model: Some("openai/gpt-5.3-codex:high".to_string()),
             smol_model: Some("openai/gpt-4o-mini".to_string()),
             plan_model: None,
@@ -418,76 +314,49 @@ mod tests {
         assert!(content.contains("PI_SLOW_MODEL=openai/gpt-5.3-codex:high"));
         assert!(content.contains("PI_SMOL_MODEL=openai/gpt-4o-mini"));
         assert!(!content.contains("PI_PLAN_MODEL"));
+        // base_url is registered in models.yml, never written to .env
+        assert!(!content.contains("BASE_URL"));
     }
+
     #[test]
-    fn test_write_with_base_url() {
+    fn test_write_requires_key() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let env_path = temp_dir.path().join(".omp").join("agent").join(".env");
 
         let config = OmpConfiguration {
-            alias_name: "token-hub".to_string(),
-            auth_mode: "anthropic".to_string(),
-            anthropic_api_key: Some("th-test-key".to_string()),
-            anthropic_oauth_token: None,
+            alias_name: "nokey".to_string(),
             openai_api_key: None,
-            base_url: Some("http://token-hub.example.com/compatible".to_string()),
-            slow_model: Some("model_98358b".to_string()),
-            smol_model: Some("model_98358b".to_string()),
-            plan_model: Some("model_98358b".to_string()),
+            base_url: None,
+            slow_model: None,
+            smol_model: None,
+            plan_model: None,
         };
-        write_env_file_to_path(&config, &env_path).expect("Should write");
-
-        let content = fs::read_to_string(&env_path).expect("Should read");
-        assert!(content.contains("ANTHROPIC_API_KEY=th-test-key"));
-        assert!(content.contains("ANTHROPIC_BASE_URL=http://token-hub.example.com/compatible"));
-        assert!(content.contains("PI_SLOW_MODEL=model_98358b"));
-        assert!(content.contains("PI_SMOL_MODEL=model_98358b"));
-        assert!(content.contains("PI_PLAN_MODEL=model_98358b"));
+        assert!(write_env_file_to_path(&config, &env_path).is_err());
     }
 
     #[test]
-    fn test_parse_env_file_anthropic() {
-        let temp_dir = TempDir::new().expect("Should create temp dir");
-        let env_path = temp_dir.path().join(".env");
-
-        fs::write(
-            &env_path,
-            "# comment\nANTHROPIC_API_KEY=sk-ant-parsed\nPI_SLOW_MODEL=claude-3-5-sonnet\n",
-        )
-        .expect("Should write");
-
-        let config = parse_env_file(env_path.to_str().unwrap(), "parsed").expect("Should parse");
-        assert_eq!(config.auth_mode, "anthropic");
-        assert_eq!(config.anthropic_api_key, Some("sk-ant-parsed".to_string()));
-        assert_eq!(config.slow_model, Some("claude-3-5-sonnet".to_string()));
-    }
-
-    #[test]
-    fn test_parse_env_file_openai() {
-        let temp_dir = TempDir::new().expect("Should create temp dir");
-        let env_path = temp_dir.path().join(".env");
-
-        fs::write(
-            &env_path,
-            "OPENAI_API_KEY=sk-parsed\nPI_SLOW_MODEL=openai/gpt-5\n",
-        )
-        .expect("Should write");
-
-        let config = parse_env_file(env_path.to_str().unwrap(), "parsed").expect("Should parse");
-        assert_eq!(config.auth_mode, "openai");
-        assert_eq!(config.openai_api_key, Some("sk-parsed".to_string()));
-        assert_eq!(config.slow_model, Some("openai/gpt-5".to_string()));
-    }
-
-    #[test]
-    fn test_parse_env_file_no_credentials() {
-        let temp_dir = TempDir::new().expect("Should create temp dir");
-        let env_path = temp_dir.path().join(".env");
-
-        fs::write(&env_path, "PI_SLOW_MODEL=some-model\n").expect("Should write");
-
-        let result = parse_env_file(env_path.to_str().unwrap(), "parsed");
-        assert!(result.is_err());
+    fn test_models_yml_block_uses_openai_completions() {
+        let config = OmpConfiguration {
+            alias_name: "gw".to_string(),
+            openai_api_key: Some("sk-openai".to_string()),
+            base_url: Some("https://api.example.com/v1".to_string()),
+            slow_model: Some("gpt-4o".to_string()),
+            smol_model: None,
+            plan_model: None,
+        };
+        let block = build_models_yml_provider_block(
+            &config,
+            "https://api.example.com/v1",
+            &["gpt-4o".to_string()],
+        );
+        let text = block.join("\n");
+        assert!(text.contains("api: openai-completions"), "got:\n{text}");
+        assert!(!text.contains("openai-chat"));
+        assert!(!text.contains("anthropic"));
+        assert!(text.contains("apiKey: \"sk-openai\""));
+        assert!(text.contains("authHeader: true"));
+        // disableStrictTools is Anthropic-only; must never appear now
+        assert!(!text.contains("disableStrictTools"));
     }
 
     #[test]

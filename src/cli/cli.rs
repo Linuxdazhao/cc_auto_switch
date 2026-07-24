@@ -34,7 +34,8 @@ OMP CONFIGURATIONS:
     cc-switch omp add work --from-file                       # Import from ~/.omp/agent/.env
     cc-switch omp add work --from-file ~/other/.env          # Import from an explicit path
     cc-switch omp add personal -i                            # Interactive mode
-    cc-switch omp add gpt --api-key sk-... --slow-model openai/gpt-5.3-codex:high
+    cc-switch omp add gpt --api-key sk-... --slow-model gpt-5.3-codex
+    cc-switch omp add gw --api-key sk-... --base-url https://api.example.com/v1 --slow-model gpt-4o  # OpenAI-compatible gateway
     cc-switch omp list
     cc-switch omp use work                                   # Switch and launch OMP
     cc-switch omp remove work
@@ -416,7 +417,7 @@ pub enum OmpCommands {
     Add {
         #[arg(help = "Configuration alias name")]
         alias_name: String,
-        #[arg(long = "api-key", help = "API key (Anthropic or OpenAI)")]
+        #[arg(long = "api-key", help = "OpenAI API key")]
         api_key: Option<String>,
         #[arg(long = "force", short = 'f', help = "Overwrite existing configuration")]
         force: bool,

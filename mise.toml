@@ -1,9 +1,3 @@
-# mise configuration for cc_auto_switch
-# Replaces Makefile functionality
-
-# Use latest stable Rust version
-[tools]
-rust = "latest"
 
 [env]
 # Variables
