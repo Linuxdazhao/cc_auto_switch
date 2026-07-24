@@ -28,6 +28,7 @@ colored = "3.0"
 crossterm = "0.29.0"
 which = "8"
 base64 = "0.22.1"
+toml_edit = "0.22"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -18,6 +18,7 @@ pub fn generate_aliases(shell: &str) -> Result<()> {
             println!("alias cs='cc-switch'");
             println!("alias cx='cc-switch codex'");
             println!("alias co='cc-switch omp'");
+            println!("alias cg='cc-switch grok'");
         }
         _ => {
             anyhow::bail!(
@@ -180,6 +181,27 @@ pub fn list_omp_aliases_for_completion() -> Result<()> {
     Ok(())
 }
 
+/// List available grok configuration aliases for shell completion
+///
+/// Outputs all stored grok configuration aliases, one per line
+///
+/// # Errors
+/// Returns error if loading configurations fails
+pub fn list_grok_aliases_for_completion() -> Result<()> {
+    let storage = ConfigStorage::load()?;
+
+    if let Some(configs) = &storage.grok_configurations {
+        let mut aliases: Vec<String> = configs.keys().cloned().collect();
+        aliases.sort();
+
+        for alias_name in aliases {
+            println!("{alias_name}");
+        }
+    }
+
+    Ok(())
+}
+
 /// Generate custom fish completion with dynamic alias completion, writing to `out`.
 fn generate_fish_completion(app: &mut clap::Command, out: &mut Vec<u8>) {
     clap_complete::generate(clap_complete::shells::Fish, app, "cc-switch", out);
@@ -198,12 +220,17 @@ complete -c cc-switch -n '__fish_cc_switch_using_subcommand completion' -f -a 'f
 # Completion for 'cc-switch omp' subcommand dynamic aliases
 complete -c cc-switch -n '__fish_seen_subcommand_from omp' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
 complete -c cc-switch -n '__fish_seen_subcommand_from omp' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-omp-aliases)' -d 'OMP configuration alias name'
+
+# Completion for 'cc-switch grok' subcommand dynamic aliases
+complete -c cc-switch -n '__fish_seen_subcommand_from grok' -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-grok-aliases)' -d 'grok configuration alias name'
+complete -c cc-switch -n '__fish_seen_subcommand_from grok' -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-grok-aliases)' -d 'grok configuration alias name'
 "#;
     out.extend_from_slice(extra.as_bytes());
 
     generate_cs_completion_file();
     generate_cx_completion_file();
     generate_co_completion_file();
+    generate_cg_completion_file();
 }
 
 /// Generate separate completion file for cs fish alias.
@@ -314,4 +341,44 @@ complete -c co -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import f
     }
 
     eprintln!("\nCreated completion file: {}", co_path.display());
+}
+/// Generate separate completion file for cg fish function
+///
+/// Fish doesn't automatically load completion files for functions, only for commands.
+/// This creates ~/.config/fish/completions/cg.fish
+fn generate_cg_completion_file() {
+    let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("~"));
+    let completions_dir = home.join(".config").join("fish").join("completions");
+
+    if !completions_dir.exists()
+        && let Err(e) = fs::create_dir_all(&completions_dir)
+    {
+        eprintln!("Warning: Could not create completions directory: {e}");
+        return;
+    }
+
+    let cg_content = r#"# Completion for 'cg' alias (cc-switch grok)
+# Define cg as a fish function
+function cg
+    cc-switch grok $argv
+end
+
+# Disable file completion by default
+complete -c cg -f
+complete -c cg -n '__fish_use_subcommand' -f -a 'add use remove list' -d 'grok subcommand'
+complete -c cg -n '__fish_seen_subcommand_from use' -f -a '(cc-switch --list-grok-aliases)' -d 'grok configuration alias name'
+complete -c cg -n '__fish_seen_subcommand_from remove' -f -a '(cc-switch --list-grok-aliases)' -d 'grok configuration alias name'
+complete -c cg -n '__fish_seen_subcommand_from list' -f -l plain -s p -d 'Plain text output'
+complete -c cg -n '__fish_seen_subcommand_from list' -f -l name -s n -d 'Show only alias name and model'
+complete -c cg -n '__fish_seen_subcommand_from add' -f -l interactive -s i -d 'Interactive mode'
+complete -c cg -n '__fish_seen_subcommand_from add' -f -l from-file -d 'Import from config.toml (defaults to ~/.grok/config.toml if no path)' -r
+"#;
+
+    let cg_path = completions_dir.join("cg.fish");
+
+    if let Err(e) = fs::write(&cg_path, cg_content) {
+        eprintln!("Warning: Could not write cg.fish: {e}");
+    }
+
+    eprintln!("\nCreated completion file: {}", cg_path.display());
 }

@@ -11,6 +11,8 @@ type JsonMap = BTreeMap<String, serde_json::Value>;
 type CodexConfigMap = BTreeMap<String, crate::codex::CodexConfiguration>;
 /// Type alias for OMP configuration map
 type OmpConfigMap = BTreeMap<String, crate::omp::OmpConfiguration>;
+/// Type alias for grok configuration map
+type GrokConfigMap = BTreeMap<String, crate::grok::GrokConfiguration>;
 
 /// Storage mode for how configuration should be written to settings.json
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -513,6 +515,9 @@ pub struct ConfigStorage {
     /// OMP configurations, stored separately from Claude configurations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub omp_configurations: Option<OmpConfigMap>,
+    /// grok configurations, stored separately from Claude configurations
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grok_configurations: Option<GrokConfigMap>,
 }
 
 /// Claude settings manager for API configuration

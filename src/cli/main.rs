@@ -1,6 +1,6 @@
 use crate::cli::completion::{
     generate_completion, list_aliases_for_completion, list_codex_aliases_for_completion,
-    list_omp_aliases_for_completion,
+    list_grok_aliases_for_completion, list_omp_aliases_for_completion,
 };
 use crate::cli::{Cli, Commands};
 use crate::codex::{
@@ -9,6 +9,9 @@ use crate::codex::{
 };
 use crate::config::types::{AddCommandParams, ClaudeSettings, StorageMode};
 use crate::config::{ConfigStorage, Configuration, EnvironmentConfig, validate_alias_name};
+use crate::grok::{
+    handle_grok_add, handle_grok_interactive, handle_grok_list, handle_grok_remove, handle_grok_use,
+};
 use crate::interactive::{
     handle_interactive_selection, launch_claude_with_env, read_input, read_sensitive_input,
 };
@@ -710,6 +713,11 @@ pub fn run() -> Result<()> {
         list_omp_aliases_for_completion()?;
         return Ok(());
     }
+    // Handle --list-grok-aliases flag for completion
+    if cli.list_grok_aliases {
+        list_grok_aliases_for_completion()?;
+        return Ok(());
+    }
 
     // Reap per-PID alias files for terminated sessions on every invocation.
     // Skipped for completion-only paths above to keep shell completion fast.
@@ -1106,6 +1114,76 @@ pub fn run() -> Result<()> {
                 None => {
                     // Enter interactive mode for OMP configurations
                     handle_omp_interactive(&storage)?;
+                }
+            },
+            Commands::Grok { command } => match command {
+                Some(crate::cli::GrokCommands::Add {
+                    alias_name,
+                    model,
+                    base_url,
+                    name,
+                    api_backend,
+                    context_window,
+                    api_key,
+                    env_key,
+                    header,
+                    force,
+                    interactive,
+                    from_file,
+                }) => {
+                    let resolved_from_file: Option<String> = match from_file {
+                        Some(Some(path)) => {
+                            if !std::path::Path::new(&path).exists() {
+                                anyhow::bail!("grok config file not found: {}", path);
+                            }
+                            Some(path)
+                        }
+                        Some(None) => {
+                            let default_path = crate::grok::default_grok_config_path()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .map_err(|e| {
+                                    anyhow!("Failed to resolve default grok config path: {}", e)
+                                })?;
+                            if !std::path::Path::new(&default_path).exists() {
+                                anyhow::bail!(
+                                    "Default grok config file not found at: {}\n\
+                                     Run `grok` once to create it, or pass an explicit path: --from-file <path>",
+                                    default_path
+                                );
+                            }
+                            Some(default_path)
+                        }
+                        None => None,
+                    };
+
+                    handle_grok_add(
+                        alias_name,
+                        model,
+                        base_url,
+                        name,
+                        api_backend,
+                        context_window,
+                        api_key,
+                        env_key,
+                        header,
+                        force,
+                        interactive,
+                        resolved_from_file,
+                        &mut storage,
+                    )?;
+                }
+                Some(crate::cli::GrokCommands::List { plain, name }) => {
+                    handle_grok_list(plain, name, &storage)?;
+                }
+                Some(crate::cli::GrokCommands::Use { alias_name, prompt }) => {
+                    handle_grok_use(alias_name, prompt, &mut storage)?;
+                }
+                Some(crate::cli::GrokCommands::Remove { alias_names }) => {
+                    handle_grok_remove(alias_names, &mut storage)?;
+                }
+                None => {
+                    // Enter interactive mode for grok configurations
+                    handle_grok_interactive(&storage)?;
                 }
             },
             Commands::Statusline { action } => {

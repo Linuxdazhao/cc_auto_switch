@@ -6,6 +6,7 @@
 pub mod cli;
 pub mod codex;
 pub mod config;
+pub mod grok;
 pub mod interactive;
 pub mod omp;
 
@@ -15,6 +16,7 @@ pub mod statusline;
 pub mod utils;
 
 pub use codex::CodexConfiguration;
+pub use grok::GrokConfiguration;
 pub use omp::OmpConfiguration;
 
 // Re-export commonly used types and functions for easier importing

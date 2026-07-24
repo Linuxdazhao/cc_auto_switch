@@ -39,6 +39,15 @@ OMP CONFIGURATIONS:
     cc-switch omp use work                                   # Switch and launch OMP
     cc-switch omp remove work
 
+GROK CONFIGURATIONS:
+    cc-switch grok add opus --model claude-opus-4-6 --base-url https://api.anthropic.com/v1 --api-backend messages --header x-api-key=sk-ant-...
+    cc-switch grok add gpt --model gpt-4o --base-url https://api.openai.com/v1 --env-key OPENAI_API_KEY
+    cc-switch grok add work --from-file                      # Import a [model.work] entry from ~/.grok/config.toml
+    cc-switch grok add personal -i                           # Interactive mode
+    cc-switch grok list
+    cc-switch grok use opus                                  # Switch default model and launch grok
+    cc-switch grok remove opus
+
 SHELL COMPLETION AND ALIASES:
     cc-switch completion fish  # Generates shell completions
 
@@ -46,17 +55,20 @@ SHELL COMPLETION AND ALIASES:
     - cs='cc-switch'           # Quick access to cc-switch
     - cx='cc-switch codex'     # Quick access to cc-switch codex
     - co='cc-switch omp'       # Quick access to cc-switch omp
+    - cg='cc-switch grok'      # Quick access to cc-switch grok
 
     Install permanently:
     cc-switch completion fish > ~/.config/fish/completions/cc-switch.fish
     echo \"alias cs='cc-switch'\" >> ~/.config/fish/config.fish
     echo \"alias cx='cc-switch codex'\" >> ~/.config/fish/config.fish
     echo \"alias co='cc-switch omp'\" >> ~/.config/fish/config.fish
+    echo \"alias cg='cc-switch grok'\" >> ~/.config/fish/config.fish
 
     Then use:
     cs current    # Instead of cc-switch current
     cx use work   # Instead of cc-switch codex use work
-    co use work   # Instead of cc-switch omp use work"
+    co use work   # Instead of cc-switch omp use work
+    cg use opus   # Instead of cc-switch grok use opus"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -72,6 +84,9 @@ pub struct Cli {
     /// List available OMP configuration aliases (for shell completion)
     #[arg(long = "list-omp-aliases", hide = true)]
     pub list_omp_aliases: bool,
+    /// List available grok configuration aliases (for shell completion)
+    #[arg(long = "list-grok-aliases", hide = true)]
+    pub list_grok_aliases: bool,
 
     /// Migrate old config path (~/.cc_auto_switch/configurations.json) to new path
     #[arg(
@@ -314,6 +329,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<OmpCommands>,
     },
+    /// Manage grok (xAI CLI) custom model configurations
+    Grok {
+        #[command(subcommand)]
+        command: Option<GrokCommands>,
+    },
     /// Manage statusLine integration with Claude Code
     ///
     /// Installs a wrapper script that displays the current cc-switch alias name
@@ -442,6 +462,80 @@ pub enum OmpCommands {
         r#continue: bool,
         #[arg(long = "resume", short = 'r')]
         resume: Option<String>,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        prompt: Vec<String>,
+    },
+    Remove {
+        #[arg(required = true)]
+        alias_names: Vec<String>,
+    },
+}
+
+/// Available subcommands for grok configuration management
+#[derive(Subcommand)]
+pub enum GrokCommands {
+    /// Add a new grok custom model configuration
+    Add {
+        #[arg(help = "Configuration alias name (used as the [model.<alias>] id)")]
+        alias_name: String,
+        #[arg(long = "model", help = "Underlying model id (e.g. claude-opus-4-6)")]
+        model: Option<String>,
+        #[arg(long = "base-url", help = "API endpoint base URL")]
+        base_url: Option<String>,
+        #[arg(long = "name", help = "Human-friendly display name")]
+        name: Option<String>,
+        #[arg(
+            long = "api-backend",
+            help = "API backend: chat_completions | responses | messages"
+        )]
+        api_backend: Option<String>,
+        #[arg(long = "context-window", help = "Context window size")]
+        context_window: Option<u32>,
+        #[arg(
+            long = "api-key",
+            help = "API key written directly to config (optional)"
+        )]
+        api_key: Option<String>,
+        #[arg(
+            long = "env-key",
+            help = "Environment variable name to read the key from (repeatable)"
+        )]
+        env_key: Vec<String>,
+        #[arg(
+            long = "header",
+            value_name = "KEY=VALUE",
+            help = "Extra HTTP header for the model, e.g. x-api-key=sk-ant-... (repeatable)"
+        )]
+        header: Vec<String>,
+        #[arg(long = "force", short = 'f', help = "Overwrite existing configuration")]
+        force: bool,
+        #[arg(
+            long = "interactive",
+            short = 'i',
+            help = "Enter configuration values interactively"
+        )]
+        interactive: bool,
+        /// Import a [model.<alias>] entry from an existing config.toml
+        ///
+        /// With no value, imports from `~/.grok/config.toml`.
+        /// With a value, imports from the given path.
+        #[arg(
+            long = "from-file",
+            num_args = 0..=1,
+            value_name = "PATH",
+            help = "Import from config.toml (defaults to ~/.grok/config.toml if no path)"
+        )]
+        from_file: Option<Option<String>>,
+    },
+    List {
+        #[arg(long = "plain", short = 'p')]
+        plain: bool,
+        #[arg(long = "name", short = 'n', help = "Show only alias name and model")]
+        name: bool,
+    },
+    #[command(trailing_var_arg = true)]
+    Use {
+        alias_name: String,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         prompt: Vec<String>,
     },
