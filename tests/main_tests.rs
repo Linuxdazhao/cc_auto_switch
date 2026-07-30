@@ -24,6 +24,7 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            claude_code_auto_compact_window: None,
             disable_prompt_caching: None,
             claude_code_disable_experimental_betas: None,
             disable_autoupdater: None,
@@ -56,6 +57,7 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            claude_code_auto_compact_window: None,
             disable_prompt_caching: None,
             claude_code_disable_experimental_betas: None,
             disable_autoupdater: None,
@@ -83,6 +85,7 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            claude_code_auto_compact_window: None,
             disable_prompt_caching: None,
             claude_code_disable_experimental_betas: None,
             disable_autoupdater: None,
@@ -91,6 +94,8 @@ mod tests {
             token_arg: None,
             url_arg: None,
             from_file: None,
+            from_json: None,
+            from_stdin: false,
         };
 
         assert_eq!(params.alias_name, "test");

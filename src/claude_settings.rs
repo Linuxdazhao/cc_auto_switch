@@ -240,6 +240,15 @@ impl ClaudeSettings {
                 .insert("CLAUDE_CODE_EFFORT_LEVEL".to_string(), level.clone());
         }
 
+        if let Some(window) = &config.claude_code_auto_compact_window
+            && !window.is_empty()
+        {
+            self.env.insert(
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW".to_string(),
+                window.clone(),
+            );
+        }
+
         if let Some(flag) = config.disable_prompt_caching {
             self.env
                 .insert("DISABLE_PROMPT_CACHING".to_string(), flag.to_string());

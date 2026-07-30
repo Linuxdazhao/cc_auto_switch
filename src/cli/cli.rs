@@ -212,6 +212,13 @@ pub enum Commands {
         )]
         claude_code_effort_level: Option<String>,
 
+        /// CLAUDE_CODE_AUTO_COMPACT_WINDOW value
+        #[arg(
+            long = "auto-compact-window",
+            help = "Auto compact window size for Claude Code (optional, e.g., '950000')"
+        )]
+        claude_code_auto_compact_window: Option<String>,
+
         /// DISABLE_PROMPT_CACHING flag
         #[arg(
             long = "disable-prompt-caching",
@@ -268,6 +275,25 @@ pub enum Commands {
             help = "Import configuration from JSON file (defaults to ~/.claude/settings.json if no path)"
         )]
         from_file: Option<Option<String>>,
+
+        /// Import configuration from a JSON/text string
+        ///
+        /// Parses known environment variable names from arbitrary text input.
+        #[arg(
+            long = "from-json",
+            value_name = "TEXT",
+            help = "Import configuration from JSON/text string containing env vars"
+        )]
+        from_json: Option<String>,
+
+        /// Import configuration from stdin
+        ///
+        /// Reads text from stdin and parses known environment variable names.
+        #[arg(
+            long = "from-stdin",
+            help = "Import configuration from piped stdin input"
+        )]
+        from_stdin: bool,
     },
     /// Remove one or more configurations by alias name
     ///

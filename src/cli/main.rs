@@ -40,65 +40,63 @@ fn parse_storage_mode(store_str: &str) -> Result<StorageMode> {
     }
 }
 
-/// Parse a configuration from a JSON file
-///
-/// # Arguments
-/// * `file_path` - Path to the JSON configuration file
-///
-/// # Returns
-/// Result containing a tuple of configuration values (token, url, and optional fields)
-///
-/// # Errors
-/// Returns error if file cannot be read or parsed
+/// Parsed configuration fields from text/file import
 #[allow(clippy::type_complexity)]
-fn parse_config_from_file(
-    file_path: &str,
-) -> Result<(
-    String,
-    Option<String>,
-    String,
-    Option<String>,
-    Option<String>,
-    Option<u32>,
-    Option<u32>,
-    Option<u32>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<u32>,
-    Option<String>,
-    Option<u32>,
-    Option<u32>,
-    Option<u32>,
-)> {
-    let file_content = fs::read_to_string(file_path)
-        .map_err(|e| anyhow!("Failed to read file '{}': {}", file_path, e))?;
+type ParsedConfigFields = (
+    String,         // token
+    Option<String>, // api_key
+    String,         // url
+    Option<String>, // model
+    Option<String>, // small_fast_model
+    Option<u32>,    // max_thinking_tokens
+    Option<u32>,    // api_timeout_ms
+    Option<u32>,    // claude_code_disable_nonessential_traffic
+    Option<String>, // anthropic_default_sonnet_model
+    Option<String>, // anthropic_default_opus_model
+    Option<String>, // anthropic_default_haiku_model
+    Option<String>, // claude_code_subagent_model
+    Option<u32>,    // claude_code_disable_nonstreaming_fallback
+    Option<String>, // claude_code_effort_level
+    Option<String>, // claude_code_auto_compact_window
+    Option<u32>,    // disable_prompt_caching
+    Option<u32>,    // claude_code_disable_experimental_betas
+    Option<u32>,    // disable_autoupdater
+);
 
-    let json: serde_json::Value = serde_json::from_str(&file_content)
-        .map_err(|e| anyhow!("Failed to parse JSON from file '{}': {}", file_path, e))?;
+/// Extract a string value for a known env var name from arbitrary text.
+///
+/// Matches patterns: `"NAME": "value"`, `"NAME": value`, `NAME=value`, `NAME: value`
+fn extract_str_field(text: &str, name: &str) -> Option<String> {
+    let pattern = format!(
+        r#"(?m)(?:"{name}"\s*:\s*"([^"]*)"|"{name}"\s*:\s*([^\s,}}\]]+)|(?:export\s+)?{name}\s*=\s*"?([^"\s,}}\]]+)"?|(?:export\s+)?{name}\s*:\s*"?([^"\s,}}\]]+)"?)"#
+    );
+    let re = regex::Regex::new(&pattern).ok()?;
+    re.captures(text).and_then(|caps| {
+        caps.get(1)
+            .or_else(|| caps.get(2))
+            .or_else(|| caps.get(3))
+            .or_else(|| caps.get(4))
+            .map(|m| m.as_str().to_string())
+            .filter(|s| !s.is_empty())
+    })
+}
 
-    let env = json.get("env").and_then(|v| v.as_object()).ok_or_else(|| {
-        anyhow!(
-            "File '{}' does not contain a valid 'env' section",
-            file_path
-        )
-    })?;
+/// Extract a u32 value for a known env var name from arbitrary text.
+fn extract_u32_field(text: &str, name: &str) -> Option<u32> {
+    extract_str_field(text, name).and_then(|s| s.parse::<u32>().ok())
+}
 
-    let auth_token = env
-        .get("ANTHROPIC_AUTH_TOKEN")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let api_key = env
-        .get("ANTHROPIC_API_KEY")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+/// Parse configuration fields from arbitrary text containing env var definitions.
+///
+/// Supports JSON (with or without "env" wrapper), shell assignments (KEY=value),
+/// and colon-separated (KEY: value) formats.
+fn parse_config_from_text(text: &str) -> Result<ParsedConfigFields> {
+    let auth_token = extract_str_field(text, "ANTHROPIC_AUTH_TOKEN");
+    let api_key = extract_str_field(text, "ANTHROPIC_API_KEY");
 
     if auth_token.is_some() && api_key.is_some() {
         anyhow::bail!(
-            "File '{}' contains both ANTHROPIC_AUTH_TOKEN and ANTHROPIC_API_KEY — only one is allowed",
-            file_path
+            "Input contains both ANTHROPIC_AUTH_TOKEN and ANTHROPIC_API_KEY — only one is allowed"
         );
     }
 
@@ -106,108 +104,35 @@ fn parse_config_from_file(
         (Some(t), None) => t.clone(),
         (None, Some(_)) => String::new(),
         (None, None) => {
-            anyhow::bail!(
-                "Missing ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY in file '{}'",
-                file_path
+            eprintln!(
+                "Warning: No ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY found in input. Token will be empty — you need to configure it later."
             );
+            String::new()
         }
         _ => unreachable!(),
     };
 
-    let url = env
-        .get("ANTHROPIC_BASE_URL")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow!("Missing ANTHROPIC_BASE_URL in file '{}'", file_path))?
-        .to_string();
-
-    let model = env
-        .get("ANTHROPIC_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let small_fast_model = env
-        .get("ANTHROPIC_SMALL_FAST_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let max_thinking_tokens = env
-        .get("ANTHROPIC_MAX_THINKING_TOKENS")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let api_timeout_ms = env
-        .get("API_TIMEOUT_MS")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let claude_code_disable_nonessential_traffic = env
-        .get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let anthropic_default_sonnet_model = env
-        .get("ANTHROPIC_DEFAULT_SONNET_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let anthropic_default_opus_model = env
-        .get("ANTHROPIC_DEFAULT_OPUS_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let anthropic_default_haiku_model = env
-        .get("ANTHROPIC_DEFAULT_HAIKU_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let claude_code_subagent_model = env
-        .get("CLAUDE_CODE_SUBAGENT_MODEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let claude_code_disable_nonstreaming_fallback = env
-        .get("CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let claude_code_effort_level = env
-        .get("CLAUDE_CODE_EFFORT_LEVEL")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
-    let disable_prompt_caching = env
-        .get("DISABLE_PROMPT_CACHING")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let claude_code_disable_experimental_betas = env
-        .get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
-
-    let disable_autoupdater = env
-        .get("DISABLE_AUTOUPDATER")
-        .and_then(|v| v.as_u64())
-        .map(|u| u as u32);
+    let url = extract_str_field(text, "ANTHROPIC_BASE_URL").unwrap_or_default();
 
     Ok((
         token,
         api_key,
         url,
-        model,
-        small_fast_model,
-        max_thinking_tokens,
-        api_timeout_ms,
-        claude_code_disable_nonessential_traffic,
-        anthropic_default_sonnet_model,
-        anthropic_default_opus_model,
-        anthropic_default_haiku_model,
-        claude_code_subagent_model,
-        claude_code_disable_nonstreaming_fallback,
-        claude_code_effort_level,
-        disable_prompt_caching,
-        claude_code_disable_experimental_betas,
-        disable_autoupdater,
+        extract_str_field(text, "ANTHROPIC_MODEL"),
+        extract_str_field(text, "ANTHROPIC_SMALL_FAST_MODEL"),
+        extract_u32_field(text, "ANTHROPIC_MAX_THINKING_TOKENS"),
+        extract_u32_field(text, "API_TIMEOUT_MS"),
+        extract_u32_field(text, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+        extract_str_field(text, "ANTHROPIC_DEFAULT_SONNET_MODEL"),
+        extract_str_field(text, "ANTHROPIC_DEFAULT_OPUS_MODEL"),
+        extract_str_field(text, "ANTHROPIC_DEFAULT_HAIKU_MODEL"),
+        extract_str_field(text, "CLAUDE_CODE_SUBAGENT_MODEL"),
+        extract_u32_field(text, "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK"),
+        extract_str_field(text, "CLAUDE_CODE_EFFORT_LEVEL"),
+        extract_str_field(text, "CLAUDE_CODE_AUTO_COMPACT_WINDOW"),
+        extract_u32_field(text, "DISABLE_PROMPT_CACHING"),
+        extract_u32_field(text, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"),
+        extract_u32_field(text, "DISABLE_AUTOUPDATER"),
     ))
 }
 
@@ -220,10 +145,27 @@ fn parse_config_from_file(
 /// # Errors
 /// Returns error if validation fails or user cancels interactive input
 fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage) -> Result<()> {
-    // If from-file is provided, parse the file and use those values
-    if let Some(file_path) = &params.from_file {
+    // Resolve import source: from_file, from_json, or from_stdin
+    let import_text: Option<String> = if let Some(file_path) = &params.from_file {
         println!("Importing configuration from file: {}", file_path);
+        Some(
+            fs::read_to_string(file_path)
+                .map_err(|e| anyhow!("Failed to read file '{}': {}", file_path, e))?,
+        )
+    } else if let Some(json_text) = &params.from_json {
+        println!("Importing configuration from provided text");
+        Some(json_text.clone())
+    } else if params.from_stdin {
+        println!("Importing configuration from stdin");
+        let mut buf = String::new();
+        std::io::Read::read_to_string(&mut std::io::stdin(), &mut buf)
+            .map_err(|e| anyhow!("Failed to read stdin: {}", e))?;
+        Some(buf)
+    } else {
+        None
+    };
 
+    if let Some(text) = &import_text {
         let (
             file_token,
             file_api_key,
@@ -239,10 +181,11 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
             file_subagent_model,
             file_disable_nonstreaming_fallback,
             file_effort_level,
+            file_auto_compact_window,
             file_disable_prompt_caching,
             file_disable_experimental_betas,
             file_disable_autoupdater,
-        ) = parse_config_from_file(file_path)?;
+        ) = parse_config_from_text(text)?;
 
         params.token = Some(file_token);
         params.api_key = file_api_key;
@@ -258,14 +201,12 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.claude_code_subagent_model = file_subagent_model;
         params.claude_code_disable_nonstreaming_fallback = file_disable_nonstreaming_fallback;
         params.claude_code_effort_level = file_effort_level;
+        params.claude_code_auto_compact_window = file_auto_compact_window;
         params.disable_prompt_caching = file_disable_prompt_caching;
         params.claude_code_disable_experimental_betas = file_disable_experimental_betas;
         params.disable_autoupdater = file_disable_autoupdater;
 
-        println!(
-            "Configuration '{}' will be imported from file",
-            params.alias_name
-        );
+        println!("Configuration '{}' will be imported", params.alias_name);
     }
 
     // Validate alias name
@@ -278,9 +219,11 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         return Ok(());
     }
 
-    // Cannot use interactive mode with --from-file
-    if params.interactive && params.from_file.is_some() {
-        anyhow::bail!("Cannot use --interactive mode with --from-file");
+    // Cannot use interactive mode with import sources
+    if params.interactive
+        && (params.from_file.is_some() || params.from_json.is_some() || params.from_stdin)
+    {
+        anyhow::bail!("Cannot use --interactive mode with --from-file/--from-json/--from-stdin");
     }
 
     // Enforce mutual exclusivity: --token and --api-key cannot both be provided
@@ -559,6 +502,24 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         params.claude_code_effort_level
     };
 
+    // Determine auto compact window value
+    let final_claude_code_auto_compact_window = if params.interactive {
+        if params.claude_code_auto_compact_window.is_some() {
+            eprintln!(
+                "Warning: Auto compact window provided via flags will be ignored in interactive mode"
+            );
+        }
+        let window_input =
+            read_input("Enter auto compact window size (optional, press enter to skip): ")?;
+        if window_input.is_empty() {
+            None
+        } else {
+            Some(window_input)
+        }
+    } else {
+        params.claude_code_auto_compact_window
+    };
+
     // Determine disable prompt caching flag value
     let final_disable_prompt_caching = if params.interactive {
         if params.disable_prompt_caching.is_some() {
@@ -661,6 +622,7 @@ fn handle_add_command(mut params: AddCommandParams, storage: &mut ConfigStorage)
         claude_code_subagent_model: final_claude_code_subagent_model,
         claude_code_disable_nonstreaming_fallback: final_claude_code_disable_nonstreaming_fallback,
         claude_code_effort_level: final_claude_code_effort_level,
+        claude_code_auto_compact_window: final_claude_code_auto_compact_window,
         disable_prompt_caching: final_disable_prompt_caching,
         claude_code_disable_experimental_betas: final_claude_code_disable_experimental_betas,
         disable_autoupdater: final_disable_autoupdater,
@@ -770,6 +732,7 @@ pub fn run() -> Result<()> {
                 claude_code_subagent_model,
                 claude_code_disable_nonstreaming_fallback,
                 claude_code_effort_level,
+                claude_code_auto_compact_window,
                 disable_prompt_caching,
                 claude_code_disable_experimental_betas,
                 disable_autoupdater,
@@ -778,6 +741,8 @@ pub fn run() -> Result<()> {
                 token_arg,
                 url_arg,
                 from_file,
+                from_json,
+                from_stdin,
             } => {
                 let resolved_from_file: Option<String> = match from_file {
                     Some(Some(path)) => {
@@ -805,6 +770,15 @@ pub fn run() -> Result<()> {
                     None => None,
                 };
 
+                let import_count = resolved_from_file.is_some() as u8
+                    + from_json.is_some() as u8
+                    + from_stdin as u8;
+                if import_count > 1 {
+                    anyhow::bail!(
+                        "Cannot use more than one of --from-file, --from-json, --from-stdin"
+                    );
+                }
+
                 let params = AddCommandParams {
                     alias_name,
                     token,
@@ -821,6 +795,7 @@ pub fn run() -> Result<()> {
                     claude_code_subagent_model,
                     claude_code_disable_nonstreaming_fallback,
                     claude_code_effort_level,
+                    claude_code_auto_compact_window,
                     disable_prompt_caching,
                     claude_code_disable_experimental_betas,
                     disable_autoupdater,
@@ -829,6 +804,8 @@ pub fn run() -> Result<()> {
                     token_arg,
                     url_arg,
                     from_file: resolved_from_file,
+                    from_json,
+                    from_stdin,
                 };
                 handle_add_command(params, &mut storage)?;
             }

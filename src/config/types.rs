@@ -84,6 +84,9 @@ pub struct Configuration {
     /// Effort level for Claude Code
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claude_code_effort_level: Option<String>,
+    /// Auto compact window size for Claude Code
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_code_auto_compact_window: Option<String>,
     /// Disable prompt caching flag
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disable_prompt_caching: Option<u32>,
@@ -116,6 +119,7 @@ impl Configuration {
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
             "DISABLE_PROMPT_CACHING",
             "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
             "DISABLE_AUTOUPDATER",
@@ -156,6 +160,7 @@ impl Configuration {
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
             // User preference fields are NOT included:
             // - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
             // - CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
@@ -194,6 +199,7 @@ mod tests {
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
             "DISABLE_PROMPT_CACHING",
             "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
             "DISABLE_AUTOUPDATER",
@@ -202,7 +208,7 @@ mod tests {
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 19 fields"
+            "Should have exactly 20 fields"
         );
 
         for expected_field in expected_fields {
@@ -242,6 +248,7 @@ mod tests {
             "ANTHROPIC_DEFAULT_HAIKU_MODEL",
             "CLAUDE_CODE_SUBAGENT_MODEL",
             "CLAUDE_CODE_EFFORT_LEVEL",
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
         ];
 
         // User preference fields should NOT be in clearable list
@@ -258,7 +265,7 @@ mod tests {
         assert_eq!(
             fields.len(),
             expected_fields.len(),
-            "Should have exactly 12 clearable fields"
+            "Should have exactly 13 clearable fields"
         );
 
         for expected_field in expected_fields {
@@ -358,6 +365,7 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            claude_code_auto_compact_window: None,
             disable_prompt_caching: None,
             claude_code_disable_experimental_betas: None,
             disable_autoupdater: None,
@@ -442,6 +450,7 @@ mod tests {
             claude_code_subagent_model: None,
             claude_code_disable_nonstreaming_fallback: None,
             claude_code_effort_level: None,
+            claude_code_auto_compact_window: None,
             disable_prompt_caching: None,
             claude_code_disable_experimental_betas: None,
             disable_autoupdater: None,
@@ -597,6 +606,7 @@ pub struct AddCommandParams {
     pub claude_code_subagent_model: Option<String>,
     pub claude_code_disable_nonstreaming_fallback: Option<u32>,
     pub claude_code_effort_level: Option<String>,
+    pub claude_code_auto_compact_window: Option<String>,
     pub disable_prompt_caching: Option<u32>,
     pub claude_code_disable_experimental_betas: Option<u32>,
     pub disable_autoupdater: Option<u32>,
@@ -605,4 +615,6 @@ pub struct AddCommandParams {
     pub token_arg: Option<String>,
     pub url_arg: Option<String>,
     pub from_file: Option<String>,
+    pub from_json: Option<String>,
+    pub from_stdin: bool,
 }
